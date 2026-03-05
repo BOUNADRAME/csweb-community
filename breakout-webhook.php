@@ -80,7 +80,7 @@ if (!preg_match('/^[A-Z0-9_]+$/', $dictionary)) {
 
 // ---- Execute breakout command ----
 $command = sprintf(
-    'php %s/bin/console csweb:process-cases-by-dict %s 2>&1',
+    'php %s/bin/console csweb:process-cases-by-dict %s',
     escapeshellarg($cswebRoot),
     escapeshellarg($dictionary)
 );
@@ -118,15 +118,61 @@ fclose($pipes[2]);
 $exitCode = proc_close($process);
 $durationMs = (int)((microtime(true) - $startTime) * 1000);
 
+// Merge stderr into output if stderr has content
+$combinedOutput = trim($stdout);
+$combinedError  = trim($stderr);
+if ($combinedError && $combinedOutput) {
+    $combinedOutput .= "\n" . $combinedError;
+} elseif ($combinedError) {
+    $combinedOutput = $combinedError;
+}
+
+// ---- Write execution log file ----
+$logFile    = null;
+$logWritten = false;
+$logError   = null;
+$logDir     = $cswebRoot . '/var/logs';
+
+if (!is_dir($logDir)) {
+    $logError = 'Log directory does not exist: ' . $logDir;
+} elseif (!is_writable($logDir)) {
+    $logError = 'Log directory not writable: ' . $logDir . ' (user: ' . get_current_user() . ', uid: ' . getmyuid() . ')';
+} else {
+    $logFile = $logDir . '/' . $dictionary . '_' . date('Ymd_His') . '-api.log';
+    $logContent = sprintf(
+        "[%s] BREAKOUT dictionary=%s exitCode=%d duration=%dms\n--- OUTPUT ---\n%s\n",
+        date('Y-m-d H:i:s'),
+        $dictionary,
+        $exitCode,
+        $durationMs,
+        $combinedOutput
+    );
+    $written = file_put_contents($logFile, $logContent);
+    if ($written === false) {
+        $err = error_get_last();
+        $logError = 'file_put_contents failed: ' . ($err['message'] ?? 'unknown error');
+        $logFile  = null;
+    } else {
+        $logWritten = true;
+    }
+}
+
 // ---- Return result ----
 $success = ($exitCode === 0);
 $httpCode = $success ? 200 : 500;
 
-jsonResponse($httpCode, [
+$response = [
     'success'    => $success,
     'dictionary' => $dictionary,
     'exitCode'   => $exitCode,
-    'output'     => trim($stdout),
-    'error'      => trim($stderr),
+    'output'     => $combinedOutput,
+    'error'      => $combinedError,
     'durationMs' => $durationMs,
-]);
+    'logFile'    => $logFile ? basename($logFile) : null,
+];
+
+if ($logError) {
+    $response['logError'] = $logError;
+}
+
+jsonResponse($httpCode, $response);
