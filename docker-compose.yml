@@ -1,0 +1,294 @@
+version: '3.8'
+
+# ============================================================================
+# CSWeb Community Platform - Docker Compose Configuration
+# ============================================================================
+# Author: Bouna DRAME
+# Date: 14 Mars 2026
+# Version: 1.0.0
+#
+# Description:
+#   Production-ready Docker Compose configuration for CSWeb Community Platform
+#   with PostgreSQL (default) and MySQL support for metadata and breakout.
+#
+# Features:
+#   - CSWeb application (PHP 8.1 + Apache)
+#   - PostgreSQL 16 (breakout analytics - default)
+#   - MySQL 8.0 (CSWeb metadata)
+#   - Persistent volumes
+#   - Health checks
+#   - Network isolation
+#   - Easy configuration via .env
+#
+# Usage:
+#   docker-compose up -d                 # Start all services
+#   docker-compose down                  # Stop all services
+#   docker-compose logs -f csweb         # View logs
+#   docker-compose ps                    # Check status
+# ============================================================================
+
+services:
+  # ==========================================================================
+  # CSWeb Application (PHP 8.1 + Apache)
+  # ==========================================================================
+  csweb:
+    image: php:8.1-apache
+    container_name: csweb-app
+    restart: unless-stopped
+
+    ports:
+      - "${CSWEB_PORT:-8080}:80"
+
+    volumes:
+      # Application files
+      - ./:/var/www/html
+
+      # Persistent storage for uploaded files
+      - csweb_files:/var/www/html/files
+
+      # Logs
+      - csweb_logs:/var/www/html/var/logs
+
+      # Apache configuration
+      - ./docker/apache/000-default.conf:/etc/apache2/sites-available/000-default.conf:ro
+
+      # PHP configuration
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/csweb.ini:ro
+
+    environment:
+      # Application
+      - APP_ENV=${APP_ENV:-prod}
+      - APP_DEBUG=${APP_DEBUG:-false}
+
+      # MySQL (CSWeb Metadata - FIXE)
+      - DBHOST=${MYSQL_HOST}
+      - DBNAME=${MYSQL_DATABASE}
+      - DBUSER=${MYSQL_USER}
+      - DBPASS=${MYSQL_PASSWORD}
+
+      # PostgreSQL (Breakout Analytics - CONFIGURABLE)
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DATABASE=${POSTGRES_DATABASE}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+      # Breakout configuration
+      - DEFAULT_BREAKOUT_DB_TYPE=${DEFAULT_BREAKOUT_DB_TYPE:-postgresql}
+
+      # Timezone
+      - TZ=${APP_TIMEZONE:-UTC}
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - csweb-network
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/api/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    labels:
+      - "com.csweb.service=application"
+      - "com.csweb.version=1.0.0"
+
+  # ==========================================================================
+  # MySQL 8.0 (CSWeb Metadata - FIXE)
+  # ==========================================================================
+  mysql:
+    image: mysql:8.0
+    container_name: csweb-mysql
+    restart: unless-stopped
+
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - TZ=${DB_TIMEZONE:-UTC}
+
+    volumes:
+      # Persistent database storage
+      - mysql_data:/var/lib/mysql
+
+      # MySQL configuration
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/csweb.cnf:ro
+
+      # Initialization scripts (optional)
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+
+    networks:
+      - csweb-network
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    labels:
+      - "com.csweb.service=mysql-metadata"
+      - "com.csweb.version=8.0"
+
+  # ==========================================================================
+  # PostgreSQL 16 (Breakout Analytics - Default)
+  # ==========================================================================
+  postgres:
+    image: postgres:16
+    container_name: csweb-postgres
+    restart: unless-stopped
+
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+    environment:
+      - POSTGRES_DB=${POSTGRES_DATABASE}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - TZ=${DB_TIMEZONE:-UTC}
+
+    volumes:
+      # Persistent database storage
+      - postgres_data:/var/lib/postgresql/data
+
+      # PostgreSQL configuration
+      - ./docker/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+
+      # Initialization scripts (optional)
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+
+    networks:
+      - csweb-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    labels:
+      - "com.csweb.service=postgres-analytics"
+      - "com.csweb.version=16"
+
+  # ==========================================================================
+  # phpMyAdmin (Optional - Development)
+  # ==========================================================================
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: csweb-phpmyadmin
+    restart: unless-stopped
+
+    ports:
+      - "${PHPMYADMIN_PORT:-8081}:80"
+
+    environment:
+      - PMA_HOST=mysql
+      - PMA_PORT=3306
+      - PMA_USER=root
+      - PMA_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - UPLOAD_LIMIT=100M
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+    networks:
+      - csweb-network
+
+    profiles:
+      - dev
+      - tools
+
+    labels:
+      - "com.csweb.service=phpmyadmin"
+      - "com.csweb.environment=development"
+
+  # ==========================================================================
+  # pgAdmin (Optional - Development)
+  # ==========================================================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: csweb-pgadmin
+    restart: unless-stopped
+
+    ports:
+      - "${PGADMIN_PORT:-8082}:80"
+
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@csweb.local}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin123}
+      - PGADMIN_CONFIG_SERVER_MODE=False
+
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - csweb-network
+
+    profiles:
+      - dev
+      - tools
+
+    labels:
+      - "com.csweb.service=pgadmin"
+      - "com.csweb.environment=development"
+
+# ============================================================================
+# Volumes (Persistent Storage)
+# ============================================================================
+volumes:
+  # CSWeb application files
+  csweb_files:
+    driver: local
+    labels:
+      - "com.csweb.volume=files"
+
+  # CSWeb logs
+  csweb_logs:
+    driver: local
+    labels:
+      - "com.csweb.volume=logs"
+
+  # MySQL data
+  mysql_data:
+    driver: local
+    labels:
+      - "com.csweb.volume=mysql"
+
+  # PostgreSQL data
+  postgres_data:
+    driver: local
+    labels:
+      - "com.csweb.volume=postgres"
+
+  # pgAdmin data (dev only)
+  pgadmin_data:
+    driver: local
+    labels:
+      - "com.csweb.volume=pgadmin"
+
+# ============================================================================
+# Networks (Isolation)
+# ============================================================================
+networks:
+  csweb-network:
+    driver: bridge
+    labels:
+      - "com.csweb.network=main"
