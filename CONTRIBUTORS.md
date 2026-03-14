@@ -6,10 +6,10 @@
 
 ## 🏆 Core Team
 
-### Boubacar Ndoye Dramé
+### Boubacar Ndoye Dramé (Bouna DRAME)
 **Lead Developer & Documentation**
 
-- 📧 Email: bdrame@statinfo.sn
+- 📧 Email: bounafode@gmail.com
 - 🐙 GitHub: [@BOUNADRAME](https://github.com/BOUNADRAME)
 - 🌐 Portfolio: [bounadrame.github.io/portfolio](https://bounadrame.github.io/portfolio/)
 
