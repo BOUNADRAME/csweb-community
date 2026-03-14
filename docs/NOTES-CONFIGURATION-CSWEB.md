@@ -35,11 +35,11 @@ define('CSWEB_PROCESS_CASES_LOG_LEVEL', 'error');
 ?>
 ```
 
-**Exemple du projet Kairos (ANSD, Sénégal) :**
+**Exemple :**
 ```php
-define('DBHOST', '193.203.15.16');
-define('DBNAME', 'csweb_kairos');
-define('API_URL', 'http://193.203.15.16/kairos/api/');
+define('DBHOST', 'localhost');
+define('DBNAME', 'csweb_metadata');
+define('API_URL', 'http://localhost:8080/api/');
 ```
 
 ---
@@ -96,7 +96,7 @@ CSWeb utilise **deux types de bases de données** avec des responsabilités dist
   - `DBHOST` - Hôte MySQL
   - `DBUSER` - Utilisateur MySQL
   - `DBPASS` - Mot de passe MySQL
-  - `DBNAME` - Nom de la base (ex: `csweb_kairos`)
+  - `DBNAME` - Nom de la base (ex: `csweb_metadata`)
 - **Tables :**
   - `cspro_dictionaries`
   - `cspro_users`
@@ -161,8 +161,8 @@ Config: src/AppBundle/config.php
 
 **Exemple du projet Kairos (ANSD):**
 ```
-Serveur: 193.203.15.16
-Base: csweb_kairos
+Serveur: localhost
+Base: csweb_metadata
 User: root
 ```
 
@@ -270,7 +270,7 @@ php bin/console csweb:process-cases-by-dict dictionnaires=SURVEY_DICT
 **Exemple du projet Kairos (ANSD):**
 ```bash
 php bin/console csweb:process-cases-by-dict dictionnaires=KAIROS_DICT
-# Lit depuis: csweb_kairos.KAIROS_DICT
+# Lit depuis: csweb_metadata.KAIROS_DICT
 # Crée tables: kairos_cases, kairos_level_1, kairos_record_001
 ```
 
@@ -325,8 +325,8 @@ La couche multi-database ne concerne **UNIQUEMENT** les bases de breakout (#2).
 
 **MySQL Métadonnées (FIXE) :**
 ```
-Serveur: 193.203.15.16
-Base: csweb_kairos
+Serveur: localhost
+Base: csweb_metadata
 User: root
 Password: pasa@kkk (à changer en production!)
 Rôle: Métadonnées CSWeb, synchronisation devices
@@ -334,18 +334,18 @@ Rôle: Métadonnées CSWeb, synchronisation devices
 
 **PostgreSQL Breakout (Configurable) :**
 ```
-Serveur: 193.203.15.16
-Base: kairos_dev
-User: kairos_dev
+Serveur: localhost
+Base: csweb_analytics
+User: csweb_analytics
 Schema: app (tables kairos_*)
 Rôle: Analytics, reporting, données relationnelles
 ```
 
 ### Workflow Kairos
 
-1. **Devices CSPro** (terrain) → Synchronisation → **MySQL Métadonnées** (csweb_kairos)
-2. **Kairos API** (backend) → Déclenche breakout → **PostgreSQL** (kairos_dev.app)
-3. **Frontend React** (tableau de bord) → Lit analytics depuis → **PostgreSQL** (kairos_dev.app)
+1. **Devices CSPro** (terrain) → Synchronisation → **MySQL Métadonnées** (csweb_metadata)
+2. **Kairos API** (backend) → Déclenche breakout → **PostgreSQL** (csweb_analytics.app)
+3. **Frontend React** (tableau de bord) → Lit analytics depuis → **PostgreSQL** (csweb_analytics.app)
 
 **Cette architecture peut être reproduite pour tout projet CSWeb similaire.**
 
