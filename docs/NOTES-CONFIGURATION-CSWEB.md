@@ -1,3 +1,8 @@
+---
+layout: default
+title: NOTES CONFIGURATION CSWeb
+---
+
 # Notes Importantes : Configuration CSWeb
 
 > **Documentation sur la configuration MySQL de CSWeb (à NE PAS modifier)**

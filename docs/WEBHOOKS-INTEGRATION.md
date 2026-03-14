@@ -1,3 +1,8 @@
+---
+layout: default
+title: WEBHOOKS INTEGRATION
+---
+
 # Guide d'Intégration : CSWeb Webhooks
 
 > **Tutoriel professionnel pour intégrer des webhooks avec CSWeb Community Platform**

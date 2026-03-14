@@ -56,25 +56,25 @@ Accédez à : **http://localhost:8080/setup/**
 
 | Guide | Description | Temps |
 |-------|-------------|-------|
-| [**Quick Start**](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/blob/master/QUICK-START.md) | Installation en 5 minutes | ⏱️ 5 min |
-| [**Package Complet**](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/blob/master/PACKAGE-COMPLETE.md) | Vue d'ensemble du package | ⏱️ 10 min |
-| [**Installation Vanilla**](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/blob/master/docs/INSTALLATION-CSWEB-VANILLA.md) | CSWeb standard (setup.php) | ⏱️ 15 min |
+| [**Quick Start**](QUICK-START.html) | Installation en 5 minutes | ⏱️ 5 min |
+| [**Package Complet**](PACKAGE-COMPLETE.html) | Vue d'ensemble du package | ⏱️ 10 min |
+| [**Installation Vanilla**](docs/INSTALLATION-CSWEB-VANILLA.html) | CSWeb standard (setup.php) | ⏱️ 15 min |
 
 ### 🔧 Guides Techniques
 
 | Guide | Description | Niveau |
 |-------|-------------|--------|
-| [**Migration Breakout Sélectif**](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/blob/master/docs/MIGRATION-BREAKOUT-SELECTIF.md) | 21 transformations AVANT/APRÈS | 🔴 Avancé |
-| [**Configuration Multi-DB**](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/blob/master/docs/CONFIGURATION-MULTI-DATABASE.md) | PostgreSQL/MySQL/SQL Server | 🟡 Intermédiaire |
-| [**Docker Deployment**](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/blob/master/docs/DOCKER-DEPLOYMENT.md) | Production avec Docker | 🟡 Intermédiaire |
+| [**Migration Breakout Sélectif**](docs/MIGRATION-BREAKOUT-SELECTIF.html) | 21 transformations AVANT/APRÈS | 🔴 Avancé |
+| [**Configuration Multi-DB**](docs/CONFIGURATION-MULTI-DATABASE.html) | PostgreSQL/MySQL/SQL Server | 🟡 Intermédiaire |
+| [**Docker Deployment**](docs/DOCKER-DEPLOYMENT.html) | Production avec Docker | 🟡 Intermédiaire |
 
 ### 🔐 Guides d'Intégration
 
 | Guide | Description | Stack |
 |-------|-------------|-------|
-| [**OAuth2 Authentication**](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/blob/master/docs/CSWEB-OAUTH-AUTHENTICATION.md) | Token access/refresh | Spring Boot, Laravel, Express.js |
-| [**Webhooks Integration**](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/blob/master/docs/WEBHOOKS-INTEGRATION.md) | Événements temps réel | Spring Boot, Laravel, Express.js |
-| [**Notes Configuration**](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/blob/master/docs/NOTES-CONFIGURATION-CSWEB.md) | MySQL CSWeb vs Breakout | 🟢 Débutant |
+| [**OAuth2 Authentication**](docs/CSWEB-OAUTH-AUTHENTICATION.html) | Token access/refresh | Spring Boot, Laravel, Express.js |
+| [**Webhooks Integration**](docs/WEBHOOKS-INTEGRATION.html) | Événements temps réel | Spring Boot, Laravel, Express.js |
+| [**Notes Configuration**](docs/NOTES-CONFIGURATION-CSWEB.html) | MySQL CSWeb vs Breakout | 🟢 Débutant |
 
 ---
 

@@ -1,3 +1,8 @@
+---
+layout: default
+title: CONFIGURATION MULTI DATABASE
+---
+
 # Configuration Multi-Database pour Breakout Sélectif
 
 > **Guide complet de configuration pour supporter PostgreSQL, MySQL et SQL Server**

@@ -1,3 +1,8 @@
+---
+layout: default
+title: Quick Start
+---
+
 # 🚀 CSWeb Community Platform - Quick Start
 
 > **Démarrez CSWeb avec breakout PostgreSQL en 5 minutes**

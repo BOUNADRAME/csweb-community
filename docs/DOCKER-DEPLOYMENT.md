@@ -1,3 +1,8 @@
+---
+layout: default
+title: DOCKER DEPLOYMENT
+---
+
 # Docker Deployment Guide
 
 > **Guide complet de déploiement Docker pour CSWeb Community Platform**

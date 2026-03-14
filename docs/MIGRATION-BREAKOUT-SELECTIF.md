@@ -1,3 +1,8 @@
+---
+layout: default
+title: Migration Breakout Sélectif
+---
+
 # Guide de Migration : Breakout Sélectif par Dictionnaire
 
 > **Documentation professionnelle des transformations pour CSWeb 8 Community Platform**

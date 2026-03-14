@@ -1,3 +1,8 @@
+---
+layout: default
+title: CSWeb OAUTH AUTHENTICATION
+---
+
 # Guide d'Authentification : CSWeb OAuth2
 
 > **Tutoriel complet pour s'authentifier et accéder à l'API CSWeb**

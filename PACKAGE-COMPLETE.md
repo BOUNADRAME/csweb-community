@@ -1,3 +1,8 @@
+---
+layout: default
+title: Package Complet
+---
+
 # 📦 CSWeb Community Platform - Package Complet
 
 > **Version 1.0.0 - Production Ready**

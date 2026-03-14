@@ -1,3 +1,8 @@
+---
+layout: default
+title: INSTALLATION CSWeb VANILLA
+---
+
 # Installation CSWeb Vanilla - Procédure Standard
 
 > **Guide d'installation de base CSWeb (étape préalable avant migration)**
