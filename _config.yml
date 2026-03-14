@@ -1,0 +1,61 @@
+# CSWeb Community Platform - GitHub Pages Configuration
+
+# Site settings
+title: CSWeb Community Platform
+description: Transformez CSWeb 8 Vanilla en plateforme communautaire avec breakout sélectif par dictionnaire
+baseurl: "/pg_csweb8_latest_2026"
+url: "https://bounadrame.github.io"
+
+# Author
+author:
+  name: Bouna DRAME
+  email: bounafode@gmail.com
+  github: BOUNADRAME
+
+# Repository
+repository: BOUNADRAME/pg_csweb8_latest_2026
+
+# Theme
+theme: jekyll-theme-cayman
+
+# Markdown
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+# Plugins
+plugins:
+  - jekyll-github-metadata
+  - jekyll-relative-links
+
+# Relative links
+relative_links:
+  enabled: true
+  collections: true
+
+# Include files
+include:
+  - README.md
+  - QUICK-START.md
+  - PACKAGE-COMPLETE.md
+  - docs
+
+# Exclude files
+exclude:
+  - vendor
+  - node_modules
+  - Gemfile
+  - Gemfile.lock
+  - docker
+  - src
+  - var
+  - bin
+  - .github
+  - .git
+  - install.sh
+  - docker-compose.yml
+  - Dockerfile
+
+# SEO
+lang: fr_FR
