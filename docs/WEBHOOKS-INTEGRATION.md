@@ -11,15 +11,16 @@
 ## 📋 Table des Matières
 
 1. [Introduction](#introduction)
-2. [Qu'est-ce qu'un Webhook ?](#quest-ce-quun-webhook)
-3. [Webhooks Disponibles](#webhooks-disponibles)
-4. [Prérequis](#prérequis)
-5. [Configuration](#configuration)
-6. [Implémentation](#implémentation)
-7. [Sécurité](#sécurité)
-8. [Testing](#testing)
-9. [Troubleshooting](#troubleshooting)
-10. [Exemples Complets](#exemples-complets)
+2. [Authentification CSWeb OAuth2](#authentification-csweb-oauth2)
+3. [Qu'est-ce qu'un Webhook ?](#quest-ce-quun-webhook)
+4. [Webhooks Disponibles](#webhooks-disponibles)
+5. [Prérequis](#prérequis)
+6. [Configuration](#configuration)
+7. [Implémentation](#implémentation)
+8. [Sécurité](#sécurité)
+9. [Testing](#testing)
+10. [Troubleshooting](#troubleshooting)
+11. [Exemples Complets](#exemples-complets)
 
 ---
 
@@ -33,6 +34,77 @@ Les webhooks CSWeb permettent à votre plateforme de recevoir des notifications 
 - ✅ Erreurs de traitement
 
 Ce guide vous montre comment implémenter et sécuriser ces webhooks.
+
+---
+
+## Authentification CSWeb OAuth2
+
+### ⚠️ Prérequis Important
+
+Avant d'utiliser les webhooks ou l'API CSWeb, vous devez vous authentifier via **OAuth2** pour obtenir un **access_token**.
+
+### Guide Complet
+
+📖 **Consultez le guide dédié :** [CSWEB-OAUTH-AUTHENTICATION.md](CSWEB-OAUTH-AUTHENTICATION.md)
+
+Ce guide couvre :
+- ✅ Obtenir access_token et refresh_token
+- ✅ Configuration .env complète
+- ✅ Implémentation Spring Boot, Laravel, Express.js
+- ✅ Gestion automatique du refresh
+- ✅ Cache et thread-safety
+- ✅ Gestion des erreurs 401
+
+### Résumé Rapide
+
+**1. Obtenir Token**
+
+```bash
+curl -X POST http://localhost:8080/api/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=password" \
+  -d "username=api_user" \
+  -d "password=SecurePassword123!"
+```
+
+**Réponse :**
+```json
+{
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "refresh_token": "def50200a1b2c3d4e5f6...",
+  "expires_in": 3600
+}
+```
+
+**2. Utiliser Token**
+
+```bash
+curl -X GET http://localhost:8080/api/dictionaries \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+```
+
+**3. Refresh Token (avant expiration)**
+
+```bash
+curl -X POST http://localhost:8080/api/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=refresh_token" \
+  -d "refresh_token=def50200a1b2c3d4e5f6..."
+```
+
+### Configuration .env
+
+```bash
+# CSWeb OAuth2
+CSWEB_API_URL=http://localhost:8080/api
+CSWEB_USERNAME=api_user
+CSWEB_PASSWORD=SecurePassword123!
+CSWEB_GRANT_TYPE=password
+
+# Webhooks (section suivante)
+WEBHOOK_ENABLED=true
+WEBHOOK_TOKEN=your_webhook_token_here
+```
 
 ---
 
