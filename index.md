@@ -3,13 +3,14 @@ layout: default
 title: CSWeb Community Platform
 ---
 
-# 🚀 CSWeb Community Platform
+# 🚀 CSWeb Community Platform v2.0
 
-> **Transformez CSWeb 8 Vanilla en plateforme communautaire avec breakout sélectif par dictionnaire et support multi-base de données**
+> **Architecture Flexible : Local/Remote • PostgreSQL/MySQL/SQL Server • Migration à Chaud**
 
 [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/tree/master/docs)
 [![Docker](https://img.shields.io/badge/docker-ready-green.svg)](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/blob/master/docker-compose.yml)
 [![License](https://img.shields.io/badge/license-MIT-orange.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-2.0.0-brightgreen.svg)](CHANGELOG.md)
 
 ---
 
@@ -26,7 +27,7 @@ Accédez à : **http://localhost:8080/setup/**
 
 ---
 
-## ✨ Fonctionnalités
+## ✨ Fonctionnalités v2.0
 
 ### 🎯 Breakout Sélectif par Dictionnaire
 
@@ -35,17 +36,25 @@ Accédez à : **http://localhost:8080/setup/**
 - ✅ **Label-based naming** : `{label}_cases`, `{label}_level_1`, etc.
 - ✅ **Traçabilité** : Identification claire des données par dictionnaire
 
+### 🌐 Architecture Flexible (NOUVEAU v2.0)
+
+- ✅ **Mode LOCAL** : Docker containers (développement, test)
+- ✅ **Mode REMOTE** : Serveur distant (production, RGPH5)
+- ✅ **Migration à chaud** : Changement de mode sans perte de données
+- ✅ **RGPH5 Sénégal** : Support natif (2 serveurs séparés)
+
 ### 🗄️ Support Multi-Base de Données
 
-- ✅ **PostgreSQL** (par défaut, recommandé)
-- ✅ **MySQL** (compatible)
-- ✅ **SQL Server** (supporté)
+- ✅ **PostgreSQL** (recommandé pour analytics)
+- ✅ **MySQL** (compatible, performant)
+- ✅ **SQL Server** (enterprise, RGPH5)
+- ✅ **Tous les drivers installés** : Changement à chaud
 
 ### 🐳 Docker Production-Ready
 
-- ✅ **Stack complète** : MySQL + PostgreSQL + CSWeb + phpMyAdmin + pgAdmin
-- ✅ **Installation automatique** : Script `install.sh` avec génération de mots de passe sécurisés
-- ✅ **Health checks** : Surveillance automatique des services
+- ✅ **Profiles dynamiques** : local-postgres, local-mysql, local-sqlserver
+- ✅ **Installation interactive** : Wizard en 3 étapes
+- ✅ **Health checks** : Surveillance automatique
 - ✅ **Volumes persistants** : Données sauvegardées
 
 ---
@@ -64,6 +73,7 @@ Accédez à : **http://localhost:8080/setup/**
 
 | Guide | Description | Niveau |
 |-------|-------------|--------|
+| [**Architecture Flexible**](docs/ARCHITECTURE-FLEXIBLE.html) ⭐ **NOUVEAU** | Local/Remote, 3 SGBD, Migration à chaud | 🟡 Intermédiaire |
 | [**Migration Breakout Sélectif**](docs/MIGRATION-BREAKOUT-SELECTIF.html) | 21 transformations AVANT/APRÈS | 🔴 Avancé |
 | [**Configuration Multi-DB**](docs/CONFIGURATION-MULTI-DATABASE.html) | PostgreSQL/MySQL/SQL Server | 🟡 Intermédiaire |
 | [**Docker Deployment**](docs/DOCKER-DEPLOYMENT.html) | Production avec Docker | 🟡 Intermédiaire |
@@ -91,29 +101,73 @@ Base de données unique
 
 **Problème :** Impossible de faire du breakout simultané de plusieurs dictionnaires.
 
-### APRÈS (Community Platform)
+### APRÈS (Community Platform v2.0)
 
 ```
-PostgreSQL (Breakout - par défaut)
-├── survey_cases        ✅ Isolé par label
-├── survey_level_1      ✅ Multi-threading
-├── census_cases        ✅ Breakout simultané
-├── census_level_1      ✅ Traçabilité claire
-└── health_cases        ✅ Scalabilité
-
-MySQL (Métadonnées CSWeb - fixe)
-├── cspro_dictionaries
-├── cspro_users
-└── cspro_oauth_clients
+┌─────────────────────────────────────┐
+│      Serveur CSWeb (Docker)         │
+├─────────────────────────────────────┤
+│  MySQL (Métadonnées - LOCAL)        │
+│  ├── cspro_dictionaries             │
+│  ├── cspro_users                    │
+│  └── cspro_oauth_clients            │
+└─────────────────────────────────────┘
+              │
+              │ LOCAL ou REMOTE
+              ↓
+┌─────────────────────────────────────┐
+│  PostgreSQL / MySQL / SQL Server    │
+│  (Breakout - FLEXIBLE)              │
+├─────────────────────────────────────┤
+│  ├── survey_cases    ✅ Isolé       │
+│  ├── survey_level_1  ✅ Multi-thread│
+│  ├── census_cases    ✅ Simultané   │
+│  └── health_cases    ✅ Scalable    │
+└─────────────────────────────────────┘
 ```
 
-**Avantage :** Breakout de plusieurs dictionnaires en parallèle avec isolation complète.
+**Avantages :**
+- ✅ Breakout simultané de plusieurs dictionnaires
+- ✅ Serveur breakout local OU distant
+- ✅ 3 SGBD supportés (PostgreSQL, MySQL, SQL Server)
+- ✅ Migration à chaud sans perte de données
 
 ---
 
-## 🎯 Cas d'Usage
+## 🎯 Cas d'Usage v2.0
 
-### 1. Institut National de Statistique
+### 1. Développeur Local (Mode LOCAL)
+
+**Scénario :** Tester CSWeb avec PostgreSQL en local
+
+```bash
+# Installation interactive
+./install.sh
+# Choisir: 1) Local, 1) PostgreSQL
+
+# Démarrage automatique
+docker-compose --profile local-postgres up -d
+```
+
+**Résultat :** Tout en local, isolation complète
+
+### 2. RGPH5 Sénégal (Mode REMOTE)
+
+**Scénario :** CSWeb + SQL Server distant (2 serveurs séparés)
+
+```bash
+# .env
+BREAKOUT_MODE=remote
+BREAKOUT_DB_TYPE=sqlserver
+SQLSERVER_HOST=172.16.0.50
+
+# Démarrage
+docker-compose up -d csweb mysql
+```
+
+**Résultat :** CSWeb connecté à SQL Server distant
+
+### 3. Institut National de Statistique
 
 **Scénario :** Gérer plusieurs enquêtes simultanément
 

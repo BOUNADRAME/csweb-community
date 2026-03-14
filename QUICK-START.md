@@ -3,11 +3,11 @@ layout: default
 title: Quick Start
 ---
 
-# 🚀 CSWeb Community Platform - Quick Start
+# 🚀 CSWeb Community Platform - Quick Start v2.0
 
-> **Démarrez CSWeb avec breakout PostgreSQL en 5 minutes**
+> **Installation interactive : Local/Remote • PostgreSQL/MySQL/SQL Server**
 
-**Version :** 1.0.0
+**Version :** 2.0.0
 **Date :** 14 Mars 2026
 **Auteur :** Bouna DRAME
 
@@ -28,18 +28,34 @@ git clone https://github.com/BOUNADRAME/pg_csweb8_latest_2026.git
 cd pg_csweb8_latest_2026
 ```
 
-### 2. Lancer l'Installation Automatique
+### 2. Lancer l'Installation Interactive
 
 ```bash
 chmod +x install.sh
 ./install.sh
 ```
 
+**Wizard interactif en 3 étapes :**
+
+**Étape 1 :** Mode de déploiement
+- `1) Local` - Docker containers (dev/test)
+- `2) Remote` - Serveur distant (production)
+
+**Étape 2 :** Type de base de données
+- `1) PostgreSQL` - Recommandé pour analytics
+- `2) MySQL` - Compatible, performant
+- `3) SQL Server` - Enterprise, RGPH5
+
+**Étape 3 :** Configuration remote (si mode remote choisi)
+- Hostname/IP du serveur
+- Port, Database, Username, Password
+
 Le script va :
 - ✅ Vérifier Docker/Docker Compose
-- ✅ Créer fichier `.env` avec mots de passe sécurisés
+- ✅ Créer fichier `.env` avec configuration choisie
+- ✅ Générer mots de passe sécurisés
 - ✅ Télécharger images Docker
-- ✅ Démarrer MySQL + PostgreSQL + CSWeb
+- ✅ Démarrer services appropriés
 - ✅ Afficher les URLs d'accès
 
 ### 3. Accéder au Setup
