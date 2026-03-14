@@ -418,7 +418,7 @@ Cochez au fur et à mesure :
 
 **Dernière mise à jour:** 14 Mars 2026
 **Version:** 1.0
-**Mainteneur:** Boubacar Ndoye Dramé
+**Mainteneur:** Bouna DRAME
 
 ---
 

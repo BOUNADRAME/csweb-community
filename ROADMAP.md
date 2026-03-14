@@ -317,7 +317,7 @@ Voir [CONTRIBUTING.md](CONTRIBUTING.md)
 - 🐛 GitHub Issues : [Proposer une feature](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/issues/new/choose)
 
 **Mainteneur :**
-Bouna DRAME (Boubacar Ndoye Dramé)
+Bouna DRAME (Bouna DRAME)
 
 ---
 

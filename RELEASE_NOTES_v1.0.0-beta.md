@@ -99,7 +99,7 @@ Voir [CHANGELOG.md](CHANGELOG.md) pour détails.
 
 ## 👥 Contributeurs
 
-- **Boubacar Ndoye Dramé** - Lead Developer, Documentation
+- **Bouna DRAME** - Lead Developer, Documentation
 - **Assietou Diagne (ANSD)** - Breakout sélectif, PostgreSQL
 
 ---
@@ -132,4 +132,4 @@ ls -la
 ---
 
 **License:** Apache 2.0
-**Mainteneur:** Boubacar Ndoye Dramé (bdrame@statinfo.sn)
+**Mainteneur:** Bouna DRAME (bdrame@statinfo.sn)

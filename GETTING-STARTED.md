@@ -508,7 +508,7 @@ docker exec -it csweb_app ls -la /var/www/csweb/var/logs/
 
 ## Contributeurs
 
-- **Boubacar Ndoye Dramé** - Lead Developer, Documentation
+- **Bouna DRAME** - Lead Developer, Documentation
 - **Assietou Diagne (ANSD)** - Breakout sélectif, PostgreSQL support
 
 Voir [CONTRIBUTORS.md](CONTRIBUTORS.md) pour la liste complète.

@@ -6,7 +6,7 @@
 
 ## 🏆 Core Team
 
-### Boubacar Ndoye Dramé (Bouna DRAME)
+### Bouna DRAME
 **Lead Developer & Documentation**
 
 - 📧 Email: bounafode@gmail.com
@@ -110,7 +110,7 @@ Nous accueillons toutes les contributions ! Voici comment participer :
 
 MIT License - voir [LICENSE](LICENSE)
 
-**Copyright (c) 2026 Boubacar Ndoye Dramé & Contributors**
+**Copyright (c) 2026 Bouna DRAME & Contributors**
 
 ---
 

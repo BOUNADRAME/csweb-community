@@ -1051,5 +1051,5 @@ CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
 
 **Prochaine étape:** Créer repo `csweb-community` et commencer migration code Kairos vers Symfony.
 
-**Auteur:** Boubacar Ndoye Dramé
+**Auteur:** Bouna DRAME
 **Date:** 14 Mars 2026

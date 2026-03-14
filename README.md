@@ -208,7 +208,7 @@ Voir **[CHANGELOG.md](CHANGELOG.md)** pour le détail des versions v1.0 → v2.5
 
 ### Core Team
 
-**Boubacar Ndoye Dramé** - Lead Developer, Documentation
+**Bouna DRAME** - Lead Developer, Documentation
 - 📧 bdrame@statinfo.sn
 - 🐙 GitHub: [@BOUNADRAME](https://github.com/BOUNADRAME)
 - 🌐 [Portfolio](https://bounadrame.github.io/portfolio/)
@@ -240,7 +240,7 @@ Voir **[CONTRIBUTORS.md](CONTRIBUTORS.md)** pour la liste complète et comment c
 **Apache License 2.0** - Voir [LICENSE](LICENSE)
 
 Copyright 2013-2015 Iron Summit Media Strategies, LLC (CSWeb original)
-Copyright 2026 Boubacar Ndoye Dramé & Contributors (CSWeb Community Platform)
+Copyright 2026 Bouna DRAME & Contributors (CSWeb Community Platform)
 
 ---
 

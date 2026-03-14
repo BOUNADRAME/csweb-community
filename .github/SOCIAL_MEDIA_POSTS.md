@@ -146,7 +146,7 @@ Je reste disponible pour toute question.
 
 Cordialement,
 
-**Bouna DRAME** (Boubacar Ndoye Dramé)
+**Bouna DRAME** (Bouna DRAME)
 Lead Developer, CSWeb Community Platform
 
 📧 bounafode@gmail.com

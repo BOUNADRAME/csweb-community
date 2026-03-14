@@ -175,7 +175,7 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 #### Contributeurs
 
-- **Boubacar Ndoye Dramé** - Lead Developer, Documentation complète
+- **Bouna DRAME** - Lead Developer, Documentation complète
 - **Assietou Diagne (ANSD)** - Breakout sélectif, Support PostgreSQL
 
 ---
@@ -297,6 +297,6 @@ Cette première release se concentre sur la **documentation exhaustive** du proj
 
 ---
 
-**Mainteneur:** Boubacar Ndoye Dramé (bdrame@statinfo.sn)
+**Mainteneur:** Bouna DRAME (bdrame@statinfo.sn)
 **License:** MIT
 **Projet:** https://github.com/bounadrame/csweb-community (à venir)

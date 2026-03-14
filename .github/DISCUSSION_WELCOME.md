@@ -4,7 +4,7 @@
 
 Bonjour à tous ! 👋
 
-Je suis **Bouna DRAME** (Boubacar Ndoye Dramé) et je suis ravi d'annoncer le lancement officiel de **CSWeb Community Platform v1.0.0-beta** !
+Je suis **Bouna DRAME** (Bouna DRAME) et je suis ravi d'annoncer le lancement officiel de **CSWeb Community Platform v1.0.0-beta** !
 
 ---
 

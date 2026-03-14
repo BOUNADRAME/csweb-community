@@ -4,7 +4,7 @@
 
 **Date de création:** Mars 2026
 **Version:** 1.0
-**Auteurs:** Boubacar Ndoye Dramé, Assietou Diagne (ANSD)
+**Auteurs:** Bouna DRAME, Assietou Diagne (ANSD)
 
 ---
 
@@ -331,7 +331,7 @@ csweb8_pg/
 - Email: bdrame@statinfo.sn
 
 **Contributeurs:**
-- Boubacar Ndoye Dramé - Lead Developer, Documentation
+- Bouna DRAME - Lead Developer, Documentation
 - Assietou Diagne (ANSD) - Breakout sélectif, PostgreSQL support
 
 ---
@@ -375,7 +375,7 @@ csweb8_pg/
 - ✅ Roadmap v1.0 → v2.5
 
 **Contributeurs:**
-- Boubacar Ndoye Dramé
+- Bouna DRAME
 - Assietou Diagne (ANSD)
 
 ---

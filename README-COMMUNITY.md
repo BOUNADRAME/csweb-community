@@ -372,7 +372,7 @@ Consultez [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). En bref :
 Merci aux contributeurs qui ont rendu ce projet possible :
 
 <!-- ALL-CONTRIBUTORS-LIST:START -->
-- 💻 [Boubacar Ndoye Dramé](https://github.com/bounadrame) - Initiateur, Lead Developer
+- 💻 [Bouna DRAME](https://github.com/bounadrame) - Initiateur, Lead Developer
 - 🔬 [Assietou Diagne](https://github.com/adiagne) - CSWeb 8 PostgreSQL + Breakout sélectif
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 

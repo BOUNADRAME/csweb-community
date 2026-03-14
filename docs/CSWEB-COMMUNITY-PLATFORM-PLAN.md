@@ -3,7 +3,7 @@
 > Démocratiser CSWeb pour les instituts statistiques africains
 
 **Date:** 14 Mars 2026
-**Auteur:** Boubacar Ndoye Dramé
+**Auteur:** Bouna DRAME
 **Contributrice:** Assietou Diagne (ANSD)
 
 ---
@@ -870,7 +870,7 @@ blog/
 ---
 title: "CSWeb Community: Démocratiser CSPro pour l'Afrique"
 date: 2026-03-15
-author: Boubacar Ndoye Dramé
+author: Bouna DRAME
 tags: [csweb, cspro, docker, open-source]
 ---
 
@@ -2030,7 +2030,7 @@ export default apiClient;
 
 ---
 
-**Auteur:** Boubacar Ndoye Dramé
+**Auteur:** Bouna DRAME
 **Contributrice:** Assietou Diagne (ANSD)
 **Date:** 14 Mars 2026
 **Version:** 1.0
