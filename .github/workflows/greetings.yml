@@ -1,0 +1,47 @@
+name: Greetings
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: |
+            👋 **Bienvenue sur CSWeb Community Platform !**
+
+            Merci d'avoir ouvert votre première issue ! 🎉
+
+            Un mainteneur va la reviewer prochainement. En attendant :
+            - ✅ Assurez-vous d'avoir fourni tous les détails nécessaires
+            - 📖 Consultez notre [documentation](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/tree/master/docs)
+            - 💬 Rejoignez notre Discord (lien à venir)
+
+            Nous apprécions votre contribution ! 🙏
+
+          pr-message: |
+            🎉 **Merci pour votre première Pull Request !**
+
+            Nous sommes ravis de votre contribution à CSWeb Community Platform !
+
+            **Prochaines étapes :**
+            - ⏳ Un mainteneur va reviewer votre code
+            - ✅ Assurez-vous que tous les checks passent
+            - 📖 Vérifiez le [guide de contribution](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/blob/master/CONTRIBUTING.md)
+
+            **Tips pour accélérer la review :**
+            - Ajoutez des tests si applicable
+            - Mettez à jour la documentation
+            - Suivez les conventions de commit (Conventional Commits)
+
+            Merci de faire partie de la communauté ! 🚀

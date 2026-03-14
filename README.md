@@ -3,9 +3,12 @@
 <div align="center">
 
 ![CSWeb Logo](https://img.shields.io/badge/CSWeb-Community-blue?style=for-the-badge)
-[![Version](https://img.shields.io/github/v/tag/BOUNADRAME/pg_csweb8_latest_2026?label=version&style=for-the-badge)](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/releases)
+[![Version](https://img.shields.io/github/v/release/BOUNADRAME/pg_csweb8_latest_2026?include_prereleases&style=for-the-badge)](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/releases)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-255%20pages-brightgreen?style=for-the-badge)](docs/)
+[![GitHub Issues](https://img.shields.io/github/issues/BOUNADRAME/pg_csweb8_latest_2026?style=for-the-badge)](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/issues)
+[![GitHub Stars](https://img.shields.io/github/stars/BOUNADRAME/pg_csweb8_latest_2026?style=for-the-badge)](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/stargazers)
+[![CI](https://img.shields.io/github/actions/workflow/status/BOUNADRAME/pg_csweb8_latest_2026/documentation.yml?branch=master&style=for-the-badge&label=docs)](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/actions)
 
 **Démocratiser CSWeb pour l'Afrique** - Setup en 5 minutes au lieu de 2-3 jours 🚀
 

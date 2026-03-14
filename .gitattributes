@@ -1,0 +1,35 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# PHP files
+*.php text eol=lf
+
+# Markdown files
+*.md text eol=lf
+
+# Config files
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.xml text eol=lf
+*.ini text eol=lf
+.env* text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
+
+# Git config
+.gitattributes text eol=lf
+.gitignore text eol=lf
+
+# GitHub linguist - Exclude vendor and generated files from language stats
+vendor/** linguist-vendored
+web/bundles/** linguist-vendored
+var/** linguist-generated
+docs/** linguist-documentation
+
+# Mark as documentation
+*.md linguist-documentation
+
+# Mark webhooks as PHP (not HTML)
+*-webhook.php linguist-language=PHP
