@@ -23,7 +23,7 @@ Pour accéder à l'API CSWeb et interagir avec les données (dictionnaires, case
 │              │                                     │              │
 │              │  3. GET /api/dictionaries          │              │
 │              │  ──────────────────────────────>  │              │
-│              │     Authorization: Bearer {token}  │              │
+│              │     Authorization: Bearer TOKEN    │              │
 │              │                                     │              │
 │              │  <──────────────────────────────   │              │
 │              │  4. Data (JSON)                    │              │
@@ -200,7 +200,7 @@ curl -X POST http://localhost:8080/api/token \
 
 **Format :**
 ```http
-Authorization: Bearer {access_token}
+Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
 ### Exemples Requêtes API
@@ -232,7 +232,7 @@ curl -X GET http://localhost:8080/api/dictionnaires \
 
 ```bash
 curl -X GET http://localhost:8080/api/files/media/photo_001.jpg/content \
-  -H "Authorization: Bearer {access_token}" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   --output photo_001.jpg
 ```
 
@@ -240,7 +240,7 @@ curl -X GET http://localhost:8080/api/files/media/photo_001.jpg/content \
 
 ```bash
 curl -X GET http://localhost:8080/api/dictionaries/SURVEY_DICT/cases \
-  -H "Authorization: Bearer {access_token}"
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 ---
@@ -586,7 +586,7 @@ public class DictionaryController {
         return response.getBody();
     }
 
-    @GetMapping("/files/{filename}")
+    @GetMapping("/files/\{filename\}")
     public byte[] downloadFile(@PathVariable String filename) {
         return cswebApiService.downloadFile(filename);
     }

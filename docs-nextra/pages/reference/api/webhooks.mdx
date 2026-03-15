@@ -7,7 +7,7 @@ API pour configurer et gérer les webhooks CSWeb.
 Toutes les requêtes nécessitent un **Bearer token OAuth2**.
 
 ```http
-Authorization: Bearer {access_token}
+Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
 ---
@@ -35,7 +35,7 @@ Liste tous les webhooks configurés.
 **Request:**
 ```bash
 curl -X GET http://localhost:8080/api/webhooks \
-  -H "Authorization: Bearer {access_token}"
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 **Response (200 OK):**
@@ -89,7 +89,7 @@ Créer un nouveau webhook.
 **Request:**
 ```bash
 curl -X POST http://localhost:8080/api/webhooks \
-  -H "Authorization: Bearer {access_token}" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Analytics Sync",
@@ -114,14 +114,14 @@ curl -X POST http://localhost:8080/api/webhooks \
 
 ---
 
-### PUT /api/webhooks/{id}
+### PUT /api/webhooks/\{id\}
 
 Mettre à jour un webhook existant.
 
 **Request:**
 ```bash
 curl -X PUT http://localhost:8080/api/webhooks/1 \
-  -H "Authorization: Bearer {access_token}" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "active": false
@@ -142,14 +142,14 @@ curl -X PUT http://localhost:8080/api/webhooks/1 \
 
 ---
 
-### DELETE /api/webhooks/{id}
+### DELETE /api/webhooks/\{id\}
 
 Supprimer un webhook.
 
 **Request:**
 ```bash
 curl -X DELETE http://localhost:8080/api/webhooks/1 \
-  -H "Authorization: Bearer {access_token}"
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 **Response (200 OK):**
@@ -162,14 +162,14 @@ curl -X DELETE http://localhost:8080/api/webhooks/1 \
 
 ---
 
-### POST /api/webhooks/{id}/test
+### POST /api/webhooks/\{id\}/test
 
 Tester un webhook en envoyant un événement de test.
 
 **Request:**
 ```bash
 curl -X POST http://localhost:8080/api/webhooks/1/test \
-  -H "Authorization: Bearer {access_token}"
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 **Response (200 OK):**
@@ -385,14 +385,14 @@ await processWebhook(req.body);
 
 ## Logs & Monitoring
 
-### GET /api/webhooks/{id}/deliveries
+### GET /api/webhooks/\{id\}/deliveries
 
 Voir l'historique des envois d'un webhook.
 
 **Request:**
 ```bash
 curl -X GET http://localhost:8080/api/webhooks/1/deliveries?limit=10 \
-  -H "Authorization: Bearer {access_token}"
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 **Response (200 OK):**

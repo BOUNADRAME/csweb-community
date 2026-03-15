@@ -9,7 +9,7 @@ Toutes les requêtes nécessitent un **Bearer token OAuth2**.
 Voir [OAuth2 Authentication](/reference/api/oauth) pour obtenir un token.
 
 ```http
-Authorization: Bearer {access_token}
+Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
 ---
@@ -23,7 +23,7 @@ Liste tous les dictionnaires disponibles.
 **Request:**
 ```bash
 curl -X GET http://localhost:8080/api/dictionaries \
-  -H "Authorization: Bearer {access_token}"
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 **Response (200 OK):**
@@ -46,7 +46,7 @@ curl -X GET http://localhost:8080/api/dictionaries \
 
 ---
 
-### GET /api/dictionaries/{name}
+### GET /api/dictionaries/\{name\}
 
 Récupère les détails d'un dictionnaire spécifique.
 
@@ -56,7 +56,7 @@ Récupère les détails d'un dictionnaire spécifique.
 **Request:**
 ```bash
 curl -X GET http://localhost:8080/api/dictionaries/EVAL_DICT \
-  -H "Authorization: Bearer {access_token}"
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 **Response (200 OK):**
@@ -93,7 +93,7 @@ curl -X GET http://localhost:8080/api/dictionaries/EVAL_DICT \
 
 ---
 
-### GET /api/dictionaries/{name}/cases
+### GET /api/dictionaries/\{name\}/cases
 
 Liste les questionnaires (cases) d'un dictionnaire.
 
@@ -105,7 +105,7 @@ Liste les questionnaires (cases) d'un dictionnaire.
 **Request:**
 ```bash
 curl -X GET "http://localhost:8080/api/dictionaries/EVAL_DICT/cases?limit=10&offset=0" \
-  -H "Authorization: Bearer {access_token}"
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 **Response (200 OK):**
@@ -142,7 +142,7 @@ Upload un nouveau dictionnaire CSPro (.dcf).
 **Request:**
 ```bash
 curl -X POST http://localhost:8080/api/dictionaries \
-  -H "Authorization: Bearer {access_token}" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -F "file=@survey.dcf" \
   -F "label=survey"
 ```
@@ -166,14 +166,14 @@ curl -X POST http://localhost:8080/api/dictionaries \
 
 ---
 
-### DELETE /api/dictionaries/{name}
+### DELETE /api/dictionaries/\{name\}
 
 Supprime un dictionnaire.
 
 **Request:**
 ```bash
 curl -X DELETE http://localhost:8080/api/dictionaries/EVAL_DICT \
-  -H "Authorization: Bearer {access_token}"
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 **Response (200 OK):**

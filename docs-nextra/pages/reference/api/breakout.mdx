@@ -7,7 +7,7 @@ API pour gérer le breakout sélectif des questionnaires CSPro.
 Toutes les requêtes nécessitent un **Bearer token OAuth2**.
 
 ```http
-Authorization: Bearer {access_token}
+Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
 ---
@@ -35,7 +35,7 @@ Démarre un breakout sélectif pour un ou plusieurs dictionnaires.
 **Request:**
 ```bash
 curl -X POST http://localhost:8080/api/breakout/start \
-  -H "Authorization: Bearer {access_token}" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "dictionaries": ["EVAL_DICT"],
@@ -67,7 +67,7 @@ curl -X POST http://localhost:8080/api/breakout/start \
 
 ---
 
-### GET /api/breakout/status/{job_id}
+### GET /api/breakout/status/\{job_id\}
 
 Récupère le statut d'un job de breakout.
 
@@ -77,7 +77,7 @@ Récupère le statut d'un job de breakout.
 **Request:**
 ```bash
 curl -X GET http://localhost:8080/api/breakout/status/breakout-20260315-120000 \
-  -H "Authorization: Bearer {access_token}"
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 **Response (200 OK) - En cours:**
@@ -129,7 +129,7 @@ curl -X GET http://localhost:8080/api/breakout/status/breakout-20260315-120000 \
 
 ---
 
-### GET /api/breakout/tables/{dictionary}
+### GET /api/breakout/tables/\{dictionary\}
 
 Liste les tables créées pour un dictionnaire.
 
@@ -139,7 +139,7 @@ Liste les tables créées pour un dictionnaire.
 **Request:**
 ```bash
 curl -X GET http://localhost:8080/api/breakout/tables/EVAL_DICT \
-  -H "Authorization: Bearer {access_token}"
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 **Response (200 OK):**
@@ -184,14 +184,14 @@ curl -X GET http://localhost:8080/api/breakout/tables/EVAL_DICT \
 
 ---
 
-### DELETE /api/breakout/tables/{dictionary}
+### DELETE /api/breakout/tables/\{dictionary\}
 
 Supprime les tables d'un dictionnaire.
 
 **Request:**
 ```bash
 curl -X DELETE http://localhost:8080/api/breakout/tables/EVAL_DICT \
-  -H "Authorization: Bearer {access_token}"
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 **Response (200 OK):**
@@ -217,7 +217,7 @@ Liste tous les jobs de breakout (actifs et terminés).
 **Request:**
 ```bash
 curl -X GET "http://localhost:8080/api/breakout/jobs?status=completed&limit=10" \
-  -H "Authorization: Bearer {access_token}"
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 **Response (200 OK):**
