@@ -1,0 +1,821 @@
+# Architecture Flexible
+
+<div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-950 p-6 my-8 rounded-r-lg">
+  <h3 className="text-xl font-bold mb-2">👨‍💻 Architecte : Bouna DRAME</h3>
+  <p className="mb-4">
+    <strong>Rôle :</strong> Lead Developer & Architect - CSWeb Community Platform v2.0
+  </p>
+  <p className="mb-4">
+    L'architecture flexible multi-SGBD permet de basculer entre PostgreSQL, MySQL et SQL Server <strong>sans modifier le code source</strong>, avec support des déploiements locaux (Docker) et distants (serveurs de production).
+  </p>
+  <p>
+    <strong>Portfolio :</strong> <a href="https://bounadrame.github.io" target="_blank" className="text-blue-600 dark:text-blue-400 hover:underline">bounadrame.github.io</a> |
+    <a href="https://github.com/BOUNADRAME" target="_blank" className="text-blue-600 dark:text-blue-400 hover:underline ml-2">GitHub</a>
+  </p>
+</div>
+
+## Vue d'Ensemble
+
+CSWeb Community Platform v2.0 introduit une **architecture flexible** qui vous permet de :
+
+- ✅ **Choisir votre SGBD** : PostgreSQL, MySQL ou SQL Server
+- ✅ **Déployer localement** : Docker Compose (développement/test)
+- ✅ **Déployer en remote** : Serveurs de production existants (RGPH, recensements)
+- ✅ **Migrer à chaud** : Changer de SGBD sans réinstaller CSWeb
+- ✅ **Mixer les modes** : MySQL metadata + PostgreSQL/MySQL/SQL Server pour breakout
+
+## Concept Clé : 2 Bases de Données Distinctes
+
+```
+┌────────────────────────────────────────────────────────┐
+│                   CSWeb Application                    │
+├────────────────────────────────────────────────────────┤
+│                                                        │
+│  ┌─────────────────────┐      ┌──────────────────┐   │
+│  │  MySQL (Fixe)       │      │  Breakout DB     │   │
+│  │  ─────────────      │      │  ────────────    │   │
+│  │  • Users            │      │  FLEXIBLE :      │   │
+│  │  • Dictionaries     │      │  ✓ PostgreSQL    │   │
+│  │  • OAuth Tokens     │      │  ✓ MySQL         │   │
+│  │  • Sync Queue       │      │  ✓ SQL Server    │   │
+│  │  • System Config    │      │                  │   │
+│  └─────────────────────┘      └──────────────────┘   │
+│         METADATA                   ANALYTICS          │
+│      (CSWeb vanilla)            (Breakout sélectif)   │
+└────────────────────────────────────────────────────────┘
+```
+
+### Pourquoi 2 Bases ?
+
+1. **MySQL Metadata** (Base CSWeb vanilla - **NON modifiable**)
+   - Schéma imposé par CSWeb vanilla
+   - Compatible avec CSWeb vanilla (bidirectionnel)
+   - Migration impossible vers PostgreSQL/SQL Server sans casser la compatibilité
+
+2. **Breakout Database** (Base analytique - **Configurable**)
+   - Créée dynamiquement par breakout sélectif
+   - Structure définie par vos dictionnaires CSPro
+   - Peut être PostgreSQL, MySQL ou SQL Server selon vos besoins
+   - Optimisée pour analyses statistiques
+
+### Déploiements Supportés
+
+| Mode | MySQL Metadata | Breakout DB | Use Case |
+|------|----------------|-------------|----------|
+| **LOCAL (Docker)** | Container `csweb-mysql` | Container `postgres`/`mysql-breakout`/`sqlserver` | Développement, tests, démos |
+| **REMOTE** | Serveur MySQL externe | Serveur externe (PostgreSQL/MySQL/SQL Server) | Production, INS, RGPH |
+| **HYBRID** | Container local | Serveur externe | Tests avec données réelles |
+
+---
+
+## Drivers Pré-Installés
+
+Tous les drivers sont **pré-installés** dans le container CSWeb (pas de configuration manuelle) :
+
+```bash
+docker-compose exec csweb php bin/console csweb:check-database-drivers
+```
+
+**Output attendu :**
+
+```
+✅ pdo_mysql    : Available (MySQL metadata + breakout)
+✅ pdo_pgsql    : Available (PostgreSQL breakout)
+✅ pdo_sqlsrv   : Available (SQL Server breakout)
+```
+
+### Correspondance Driver ↔ SGBD
+
+| Driver | SGBD | Usage | Extension PHP |
+|--------|------|-------|---------------|
+| `pdo_mysql` | MySQL/MariaDB | Metadata + Breakout | `ext-pdo_mysql` |
+| `pdo_pgsql` | PostgreSQL | Breakout uniquement | `ext-pdo_pgsql` |
+| `pdo_sqlsrv` | SQL Server | Breakout uniquement | `ext-pdo_sqlsrv` + Microsoft ODBC Driver 18 |
+
+---
+
+## Déploiement LOCAL (Docker)
+
+### Architecture Docker
+
+```
+┌──────────────────────────────────────────────────────┐
+│                    Host Machine                       │
+│                                                       │
+│  ┌────────────────────────────────────────────────┐  │
+│  │           Docker Network (csweb-network)       │  │
+│  │                                                │  │
+│  │  ┌──────────────┐     ┌───────────────────┐   │  │
+│  │  │  csweb:8080  │────▶│  csweb-mysql:3306 │   │  │
+│  │  │  (CSWeb App) │     │  (Metadata)       │   │  │
+│  │  └──────────────┘     └───────────────────┘   │  │
+│  │         │                                      │  │
+│  │         │                                      │  │
+│  │         ├────────────▶ ┌──────────────────┐   │  │
+│  │         │              │  postgres:5432   │   │  │
+│  │         │              │  (Breakout DB)   │   │  │
+│  │         │              └──────────────────┘   │  │
+│  │         │                                      │  │
+│  │         ├────────────▶ ┌─────────────────────┐│  │
+│  │         │              │  mysql-breakout:3307││  │
+│  │         │              │  (Alternative)      ││  │
+│  │         │              └─────────────────────┘│  │
+│  │         │                                      │  │
+│  │         └────────────▶ ┌─────────────────────┐│  │
+│  │                        │  sqlserver:1433     ││  │
+│  │                        │  (Alternative)      ││  │
+│  │                        └─────────────────────┘│  │
+│  └────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────┘
+```
+
+### Prérequis
+
+- Docker Engine 20.10+
+- Docker Compose 2.0+
+- 4 GB RAM minimum
+- 10 GB espace disque
+
+### Installation Rapide
+
+```bash
+# Clone du repository
+git clone https://github.com/BOUNADRAME/pg_csweb8_latest_2026.git
+cd pg_csweb8_latest_2026
+
+# Lancer l'installation wizard
+chmod +x install.sh
+./install.sh
+```
+
+L'installeur vous demandera :
+
+```
+Sélectionnez votre SGBD pour le breakout :
+1) PostgreSQL (Recommandé)
+2) MySQL
+3) SQL Server
+
+Choix [1-3]: _
+```
+
+### Profils Docker Compose
+
+Le `docker-compose.yml` définit **3 profils** pour activer le bon container :
+
+```yaml
+services:
+  postgres:
+    profiles: ["local-postgres"]  # Activé si BREAKOUT_DB_TYPE=postgresql
+
+  mysql-breakout:
+    profiles: ["local-mysql"]     # Activé si BREAKOUT_DB_TYPE=mysql
+
+  sqlserver:
+    profiles: ["local-sqlserver"] # Activé si BREAKOUT_DB_TYPE=sqlserver
+```
+
+**Le bon profil est automatiquement activé** selon `BREAKOUT_DB_TYPE` dans `.env`.
+
+### Exemple : PostgreSQL (Recommandé)
+
+**Fichier `.env` :**
+
+```bash
+# Mode déploiement
+DEPLOYMENT_MODE=local
+
+# SGBD pour breakout
+BREAKOUT_DB_TYPE=postgresql
+
+# PostgreSQL (Container Docker)
+POSTGRES_HOST=postgres          # Nom du service Docker
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=csweb_analytics
+POSTGRES_USER=csweb_analytics
+POSTGRES_PASSWORD=secure_analytics_pass
+
+# MySQL Metadata (Container Docker - FIXE)
+MYSQL_HOST=csweb-mysql
+MYSQL_PORT=3306
+MYSQL_DATABASE=csweb
+MYSQL_USER=csweb
+MYSQL_PASSWORD=csweb_metadata_pass
+```
+
+**Lancement :**
+
+```bash
+docker-compose --profile local-postgres up -d
+```
+
+**Vérification :**
+
+```bash
+# Containers actifs
+docker-compose ps
+# Output attendu :
+# csweb            running   0.0.0.0:8080->8080/tcp
+# csweb-mysql      running   3306/tcp
+# postgres         running   5432/tcp
+
+# Drivers disponibles
+docker-compose exec csweb php bin/console csweb:check-database-drivers
+# ✅ pdo_pgsql : Available
+```
+
+### Exemple : MySQL Breakout
+
+**Fichier `.env` :**
+
+```bash
+DEPLOYMENT_MODE=local
+BREAKOUT_DB_TYPE=mysql
+
+# MySQL Breakout (Container Docker)
+MYSQL_BREAKOUT_HOST=mysql-breakout
+MYSQL_BREAKOUT_PORT=3307         # Port différent pour éviter conflit
+MYSQL_BREAKOUT_DATABASE=csweb_breakout
+MYSQL_BREAKOUT_USER=breakout_user
+MYSQL_BREAKOUT_PASSWORD=breakout_pass
+```
+
+**Lancement :**
+
+```bash
+docker-compose --profile local-mysql up -d
+```
+
+### Exemple : SQL Server
+
+**Fichier `.env` :**
+
+```bash
+DEPLOYMENT_MODE=local
+BREAKOUT_DB_TYPE=sqlserver
+
+# SQL Server (Container Docker)
+SQLSERVER_HOST=sqlserver
+SQLSERVER_PORT=1433
+SQLSERVER_DATABASE=CSWeb_Analytics
+SQLSERVER_USER=sa
+SQLSERVER_PASSWORD=YourStrong!Passw0rd  # Min 8 chars, majuscule, chiffre, symbole
+```
+
+**Lancement :**
+
+```bash
+docker-compose --profile local-sqlserver up -d
+```
+
+---
+
+## Déploiement REMOTE (Serveurs Externes)
+
+### Architecture Remote
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  Host Machine (Development)                  │
+│                                                              │
+│  ┌──────────────┐                                           │
+│  │  csweb:8080  │                                           │
+│  │  (Container) │                                           │
+│  └──────┬───────┘                                           │
+│         │                                                    │
+└─────────┼────────────────────────────────────────────────────┘
+          │ VPN/LAN (192.168.x.x ou 10.x.x.x)
+          │
+┌─────────┼────────────────────────────────────────────────────┐
+│         │              Production Network                    │
+│         │                                                    │
+│         ├──────────▶ ┌─────────────────────────┐            │
+│         │            │  MySQL Server           │            │
+│         │            │  192.168.1.50:3306      │            │
+│         │            │  (Metadata)             │            │
+│         │            └─────────────────────────┘            │
+│         │                                                    │
+│         └──────────▶ ┌─────────────────────────┐            │
+│                      │  PostgreSQL Server      │            │
+│                      │  192.168.1.100:5432     │            │
+│                      │  (Breakout Analytics)   │            │
+│                      └─────────────────────────┘            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Prérequis Réseau
+
+1. **Connectivité :**
+   - Accès réseau aux serveurs distants (VPN, LAN, Internet)
+   - Ports ouverts : MySQL (3306), PostgreSQL (5432), SQL Server (1433)
+
+2. **Firewall :**
+   ```bash
+   # Sur serveur MySQL
+   sudo ufw allow from 192.168.1.0/24 to any port 3306
+
+   # Sur serveur PostgreSQL
+   sudo ufw allow from 192.168.1.0/24 to any port 5432
+
+   # Sur serveur SQL Server
+   sudo ufw allow from 192.168.1.0/24 to any port 1433
+   ```
+
+3. **Configuration SGBD :**
+
+   **PostgreSQL (`postgresql.conf`) :**
+   ```ini
+   listen_addresses = '*'  # Accepter connexions externes
+   ```
+
+   **PostgreSQL (`pg_hba.conf`) :**
+   ```
+   host all all 0.0.0.0/0 md5
+   ```
+
+   **MySQL (`my.cnf`) :**
+   ```ini
+   bind-address = 0.0.0.0
+   ```
+
+### Configuration Remote
+
+**Fichier `.env` :**
+
+```bash
+# Mode déploiement
+DEPLOYMENT_MODE=remote
+
+# SGBD pour breakout
+BREAKOUT_DB_TYPE=postgresql
+
+# PostgreSQL REMOTE (Serveur externe)
+POSTGRES_HOST=192.168.1.100
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=prod_analytics
+POSTGRES_USER=analytics_user
+POSTGRES_PASSWORD=ProdSecurePass123!
+
+# MySQL Metadata REMOTE (Serveur externe)
+MYSQL_HOST=192.168.1.50
+MYSQL_PORT=3306
+MYSQL_DATABASE=csweb_prod
+MYSQL_USER=csweb_prod
+MYSQL_PASSWORD=MetadataSecurePass!
+```
+
+**Lancement :**
+
+```bash
+# Seul le container CSWeb démarre (pas de containers DB)
+docker-compose up -d
+
+# Vérifier connexion aux serveurs distants
+docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+```
+
+**Output attendu :**
+
+```
+✅ MySQL Metadata : Connected to 192.168.1.50:3306/csweb_prod
+✅ PostgreSQL Breakout : Connected to 192.168.1.100:5432/prod_analytics
+```
+
+### Cas d'Usage : RGPH5 Sénégal
+
+**Contexte :**
+- INS dispose d'un serveur SQL Server existant (172.16.0.50)
+- Besoin de breakout pour 3.2M questionnaires RGPH5
+- Architecture hybrid : CSWeb local + SQL Server remote
+
+**Configuration :**
+
+```bash
+DEPLOYMENT_MODE=remote
+BREAKOUT_DB_TYPE=sqlserver
+
+# SQL Server REMOTE (ANSD Sénégal)
+SQLSERVER_HOST=172.16.0.50
+SQLSERVER_PORT=1433
+SQLSERVER_DATABASE=RGPH5_Analytics
+SQLSERVER_USER=sa
+SQLSERVER_PASSWORD=RGPH5SecurePass!
+
+# MySQL Metadata (Container local pour développement)
+MYSQL_HOST=csweb-mysql
+MYSQL_PORT=3306
+MYSQL_DATABASE=csweb
+MYSQL_USER=csweb
+MYSQL_PASSWORD=local_dev_pass
+```
+
+**Résultat :**
+- Breakout de 3.2M cas en **6h** (vs 48h en global)
+- Données stockées sur SQL Server de production
+- Analyses SQL directes sur serveur ANSD
+
+---
+
+## Migration À Chaud (Sans Downtime)
+
+### Scénario : PostgreSQL → MySQL
+
+**Contexte :** Vous utilisez PostgreSQL en local et souhaitez migrer vers MySQL sans réinstaller.
+
+**Étapes :**
+
+#### 1. Backup des Données Actuelles
+
+```bash
+# Export PostgreSQL
+docker-compose exec postgres pg_dump -U csweb_analytics csweb_analytics > backup_postgres.sql
+
+# Alternative : Export CSV par table
+docker-compose exec csweb php bin/console csweb:export-breakout-data --format=csv --output=/tmp/backup
+```
+
+#### 2. Modifier `.env`
+
+```bash
+# Avant
+BREAKOUT_DB_TYPE=postgresql
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=csweb_analytics
+POSTGRES_USER=csweb_analytics
+POSTGRES_PASSWORD=postgres_pass
+
+# Après
+BREAKOUT_DB_TYPE=mysql
+MYSQL_BREAKOUT_HOST=mysql-breakout
+MYSQL_BREAKOUT_PORT=3307
+MYSQL_BREAKOUT_DATABASE=csweb_breakout
+MYSQL_BREAKOUT_USER=breakout_user
+MYSQL_BREAKOUT_PASSWORD=mysql_pass
+```
+
+#### 3. Relancer avec Nouveau Profil
+
+```bash
+# Arrêter container PostgreSQL
+docker-compose --profile local-postgres down
+
+# Démarrer container MySQL
+docker-compose --profile local-mysql up -d
+```
+
+#### 4. Re-breakout des Dictionnaires
+
+```bash
+# Option 1 : Re-breakout complet (recommandé)
+docker-compose exec csweb php bin/console csweb:process-cases-by-dict eval --overwrite
+
+# Option 2 : Import manuel des données (si compatible)
+# Attention : Syntaxe SQL différente PostgreSQL vs MySQL
+```
+
+#### 5. Vérification
+
+```bash
+# Connexion MySQL
+docker-compose exec mysql-breakout mysql -u breakout_user -p csweb_breakout
+
+# Lister tables
+SHOW TABLES;
+
+# Compter lignes (doit matcher PostgreSQL)
+SELECT COUNT(*) FROM eval_producteurs_cases;
+```
+
+### Migration PostgreSQL → SQL Server
+
+**Différences critiques :**
+
+| Aspect | PostgreSQL | SQL Server |
+|--------|-----------|------------|
+| **Case sensitivity** | Minuscules (`eval_producteurs`) | Mixte (`Eval_Producteurs`) |
+| **Boolean** | `BOOLEAN` | `BIT` |
+| **Auto-increment** | `SERIAL` | `IDENTITY(1,1)` |
+| **String concat** | `\|\|` | `+` |
+
+**Recommandation :** Utiliser **re-breakout complet** plutôt que migration manuelle.
+
+```bash
+# 1. Changer .env
+BREAKOUT_DB_TYPE=sqlserver
+SQLSERVER_HOST=sqlserver
+# ... (autres variables SQL Server)
+
+# 2. Relancer containers
+docker-compose --profile local-sqlserver up -d
+
+# 3. Re-breakout
+docker-compose exec csweb php bin/console csweb:process-cases-by-dict eval --overwrite
+```
+
+### Migration Local → Remote
+
+**Scénario :** Développement terminé, déploiement en production.
+
+**Étapes :**
+
+#### 1. Préparer Serveur Remote
+
+```bash
+# Sur serveur PostgreSQL distant (192.168.1.100)
+sudo apt install postgresql-16
+sudo systemctl start postgresql
+
+# Créer database
+sudo -u postgres createdb prod_analytics
+sudo -u postgres createuser analytics_user -P
+```
+
+#### 2. Modifier `.env`
+
+```bash
+# Avant (Local)
+DEPLOYMENT_MODE=local
+POSTGRES_HOST=postgres  # Container Docker
+
+# Après (Remote)
+DEPLOYMENT_MODE=remote
+POSTGRES_HOST=192.168.1.100  # Serveur externe
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=prod_analytics
+POSTGRES_USER=analytics_user
+POSTGRES_PASSWORD=ProdPass123!
+```
+
+#### 3. Arrêter Container PostgreSQL
+
+```bash
+docker-compose --profile local-postgres down postgres
+```
+
+#### 4. Redémarrer CSWeb Uniquement
+
+```bash
+docker-compose restart csweb
+
+# Vérifier connexion remote
+docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+```
+
+#### 5. Re-breakout sur Serveur Remote
+
+```bash
+docker-compose exec csweb php bin/console csweb:process-cases-by-dict eval
+```
+
+**Les tables sont maintenant créées sur le serveur distant !**
+
+#### 6. (Optionnel) Migrer Données Existantes
+
+```bash
+# Dump depuis container local
+docker-compose exec postgres pg_dump -U csweb_analytics csweb_analytics > local_data.sql
+
+# Restore sur serveur distant
+psql -h 192.168.1.100 -U analytics_user -d prod_analytics < local_data.sql
+```
+
+---
+
+## Variables d'Environnement
+
+### Variables Globales
+
+| Variable | Valeurs | Description |
+|----------|---------|-------------|
+| `DEPLOYMENT_MODE` | `local`, `remote` | Mode déploiement (informatif, pas utilisé par code) |
+| `BREAKOUT_DB_TYPE` | `postgresql`, `mysql`, `sqlserver` | **CRITIQUE** : Détermine le driver PDO utilisé |
+
+### Variables PostgreSQL
+
+| Variable | Défaut Local | Exemple Remote |
+|----------|--------------|----------------|
+| `POSTGRES_HOST` | `postgres` | `192.168.1.100` |
+| `POSTGRES_PORT` | `5432` | `5432` |
+| `POSTGRES_DATABASE` | `csweb_analytics` | `prod_analytics` |
+| `POSTGRES_USER` | `csweb_analytics` | `analytics_user` |
+| `POSTGRES_PASSWORD` | (généré) | `ProdPass123!` |
+
+### Variables MySQL Breakout
+
+| Variable | Défaut Local | Exemple Remote |
+|----------|--------------|----------------|
+| `MYSQL_BREAKOUT_HOST` | `mysql-breakout` | `10.20.30.40` |
+| `MYSQL_BREAKOUT_PORT` | `3307` | `3306` |
+| `MYSQL_BREAKOUT_DATABASE` | `csweb_breakout` | `prod_breakout` |
+| `MYSQL_BREAKOUT_USER` | `breakout_user` | `breakout_user` |
+| `MYSQL_BREAKOUT_PASSWORD` | (généré) | `ProdPass123!` |
+
+### Variables SQL Server
+
+| Variable | Défaut Local | Exemple Remote (RGPH5) |
+|----------|--------------|------------------------|
+| `SQLSERVER_HOST` | `sqlserver` | `172.16.0.50` |
+| `SQLSERVER_PORT` | `1433` | `1433` |
+| `SQLSERVER_DATABASE` | `CSWeb_Analytics` | `RGPH5_Analytics` |
+| `SQLSERVER_USER` | `sa` | `sa` |
+| `SQLSERVER_PASSWORD` | `YourStrong!Passw0rd` | `RGPH5SecurePass!` |
+
+### Variables MySQL Metadata (FIXE)
+
+| Variable | Défaut Local | Exemple Remote |
+|----------|--------------|----------------|
+| `MYSQL_HOST` | `csweb-mysql` | `192.168.1.50` |
+| `MYSQL_PORT` | `3306` | `3306` |
+| `MYSQL_DATABASE` | `csweb` | `csweb_prod` |
+| `MYSQL_USER` | `csweb` | `csweb_prod` |
+| `MYSQL_PASSWORD` | (généré) | `MetadataPass!` |
+
+---
+
+## Troubleshooting
+
+### Erreur : Cannot connect to remote database
+
+**Symptôme :**
+
+```
+Connection refused: 192.168.1.100:5432
+```
+
+**Solutions :**
+
+1. **Vérifier réseau :**
+
+```bash
+ping 192.168.1.100
+telnet 192.168.1.100 5432
+```
+
+2. **Vérifier firewall serveur distant :**
+
+```bash
+# PostgreSQL
+sudo ufw allow 5432/tcp
+
+# MySQL
+sudo ufw allow 3306/tcp
+
+# SQL Server
+sudo ufw allow 1433/tcp
+```
+
+3. **Vérifier configuration serveur distant :**
+
+```bash
+# PostgreSQL: autoriser connexions externes
+# Éditer postgresql.conf
+listen_addresses = '*'
+
+# Éditer pg_hba.conf
+host all all 0.0.0.0/0 md5
+```
+
+4. **Vérifier credentials :**
+
+```bash
+# Tester connexion
+psql -h 192.168.1.100 -U analytics_user -d prod_analytics
+```
+
+### Erreur : Wrong database type
+
+**Symptôme :**
+
+```
+SQLSTATE[HY000]: Driver not found for pdo_sqlsrv
+```
+
+**Cause :** `BREAKOUT_DB_TYPE` ne correspond pas aux variables configurées.
+
+**Solution :**
+
+```bash
+# Vérifier cohérence
+BREAKOUT_DB_TYPE=sqlserver  # ← Doit correspondre
+SQLSERVER_HOST=...          # ← Variables SQL Server doivent être remplies
+```
+
+### Erreur : Port already in use (local mode)
+
+**Symptôme :**
+
+```
+Error: port 5432 is already allocated
+```
+
+**Cause :** PostgreSQL déjà installé en local sur port 5432.
+
+**Solution :**
+
+1. **Arrêter PostgreSQL local :**
+
+```bash
+sudo systemctl stop postgresql
+```
+
+2. **Ou changer port Docker :**
+
+```bash
+# .env
+POSTGRES_PORT=5433
+
+# docker-compose.yml
+ports:
+  - "5433:5432"
+```
+
+### Erreur : Authentication failed
+
+**Symptôme :**
+
+```
+SQLSTATE[28000]: Invalid authorization specification
+```
+
+**Solutions :**
+
+1. **PostgreSQL :** Vérifier `pg_hba.conf` utilise `md5` (pas `peer`)
+2. **MySQL :** Créer user avec host wildcard :
+   ```sql
+   CREATE USER 'analytics_user'@'%' IDENTIFIED BY 'password';
+   GRANT ALL ON prod_analytics.* TO 'analytics_user'@'%';
+   ```
+3. **SQL Server :** Activer authentification SQL Server (pas seulement Windows)
+
+---
+
+## Commandes Utiles
+
+### Vérifier Drivers
+
+```bash
+docker-compose exec csweb php bin/console csweb:check-database-drivers
+```
+
+**Output attendu :**
+
+```
+✅ pdo_mysql    : Available
+✅ pdo_pgsql    : Available
+✅ pdo_sqlsrv   : Available
+```
+
+### Tester Connexions
+
+```bash
+docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+```
+
+**Output attendu (mode remote) :**
+
+```
+✅ MySQL Metadata : Connected to 192.168.1.50:3306/csweb_prod
+✅ PostgreSQL Breakout : Connected to 192.168.1.100:5432/prod_analytics
+```
+
+### Voir Configuration Active
+
+```bash
+# Variables breakout
+docker-compose exec csweb env | grep BREAKOUT
+
+# Variables PostgreSQL
+docker-compose exec csweb env | grep POSTGRES
+
+# Variables SQL Server
+docker-compose exec csweb env | grep SQLSERVER
+```
+
+### Changer Mode à Chaud
+
+```bash
+# 1. Modifier .env
+nano .env
+
+# 2. Redémarrer CSWeb uniquement (sans rebuild)
+docker-compose restart csweb
+
+# 3. Vérifier nouveau driver actif
+docker-compose exec csweb php bin/console csweb:check-database-drivers
+```
+
+---
+
+## Ressources
+
+- **Installation** : [Getting Started - Installation](/getting-started/installation)
+- **Local vs Remote** : [Architecture - Local vs Remote](/guides/architecture/local-vs-remote)
+- **Breakout Sélectif** : [Guides - Breakout Sélectif](/guides/breakout/selective)
+- **Configuration Multi-DB** : [Database - Multi-DB](/guides/database/multi-db)
+- **Déploiement Docker** : [Deployment - Docker](/guides/deployment/docker-dev)
+
+---
+
+**CSWeb Community Platform v2.0 - Architecture Flexible**
+Architecte : Bouna DRAME | [Portfolio](https://bounadrame.github.io) | [GitHub](https://github.com/BOUNADRAME)
