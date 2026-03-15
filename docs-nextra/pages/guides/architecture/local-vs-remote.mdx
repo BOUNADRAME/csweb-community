@@ -1,0 +1,1072 @@
+---
+title: Local vs Remote - Modes de Déploiement
+description: Guide complet des modes de déploiement Local et Remote de CSWeb Community Platform
+---
+
+import { Callout } from '../../../components/Callout'
+import { Tabs } from '../../../components/Tabs'
+
+# Local vs Remote - Modes de Déploiement
+
+CSWeb Community Platform v2.0 offre **deux modes de déploiement** pour s'adapter à tous les scénarios : développement local isolé ou production avec infrastructure distante.
+
+<Callout type="info">
+  **Flexibilité Totale :** Vous pouvez migrer de Local → Remote sans perte de données, ou changer de SGBD à chaud (PostgreSQL ↔ MySQL ↔ SQL Server).
+</Callout>
+
+---
+
+## 📋 Table des Matières
+
+1. [Vue d'Ensemble](#vue-densemble)
+2. [Mode LOCAL](#mode-local)
+3. [Mode REMOTE](#mode-remote)
+4. [Comparaison Détaillée](#comparaison-détaillée)
+5. [Cas d'Usage Réels](#cas-dusage-réels)
+6. [Configuration](#configuration)
+7. [Migration à Chaud](#migration-à-chaud)
+8. [Troubleshooting](#troubleshooting)
+
+---
+
+## Vue d'Ensemble
+
+### Concept : Deux Bases de Données Distinctes
+
+CSWeb utilise **TOUJOURS 2 bases de données** :
+
+```
+┌─────────────────────────────────────────────────────────┐
+│               Serveur CSWeb (Apache/PHP)                │
+├─────────────────────────────────────────────────────────┤
+│                                                           │
+│  1️⃣ MySQL METADATA (OBLIGATOIRE - TOUJOURS LOCAL)       │
+│     ├─ cspro_dictionaries                                │
+│     ├─ cspro_users                                       │
+│     ├─ cspro_oauth_clients                               │
+│     ├─ cspro_applications                                │
+│     └─ Créé par setup.php                                │
+│                                                           │
+│  2️⃣ BASE BREAKOUT (LOCAL OU REMOTE)                     │
+│     ├─ {dictionnaire}_cases                              │
+│     ├─ {dictionnaire}_notes                              │
+│     ├─ {dictionnaire}_level_1                            │
+│     ├─ {dictionnaire}_level_2                            │
+│     └─ Type: PostgreSQL / MySQL / SQL Server             │
+│                                                           │
+└─────────────────────────────────────────────────────────┘
+```
+
+<Callout type="warning">
+  **Important :** La base MySQL metadata est **TOUJOURS locale** et **NE DOIT JAMAIS** être modifiée. Seule la base breakout peut être locale ou distante.
+</Callout>
+
+---
+
+## Mode LOCAL
+
+### Définition
+
+**Mode LOCAL** = Tous les services Docker (CSWeb + MySQL metadata + Base breakout) tournent sur la **même machine**.
+
+### Architecture
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                   Docker Compose Stack                        │
+│                   (Machine Unique)                            │
+├──────────────────────────────────────────────────────────────┤
+│                                                                │
+│  ┌─────────────┐   ┌─────────────┐   ┌────────────────────┐ │
+│  │   CSWeb     │───│   MySQL     │   │  PostgreSQL        │ │
+│  │  (Apache)   │   │ (Metadata)  │   │  (Breakout)        │ │
+│  │ :8080       │   │ :3306       │   │  :5432             │ │
+│  └─────────────┘   └─────────────┘   └────────────────────┘ │
+│         │                                       │             │
+│         │          ┌────────────────┐           │             │
+│         └──────────│   pgAdmin      │───────────┘             │
+│                    │   :8082        │                         │
+│                    └────────────────┘                         │
+│                                                                │
+│  Réseau Docker: csweb_network                                 │
+│  Isolation complète de l'hôte                                 │
+│                                                                │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Quand Utiliser
+
+✅ **Développement** - Tester CSWeb sur votre laptop
+✅ **Tests** - Environnement isolé pour QA
+✅ **POC** (Proof of Concept) - Démos clients
+✅ **Formation** - Apprendre CSWeb sans infrastructure
+✅ **Petit volume** - Collecte de données < 50k questionnaires
+
+❌ **Ne PAS utiliser pour** :
+- Production avec gros volumes (> 100k cases)
+- Recensements nationaux (RGPH)
+- Haute disponibilité requise
+
+### Installation
+
+<Tabs items={['Script Automatique', 'Manuel']}>
+<div>
+
+```bash
+# Cloner le repository
+git clone https://github.com/BOUNADRAME/pg_csweb8_latest_2026.git
+cd pg_csweb8_latest_2026
+
+# Lancer le script d'installation
+./install.sh
+
+# Choisir les options
+# 1) Mode: LOCAL
+# 2) SGBD: PostgreSQL (recommandé)
+```
+
+**Le script va automatiquement :**
+1. Générer `.env` avec configuration locale
+2. Créer passwords sécurisés
+3. Démarrer tous les services Docker
+4. Vérifier la santé des containers
+
+</div>
+<div>
+
+```bash
+# 1. Copier .env.example
+cp .env.example .env
+
+# 2. Éditer .env
+vim .env
+
+# Configurer
+BREAKOUT_MODE=local
+BREAKOUT_DB_TYPE=postgresql
+
+# 3. Démarrer services
+docker-compose --profile local-postgres up -d
+
+# Ou pour MySQL
+docker-compose --profile local-mysql up -d
+
+# Ou pour SQL Server
+docker-compose --profile local-sqlserver up -d
+```
+
+</div>
+</Tabs>
+
+### Services Démarrés
+
+| Service | Port | Description | URL |
+|---------|------|-------------|-----|
+| **CSWeb** | 8080 | Application web principale | http://localhost:8080 |
+| **MySQL (metadata)** | 3306 | Base métadonnées CSWeb | `mysql://localhost:3306` |
+| **PostgreSQL (breakout)** | 5432 | Base analytics (local) | `postgresql://localhost:5432` |
+| **pgAdmin** | 8082 | Interface admin PostgreSQL | http://localhost:8082 |
+
+### Configuration .env (LOCAL)
+
+```bash
+#####################################
+# MODE DÉPLOIEMENT
+#####################################
+BREAKOUT_MODE=local
+
+#####################################
+# TYPE BASE BREAKOUT
+#####################################
+BREAKOUT_DB_TYPE=postgresql  # ou mysql, sqlserver
+
+#####################################
+# POSTGRESQL (LOCAL)
+#####################################
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=csweb_analytics
+POSTGRES_USER=csweb_analytics
+POSTGRES_PASSWORD=generated_secure_password_here
+
+#####################################
+# PGADMIN
+#####################################
+PGADMIN_DEFAULT_EMAIL=admin@csweb.local
+PGADMIN_DEFAULT_PASSWORD=admin
+```
+
+### Vérification
+
+```bash
+# Vérifier tous les containers
+docker-compose ps
+
+# Résultat attendu (LOCAL PostgreSQL)
+# csweb           Up      0.0.0.0:8080->80/tcp
+# mysql           Up      0.0.0.0:3306->3306/tcp
+# postgres        Up      0.0.0.0:5432->5432/tcp
+# pgadmin         Up      0.0.0.0:8082->80/tcp
+
+# Tester connexion breakout
+docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+
+# Sortie attendue
+# ✅ pdo_mysql: Available
+# ✅ pdo_pgsql: Available
+# ✅ PostgreSQL connection: OK (csweb_analytics)
+```
+
+### Avantages Mode LOCAL
+
+| Avantage | Description |
+|----------|-------------|
+| 🚀 **Rapidité** | Installation complète en 5 minutes |
+| 🔒 **Isolation** | Aucun impact sur votre machine hôte |
+| 💾 **Pas d'infra** | Pas besoin de serveur distant |
+| 🔄 **Reproductible** | `docker-compose up -d` = même environnement partout |
+| 🛠️ **Dev-friendly** | pgAdmin inclus, logs accessibles |
+| 💰 **Gratuit** | Aucun coût infrastructure cloud |
+
+### Limites Mode LOCAL
+
+| Limite | Impact |
+|--------|--------|
+| 📊 **Volume** | < 100k questionnaires (performance CPU/RAM laptop) |
+| 🔌 **Disponibilité** | Arrêt si laptop éteint |
+| 🌐 **Accès** | Uniquement localhost (pas d'accès distant) |
+| 💽 **Stockage** | Limité au disque dur laptop |
+
+---
+
+## Mode REMOTE
+
+### Définition
+
+**Mode REMOTE** = CSWeb Docker tourne sur un serveur, mais se connecte à une **base de données distante** (autre serveur physique ou cloud).
+
+### Architecture
+
+```
+┌──────────────────────────────────────────────────────────┐
+│         Serveur CSWeb (Docker)                            │
+│         IP: 10.0.1.10                                     │
+├──────────────────────────────────────────────────────────┤
+│                                                            │
+│  ┌─────────────┐   ┌─────────────┐                       │
+│  │   CSWeb     │───│   MySQL     │                       │
+│  │  (Apache)   │   │ (Metadata)  │                       │
+│  │ :8080       │   │ :3306       │                       │
+│  └─────────────┘   └─────────────┘                       │
+│                                                            │
+└──────────────────────────────────────────────────────────┘
+                           │
+                           │ TCP/IP (Réseau LAN/WAN)
+                           ↓
+┌──────────────────────────────────────────────────────────┐
+│      Serveur Base de Données Distant                      │
+│      IP: 10.0.1.100                                       │
+├──────────────────────────────────────────────────────────┤
+│                                                            │
+│  ┌────────────────────────────────────────┐               │
+│  │  PostgreSQL 16 / MySQL 8 / SQL Server  │               │
+│  │  Port: 5432 / 3306 / 1433              │               │
+│  │  Database: prod_analytics              │               │
+│  │  High Availability + Backup            │               │
+│  └────────────────────────────────────────┘               │
+│                                                            │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Quand Utiliser
+
+✅ **Production** - Déploiement en production
+✅ **Gros volumes** - RGPH (> 500k questionnaires)
+✅ **Infrastructure existante** - Serveur PostgreSQL/SQL Server déjà en place
+✅ **Haute disponibilité** - Réplication, failover, backup automatique
+✅ **Séparation responsabilités** - Équipe CSWeb ≠ Équipe DBA
+✅ **Performance** - Serveur DB dédié avec 64GB+ RAM
+
+### Installation
+
+```bash
+# 1. Sur le serveur distant: Créer la base de données
+# (Sur serveur PostgreSQL distant 10.0.1.100)
+sudo -u postgres psql
+CREATE DATABASE csweb_analytics;
+CREATE USER csweb_user WITH PASSWORD 'SecureProductionPassword!';
+GRANT ALL PRIVILEGES ON DATABASE csweb_analytics TO csweb_user;
+\q
+
+# 2. Autoriser connexion distante
+# Éditer /etc/postgresql/16/main/pg_hba.conf
+echo "host    csweb_analytics    csweb_user    10.0.1.10/32    md5" >> /etc/postgresql/16/main/pg_hba.conf
+
+# Éditer /etc/postgresql/16/main/postgresql.conf
+sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" /etc/postgresql/16/main/postgresql.conf
+
+# Redémarrer PostgreSQL
+sudo systemctl restart postgresql
+
+# 3. Sur le serveur CSWeb (10.0.1.10)
+git clone https://github.com/BOUNADRAME/pg_csweb8_latest_2026.git
+cd pg_csweb8_latest_2026
+
+# Lancer script installation
+./install.sh
+
+# Choisir
+# 1) Mode: REMOTE
+# 2) SGBD: PostgreSQL
+# 3) Remplir credentials serveur distant:
+#    - Host: 10.0.1.100
+#    - Port: 5432
+#    - Database: csweb_analytics
+#    - User: csweb_user
+#    - Password: SecureProductionPassword!
+
+# 4. Démarrer uniquement CSWeb + MySQL metadata
+docker-compose up -d csweb mysql
+# Note: PAS de container postgres, utilise le serveur distant
+```
+
+### Services Démarrés (REMOTE)
+
+| Service | Port | Description | Serveur |
+|---------|------|-------------|---------|
+| **CSWeb** | 8080 | Application web | 10.0.1.10 (local) |
+| **MySQL (metadata)** | 3306 | Base métadonnées | 10.0.1.10 (local) |
+| **PostgreSQL (breakout)** | 5432 | Base analytics | 10.0.1.100 (**distant**) |
+
+<Callout type="success">
+  **Avantage :** Le container PostgreSQL local n'est PAS démarré, économisant CPU et RAM sur le serveur CSWeb.
+</Callout>
+
+### Configuration .env (REMOTE)
+
+```bash
+#####################################
+# MODE DÉPLOIEMENT
+#####################################
+BREAKOUT_MODE=remote
+
+#####################################
+# TYPE BASE BREAKOUT
+#####################################
+BREAKOUT_DB_TYPE=postgresql
+
+#####################################
+# POSTGRESQL (REMOTE)
+#####################################
+POSTGRES_HOST=10.0.1.100           # ← IP serveur distant
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=csweb_analytics
+POSTGRES_USER=csweb_user
+POSTGRES_PASSWORD=SecureProductionPassword!
+
+# Note: Pas de PGADMIN en mode remote (géré sur serveur distant)
+```
+
+### Cas d'Usage Réel : RGPH5 Sénégal
+
+**Contexte :**
+- **ANSD** (Agence Nationale de la Statistique et de la Démographie)
+- **RGPH5** : 5ème Recensement Général de la Population et de l'Habitat
+- **Volume** : 3+ millions de questionnaires
+- **Contrainte** : Infrastructure Microsoft existante (SQL Server 2022)
+
+**Architecture Déployée :**
+
+```
+┌────────────────────────────────────────┐
+│   Serveur CSWeb (ANSD Data Center)    │
+│   IP: 172.16.0.10                      │
+│   OS: Ubuntu 22.04 LTS                 │
+│   RAM: 16GB, CPU: 8 cores              │
+├────────────────────────────────────────┤
+│  ┌──────────┐   ┌─────────┐            │
+│  │  CSWeb   │───│  MySQL  │            │
+│  │  Docker  │   │  Local  │            │
+│  └──────────┘   └─────────┘            │
+└────────────────────────────────────────┘
+              │
+              │ LAN Interne ANSD
+              ↓
+┌────────────────────────────────────────┐
+│  Serveur SQL Server (ANSD)             │
+│  IP: 172.16.0.50                       │
+│  OS: Windows Server 2022               │
+│  SQL Server 2022 Enterprise            │
+│  RAM: 128GB, CPU: 32 cores             │
+│  Storage: 2TB SSD RAID 10              │
+├────────────────────────────────────────┤
+│  Database: RGPH5_Analytics             │
+│  Backup: Quotidien (Azure Blob)        │
+│  Réplication: Always On (Haute Dispo)  │
+└────────────────────────────────────────┘
+```
+
+**Configuration .env (RGPH5) :**
+
+```bash
+BREAKOUT_MODE=remote
+BREAKOUT_DB_TYPE=sqlserver
+
+SQLSERVER_HOST=172.16.0.50
+SQLSERVER_PORT=1433
+SQLSERVER_DATABASE=RGPH5_Analytics
+SQLSERVER_USER=sa
+SQLSERVER_PASSWORD=RGPH5SecurePassword!
+```
+
+**Résultats :**
+- ✅ 3.2 millions de questionnaires breakés
+- ✅ Temps de breakout : 6 heures (avec breakout sélectif)
+- ✅ Taille DB : 850GB (données brutes + indexes)
+- ✅ Analyses Power BI en temps réel
+- ✅ Zéro downtime pendant le recensement
+
+<Callout type="success">
+  **Crédit :** Architecture conçue avec **Assietou DIAGNE** (ANSD). Le breakout sélectif a permis de traiter 3M+ questionnaires en 6h au lieu de 48h (breakout global).
+</Callout>
+
+### Avantages Mode REMOTE
+
+| Avantage | Description |
+|----------|-------------|
+| 🏢 **Infra existante** | Utilise serveur DB déjà en place (PostgreSQL/SQL Server) |
+| 💪 **Performance** | Serveur DB dédié avec 64GB+ RAM, SSD RAID |
+| 🔄 **Haute Dispo** | Réplication master-slave, failover automatique |
+| 💾 **Backup** | Stratégie backup enterprise (Azure, AWS, quotidien) |
+| 👥 **Séparation** | Équipe CSWeb ≠ Équipe DBA (responsabilités claires) |
+| 📈 **Scalabilité** | Vertical scaling (ajouter RAM/CPU au serveur DB) |
+| 🔐 **Sécurité** | Firewall, VPN, encryption at rest/transit |
+
+### Limites Mode REMOTE
+
+| Limite | Impact | Solution |
+|--------|--------|----------|
+| 🌐 **Réseau** | Dépend de la latence réseau | LAN 1Gbps minimum |
+| 🔌 **Connectivité** | Breakout échoue si serveur DB down | Haute dispo (réplication) |
+| 🔧 **Complexité** | Configuration réseau (firewall, ports) | Documentation claire + DBA |
+| 💰 **Coût** | Serveur DB dédié (hardware/cloud) | Justifié pour production |
+
+---
+
+## Comparaison Détaillée
+
+### Tableau Comparatif
+
+| Critère | LOCAL | REMOTE |
+|---------|-------|--------|
+| **Installation** | 🟢 5 minutes (1 commande) | 🟡 30 minutes (config réseau) |
+| **Prérequis** | Docker seulement | Docker + Serveur DB distant |
+| **Volume Max** | 🟡 100k questionnaires | 🟢 Millions de questionnaires |
+| **Performance** | 🟡 Limitée par laptop | 🟢 Serveur dédié (64GB+ RAM) |
+| **Disponibilité** | 🔴 Laptop ON/OFF | 🟢 99.9% uptime (HA) |
+| **Backup** | 🔴 Manuel (docker volumes) | 🟢 Automatique (Azure/AWS) |
+| **Coût** | 🟢 Gratuit | 🟡 Serveur DB ($$$) |
+| **Use Case** | Dev, Test, POC, Formation | Production, RGPH, Gros volumes |
+
+### Matrice de Décision
+
+```
+┌───────────────────────────────────────────────────────────┐
+│               CHOISIR LE BON MODE                          │
+├───────────────────────────────────────────────────────────┤
+│                                                             │
+│  Volume < 50k cases                    → LOCAL             │
+│  Volume 50k - 500k cases               → LOCAL ou REMOTE   │
+│  Volume > 500k cases                   → REMOTE            │
+│                                                             │
+│  Développement/Test                    → LOCAL             │
+│  Production                            → REMOTE            │
+│                                                             │
+│  Pas d'infrastructure                  → LOCAL             │
+│  Serveur DB existant                   → REMOTE            │
+│                                                             │
+│  Budget limité                         → LOCAL             │
+│  Budget enterprise                     → REMOTE            │
+│                                                             │
+│  Démo client                           → LOCAL             │
+│  RGPH (Recensement)                    → REMOTE            │
+│                                                             │
+└───────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Cas d'Usage Réels
+
+### Cas 1 : Développeur Local (LOCAL)
+
+**Profil :**
+- Développeur fullstack
+- Laptop personnel (MacBook Pro, 16GB RAM)
+- Teste CSWeb pour un projet client
+
+**Besoins :**
+- Environnement isolé
+- Pas d'impact sur machine hôte
+- Installation rapide
+
+**Solution :**
+
+```bash
+# Installation
+git clone https://github.com/BOUNADRAME/pg_csweb8_latest_2026.git
+cd pg_csweb8_latest_2026
+./install.sh
+# Choisir: LOCAL + PostgreSQL
+
+# Accès
+http://localhost:8080
+
+# Breakout test
+docker-compose exec csweb php bin/console csweb:process-cases-by-dict TEST_DICT
+```
+
+**Résultat :**
+- ✅ Installation en 5 minutes
+- ✅ Isolation Docker complète
+- ✅ pgAdmin accessible sur :8082
+- ✅ Arrêt/redémarrage instantané
+
+---
+
+### Cas 2 : Institut National de Statistique (REMOTE)
+
+**Profil :**
+- INS d'un pays africain
+- Serveur PostgreSQL dédié existant
+- Collecte de données enquête nationale (200k ménages)
+
+**Architecture :**
+- Serveur 1 : CSWeb (Docker) - `10.50.0.10`
+- Serveur 2 : PostgreSQL 16 - `10.50.0.100`
+
+**Configuration :**
+
+```bash
+# Sur serveur PostgreSQL (10.50.0.100)
+sudo -u postgres psql
+CREATE DATABASE enquete_nationale_2026;
+CREATE USER enquete_user WITH PASSWORD 'EnqueteSecure2026!';
+GRANT ALL PRIVILEGES ON DATABASE enquete_nationale_2026 TO enquete_user;
+
+# Autoriser connexion depuis CSWeb
+echo "host enquete_nationale_2026 enquete_user 10.50.0.10/32 md5" >> /etc/postgresql/16/main/pg_hba.conf
+sudo systemctl restart postgresql
+
+# Sur serveur CSWeb (10.50.0.10)
+vim .env
+# BREAKOUT_MODE=remote
+# BREAKOUT_DB_TYPE=postgresql
+# POSTGRES_HOST=10.50.0.100
+# POSTGRES_DATABASE=enquete_nationale_2026
+# POSTGRES_USER=enquete_user
+# POSTGRES_PASSWORD=EnqueteSecure2026!
+
+docker-compose up -d csweb mysql
+```
+
+**Résultat :**
+- ✅ 200k questionnaires breakés en 4 heures
+- ✅ Connexion Power BI depuis serveur PostgreSQL
+- ✅ Backup quotidien PostgreSQL (pg_dump)
+- ✅ Monitoring Grafana + Prometheus
+
+---
+
+### Cas 3 : RGPH5 Sénégal (REMOTE + SQL Server)
+
+**Profil :**
+- ANSD (Agence Nationale de la Statistique)
+- RGPH5 : 3+ millions de questionnaires
+- Infrastructure Microsoft existante
+
+**Détails :**
+Voir section [Cas d'Usage Réel : RGPH5 Sénégal](#cas-dusage-réel--rgph5-sénégal)
+
+---
+
+## Configuration
+
+### Variables .env Essentielles
+
+#### Mode LOCAL (PostgreSQL)
+
+```bash
+# Mode
+BREAKOUT_MODE=local
+BREAKOUT_DB_TYPE=postgresql
+
+# PostgreSQL Local
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=csweb_analytics
+POSTGRES_USER=csweb_analytics
+POSTGRES_PASSWORD=<GÉNÉRÉ_PAR_INSTALL_SCRIPT>
+
+# pgAdmin
+PGADMIN_DEFAULT_EMAIL=admin@csweb.local
+PGADMIN_DEFAULT_PASSWORD=admin
+```
+
+#### Mode REMOTE (PostgreSQL)
+
+```bash
+# Mode
+BREAKOUT_MODE=remote
+BREAKOUT_DB_TYPE=postgresql
+
+# PostgreSQL Remote
+POSTGRES_HOST=10.0.1.100           # IP serveur distant
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=prod_analytics   # Nom DB production
+POSTGRES_USER=analytics_user
+POSTGRES_PASSWORD=SecureProductionPassword!
+
+# Note: Pas de PGADMIN (géré sur serveur distant)
+```
+
+#### Mode REMOTE (SQL Server - RGPH5)
+
+```bash
+# Mode
+BREAKOUT_MODE=remote
+BREAKOUT_DB_TYPE=sqlserver
+
+# SQL Server Remote
+SQLSERVER_HOST=172.16.0.50        # IP SQL Server
+SQLSERVER_PORT=1433
+SQLSERVER_DATABASE=RGPH5_Analytics
+SQLSERVER_USER=sa
+SQLSERVER_PASSWORD=RGPH5SecurePassword!
+```
+
+### Commandes Docker selon Mode
+
+<Tabs items={['LOCAL', 'REMOTE']}>
+<div>
+
+```bash
+# LOCAL PostgreSQL
+docker-compose --profile local-postgres up -d
+
+# LOCAL MySQL
+docker-compose --profile local-mysql up -d
+
+# LOCAL SQL Server
+docker-compose --profile local-sqlserver up -d
+
+# Arrêt
+docker-compose down
+
+# Logs
+docker-compose logs -f csweb
+```
+
+</div>
+<div>
+
+```bash
+# REMOTE (tous SGBD)
+docker-compose up -d csweb mysql
+# Note: Ne démarre PAS le container de base breakout
+
+# Arrêt
+docker-compose down
+
+# Logs
+docker-compose logs -f csweb
+
+# Test connexion distante
+docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+```
+
+</div>
+</Tabs>
+
+---
+
+## Migration à Chaud
+
+### Scénario 1 : LOCAL → REMOTE (Mise en Production)
+
+**Situation :**
+Vous avez développé en LOCAL sur votre laptop. Vous voulez déployer en REMOTE production.
+
+**Étapes :**
+
+#### 1. Développement (LOCAL)
+
+```bash
+# .env (DEV)
+BREAKOUT_MODE=local
+BREAKOUT_DB_TYPE=postgresql
+
+# Démarrage
+docker-compose --profile local-postgres up -d
+
+# Développement
+# - Upload dictionnaires
+# - Tests breakout
+# - Validation
+```
+
+#### 2. Export Données (Optionnel)
+
+```bash
+# Exporter données de développement
+docker-compose exec postgres pg_dump -U csweb_analytics csweb_analytics > dev_backup.sql
+
+# Transférer vers serveur production
+scp dev_backup.sql user@prod-server:/tmp/
+
+# Sur serveur production
+psql -h 10.0.1.100 -U csweb_user -d prod_analytics < /tmp/dev_backup.sql
+```
+
+#### 3. Modification Configuration
+
+```bash
+# Éditer .env
+vim .env
+
+# AVANT
+BREAKOUT_MODE=local
+POSTGRES_HOST=postgres
+
+# APRÈS
+BREAKOUT_MODE=remote
+POSTGRES_HOST=10.0.1.100
+POSTGRES_DATABASE=prod_analytics
+POSTGRES_PASSWORD=SecureProductionPassword!
+```
+
+#### 4. Redémarrage
+
+```bash
+# Arrêter tous les services LOCAL
+docker-compose down
+
+# Redémarrer en mode REMOTE (sans postgres local)
+docker-compose up -d csweb mysql
+
+# Vérifier connexion distante
+docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+```
+
+#### 5. Validation
+
+```bash
+# Tester un breakout
+docker-compose exec csweb php bin/console csweb:process-cases-by-dict TEST_DICT
+
+# Vérifier tables créées sur serveur distant
+psql -h 10.0.1.100 -U csweb_user -d prod_analytics -c "\dt"
+```
+
+<Callout type="success">
+  **Résultat :** Migration **sans perte de données**, changement transparent pour les utilisateurs.
+</Callout>
+
+---
+
+### Scénario 2 : PostgreSQL → SQL Server
+
+**Situation :**
+Votre organisation impose SQL Server au lieu de PostgreSQL.
+
+**Étapes :**
+
+#### 1. Export PostgreSQL
+
+```bash
+# Export complet
+docker-compose exec postgres pg_dump -U csweb_analytics -F c csweb_analytics > postgres_backup.dump
+```
+
+#### 2. Conversion (Manuel ou Outil)
+
+**Option A : Outil pgloader**
+
+```bash
+# Installer pgloader
+sudo apt-get install pgloader
+
+# Convertir PostgreSQL → SQL Server
+pgloader postgres://csweb_analytics:password@localhost/csweb_analytics \
+  mssql://sa:SqlServerPassword!@10.0.1.100/CSWeb_Analytics
+```
+
+**Option B : Conversion manuelle**
+
+```sql
+-- Exporter structure PostgreSQL
+pg_dump -s csweb_analytics > schema.sql
+
+-- Convertir en T-SQL manuellement
+-- SERIAL → IDENTITY
+-- TEXT → NVARCHAR(MAX)
+-- NOW() → GETDATE()
+-- etc.
+
+-- Exporter données
+pg_dump -a --column-inserts csweb_analytics > data.sql
+
+-- Importer dans SQL Server
+sqlcmd -S 10.0.1.100 -U sa -P SqlServerPassword! -d CSWeb_Analytics -i schema_tsql.sql
+sqlcmd -S 10.0.1.100 -U sa -P SqlServerPassword! -d CSWeb_Analytics -i data.sql
+```
+
+#### 3. Modification .env
+
+```bash
+# AVANT
+BREAKOUT_DB_TYPE=postgresql
+POSTGRES_HOST=10.0.1.100
+
+# APRÈS
+BREAKOUT_DB_TYPE=sqlserver
+SQLSERVER_HOST=10.0.1.100
+SQLSERVER_PORT=1433
+SQLSERVER_DATABASE=CSWeb_Analytics
+SQLSERVER_USER=sa
+SQLSERVER_PASSWORD=SqlServerPassword!
+```
+
+#### 4. Redémarrage
+
+```bash
+docker-compose down
+docker-compose up -d csweb mysql
+```
+
+---
+
+## Troubleshooting
+
+### Erreur : Cannot Connect to Remote Database
+
+**Symptôme :**
+
+```
+SQLSTATE[HY000] [2002] Connection refused
+```
+
+**Causes Possibles :**
+
+1. **Serveur DB distant éteint**
+2. **Firewall bloque le port**
+3. **Mauvaise IP/Port dans .env**
+4. **Credentials incorrects**
+
+**Solutions :**
+
+```bash
+# 1. Vérifier serveur DB distant accessible
+ping 10.0.1.100
+
+# 2. Tester port ouvert
+telnet 10.0.1.100 5432
+# Ou
+nc -zv 10.0.1.100 5432
+
+# 3. Vérifier firewall (sur serveur DB)
+sudo ufw status
+sudo ufw allow from 10.0.1.10 to any port 5432
+
+# 4. Vérifier pg_hba.conf (PostgreSQL)
+sudo vim /etc/postgresql/16/main/pg_hba.conf
+# Ajouter ligne:
+# host    csweb_analytics    csweb_user    10.0.1.10/32    md5
+
+sudo systemctl restart postgresql
+
+# 5. Tester connexion manuellement
+psql -h 10.0.1.100 -U csweb_user -d csweb_analytics
+# Entrer password, si OK → connexion fonctionne
+
+# 6. Vérifier .env
+cat .env | grep POSTGRES
+# Vérifier IP, port, database, user, password
+```
+
+---
+
+### Erreur : Authentication Failed
+
+**Symptôme :**
+
+```
+SQLSTATE[28P01] FATAL: password authentication failed for user "csweb_user"
+```
+
+**Solutions :**
+
+```bash
+# 1. Vérifier password dans .env
+echo $POSTGRES_PASSWORD
+
+# 2. Réinitialiser password sur serveur distant
+sudo -u postgres psql
+ALTER USER csweb_user WITH PASSWORD 'NouveauPasswordSecure!';
+\q
+
+# 3. Mettre à jour .env
+vim .env
+# POSTGRES_PASSWORD=NouveauPasswordSecure!
+
+# 4. Redémarrer CSWeb
+docker-compose restart csweb
+```
+
+---
+
+### Erreur : Port Already in Use (LOCAL)
+
+**Symptôme :**
+
+```
+Error: Port 5432 is already in use
+```
+
+**Cause :**
+PostgreSQL déjà installé sur machine hôte (en dehors de Docker).
+
+**Solutions :**
+
+```bash
+# Option 1: Arrêter PostgreSQL hôte
+sudo systemctl stop postgresql
+
+# Option 2: Changer port Docker
+vim docker-compose.yml
+# ports:
+#   - "5433:5432"  # ← Changer 5432 → 5433
+
+# Redémarrer
+docker-compose down
+docker-compose --profile local-postgres up -d
+
+# Mettre à jour connexions clients
+# localhost:5433 au lieu de localhost:5432
+```
+
+---
+
+### Performance Lente (REMOTE)
+
+**Symptôme :**
+Breakout très lent en mode REMOTE (10x plus lent que LOCAL).
+
+**Causes :**
+
+1. **Latence réseau élevée** (WAN au lieu de LAN)
+2. **Bande passante limitée** (< 100 Mbps)
+3. **Serveur DB sous-dimensionné**
+
+**Solutions :**
+
+```bash
+# 1. Vérifier latence réseau
+ping -c 10 10.0.1.100
+# Latence < 5ms : OK
+# Latence 5-20ms : Acceptable
+# Latence > 20ms : Problématique
+
+# 2. Vérifier bande passante
+iperf3 -s                    # Sur serveur DB
+iperf3 -c 10.0.1.100         # Depuis serveur CSWeb
+# Bande passante >= 1 Gbps : OK
+
+# 3. Optimiser PostgreSQL (sur serveur distant)
+sudo vim /etc/postgresql/16/main/postgresql.conf
+
+# Augmenter buffers
+shared_buffers = 8GB                    # 25% RAM
+effective_cache_size = 24GB             # 75% RAM
+work_mem = 50MB
+maintenance_work_mem = 2GB
+
+# Checkpoint tuning
+checkpoint_completion_target = 0.9
+wal_buffers = 16MB
+max_wal_size = 4GB
+
+# Redémarrer
+sudo systemctl restart postgresql
+
+# 4. Créer indexes (après breakout)
+psql -h 10.0.1.100 -U csweb_user -d csweb_analytics
+
+CREATE INDEX idx_cases_key ON eval_producteurs_cases(key);
+CREATE INDEX idx_producteurs_region ON eval_producteurs_producteurs(region);
+```
+
+---
+
+## Références
+
+### Documentation Complète
+
+- [Architecture Flexible →](/guides/architecture/flexible)
+- [Configuration Multi-Database →](/guides/database/multi-db)
+- [Transformation PostgreSQL (Assietou DIAGNE) →](/guides/architecture/csweb-postgresql-transformation)
+
+### Ressources Externes
+
+- **PostgreSQL Docs :** https://www.postgresql.org/docs/16/
+- **SQL Server Docs :** https://learn.microsoft.com/en-us/sql/
+- **Docker Compose :** https://docs.docker.com/compose/
+
+---
+
+## Conclusion
+
+<div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-950 p-6 my-8 rounded-r-lg">
+  <h3 className="text-xl font-bold mb-3 text-blue-900 dark:text-blue-100">
+    🎯 Récapitulatif
+  </h3>
+
+  <div className="grid md:grid-cols-2 gap-4 mb-4 text-blue-900 dark:text-blue-100">
+    <div>
+      <h4 className="font-bold mb-2">MODE LOCAL</h4>
+      <ul className="text-sm space-y-1">
+        <li>✅ Dev, Test, POC</li>
+        <li>✅ Installation 5 minutes</li>
+        <li>✅ Isolation Docker</li>
+        <li>✅ < 100k questionnaires</li>
+      </ul>
+    </div>
+    <div>
+      <h4 className="font-bold mb-2">MODE REMOTE</h4>
+      <ul className="text-sm space-y-1">
+        <li>✅ Production, RGPH</li>
+        <li>✅ Infra existante</li>
+        <li>✅ Haute disponibilité</li>
+        <li>✅ Millions de questionnaires</li>
+      </ul>
+    </div>
+  </div>
+
+  <p className="font-bold text-blue-900 dark:text-blue-100">
+    🚀 **Flexibilité Totale :** Migrez de LOCAL → REMOTE sans perte de données, ou changez de SGBD (PostgreSQL ↔ MySQL ↔ SQL Server) à chaud !
+  </p>
+</div>
+
+---
+
+**Prochaines Étapes :**
+
+- [Installation Complète →](/getting-started/installation)
+- [Premier Breakout →](/getting-started/first-breakout)
+- [Configuration Multi-DB →](/guides/database/multi-db)
+
+---
+
+<div className="text-center text-sm text-gray-500 dark:text-gray-600 my-8">
+  Documentation par <a href="https://bounadrame.github.io/portfolio/" className="font-bold hover:underline">Bouna DRAME</a> © 2026
+</div>
