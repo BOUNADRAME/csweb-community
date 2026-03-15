@@ -1,5 +1,6 @@
 {
-  "overview": "Vue d'ensemble",
+  "overview": "Vue d'Ensemble",
   "process-cases": "process-cases-by-dict",
-  "check-drivers": "check-database-drivers"
+  "check-drivers": "check-database-drivers",
+  "commands": "Toutes les Commandes"
 }
