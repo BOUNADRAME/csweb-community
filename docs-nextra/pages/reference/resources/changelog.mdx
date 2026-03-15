@@ -1,0 +1,93 @@
+# Changelog
+
+Historique des modifications de CSWeb Community Platform.
+
+## Version Actuelle
+
+### [2.0.0] - 2026-03-15
+
+**Release Majeure** : Documentation Nextra complète + Architecture flexible multi-SGBD.
+
+#### 🎉 Documentation Nextra
+
+- ✅ **47 pages MDX** : Documentation complète migrée vers Nextra
+- ✅ **Sections** : Getting Started, Guides, Reference, Troubleshooting
+- ✅ **10,000+ lignes** de documentation technique
+- ✅ **Recherche full-text** : FlexSearch intégré
+- ✅ **Dark mode** : Support natif
+- ✅ **Mobile responsive** : Design adaptatif
+- ✅ **Déploiement automatique** : GitHub Actions → GitHub Pages
+
+#### 🏗️ Architecture Flexible
+
+- ✅ **Mode LOCAL** : Docker containers (dev/test)
+- ✅ **Mode REMOTE** : Serveurs distants (production/RGPH)
+- ✅ **Multi-SGBD** : PostgreSQL + MySQL + SQL Server
+- ✅ **Migration à chaud** : Changement SGBD sans rebuild
+- ✅ **2 bases distinctes** : MySQL metadata + Breakout configurable
+
+#### 🚀 Breakout Sélectif
+
+- ✅ **Innovation** : Assietou DIAGNE (ANSD, Sénégal)
+- ✅ **Performance** : 6h vs 48h (RGPH5 - 3.2M questionnaires)
+- ✅ **Commande CLI** : `csweb:process-cases-by-dict`
+- ✅ **Tables isolées** : Pattern `{label}_{table_name}`
+- ✅ **Validation production** : RGPH5 Sénégal, Gambie, Guinée
+
+#### 📦 Docker & Installation
+
+- ✅ **Drivers pré-installés** : pdo_mysql, pdo_pgsql, pdo_sqlsrv
+- ✅ **Profils dynamiques** : local-postgres, local-mysql, local-sqlserver
+- ✅ **Installation wizard** : setup en 5 minutes
+- ✅ **Health checks** : Tous services
+
+#### 📝 API Reference
+
+- ✅ **OAuth2** : Password grant, refresh token
+- ✅ **Dictionaries API** : CRUD operations
+- ✅ **Breakout API** : Jobs, status, tables
+- ✅ **Webhooks API** : Events, signature verification
+
+## Versions Précédentes
+
+### [1.0.0] - 2025-12-01
+
+**Release Initiale** : CSWeb Community Platform basé sur CSWeb 8.
+
+- ✅ Base CSWeb 8 officielle (csprousers.org/downloads)
+- ✅ Breakout sélectif par dictionnaire (Assietou DIAGNE)
+- ✅ Support PostgreSQL pour analytics
+- ✅ Docker Compose configuration
+- ✅ Documentation Markdown (17 fichiers)
+
+## Changelog Complet
+
+Le changelog complet est disponible dans le fichier source :
+
+📄 **[CHANGELOG.md](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/blob/master/CHANGELOG.md)**
+
+Ce fichier contient :
+- 🔧 Détails techniques de chaque modification
+- 🐛 Corrections de bugs
+- ⚡ Améliorations de performance
+- 💥 Breaking changes
+- 📚 Mises à jour documentation
+
+## Format
+
+Ce changelog suit les conventions :
+- **Format** : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
+- **Versioning** : [Semantic Versioning](https://semver.org/lang/fr/)
+
+## Types de Changements
+
+- **Added** : Nouvelles fonctionnalités
+- **Changed** : Modifications de fonctionnalités existantes
+- **Deprecated** : Fonctionnalités dépréciées
+- **Removed** : Fonctionnalités supprimées
+- **Fixed** : Corrections de bugs
+- **Security** : Corrections de sécurité
+
+---
+
+**CSWeb Community Platform v2.0 - Changelog**

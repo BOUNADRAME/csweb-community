@@ -1,0 +1,323 @@
+# Guide de Contribution
+
+Merci de votre intérêt pour contribuer à CSWeb Community Platform ! 🎉
+
+## Code de Conduite
+
+En participant à ce projet, vous vous engagez à respecter notre code de conduite :
+
+- 🤝 Être respectueux envers tous les contributeurs
+- 💬 Communiquer de manière constructive
+- 🌍 Accueillir la diversité et l'inclusion
+- 🎓 Aider les nouveaux contributeurs
+
+## Types de Contributions
+
+### 🐛 Signaler un Bug
+
+**Avant de créer une issue :**
+1. Vérifier que le bug n'est pas déjà signalé
+2. Tester sur la dernière version
+3. Collecter les informations nécessaires
+
+**Créer une issue avec :**
+```markdown
+## Description
+Description claire du problème
+
+## Steps to Reproduce
+1. Étape 1
+2. Étape 2
+3. Résultat observé
+
+## Expected Behavior
+Résultat attendu
+
+## Environment
+- OS: Ubuntu 20.04
+- Docker: 20.10.21
+- CSWeb Version: 2.0.0
+
+## Logs
+```
+Logs pertinents
+```
+```
+
+### ✨ Proposer une Fonctionnalité
+
+**Créer une issue "Feature Request" avec :**
+- 📝 Description de la fonctionnalité
+- 🎯 Problème résolu / Use case
+- 💡 Solution proposée
+- 🔄 Alternatives considérées
+
+### 📝 Améliorer la Documentation
+
+**Contributions bienvenues :**
+- Corriger typos/erreurs
+- Ajouter exemples
+- Traduire pages (EN, ES, PT)
+- Créer tutoriels vidéo
+
+### 🧪 Écrire des Tests
+
+- Tests unitaires (PHPUnit)
+- Tests d'intégration
+- Tests E2E
+- Tests de performance
+
+### 🎨 Améliorer le Code
+
+- Refactoring
+- Optimisations performance
+- Corrections sécurité
+- Nouvelles fonctionnalités
+
+## Processus de Contribution
+
+### 1. Fork & Clone
+
+```bash
+# Fork sur GitHub
+# Puis clone
+git clone https://github.com/VOTRE_USERNAME/pg_csweb8_latest_2026.git
+cd pg_csweb8_latest_2026
+
+# Ajouter upstream
+git remote add upstream https://github.com/BOUNADRAME/pg_csweb8_latest_2026.git
+```
+
+### 2. Créer une Branche
+
+```bash
+# Sync avec upstream
+git checkout master
+git pull upstream master
+
+# Créer branche
+git checkout -b feature/ma-fonctionnalite
+# ou
+git checkout -b fix/mon-bug
+```
+
+**Convention nommage branches :**
+- `feature/` : Nouvelles fonctionnalités
+- `fix/` : Corrections bugs
+- `docs/` : Documentation
+- `refactor/` : Refactoring
+- `test/` : Tests
+
+### 3. Développer
+
+**Guidelines :**
+
+- ✅ Suivre les conventions de code (PSR-12 pour PHP)
+- ✅ Écrire tests pour nouveau code
+- ✅ Commenter code complexe
+- ✅ Mettre à jour documentation
+- ✅ Commits atomiques et descriptifs
+
+**Convention commits :**
+```bash
+# Format
+<type>(<scope>): <description>
+
+# Exemples
+feat(breakout): Add parallel processing with threads
+fix(oauth): Correct token refresh timing
+docs(readme): Update installation instructions
+refactor(api): Simplify error handling
+test(cli): Add tests for process-cases command
+```
+
+**Types de commits :**
+- `feat` : Nouvelle fonctionnalité
+- `fix` : Correction bug
+- `docs` : Documentation
+- `style` : Formatage code
+- `refactor` : Refactoring
+- `test` : Tests
+- `chore` : Maintenance
+
+### 4. Tester
+
+```bash
+# Tests unitaires PHP
+docker-compose exec csweb vendor/bin/phpunit
+
+# Tests d'intégration
+docker-compose exec csweb php bin/console test:integration
+
+# Vérifier code style
+docker-compose exec csweb vendor/bin/php-cs-fixer fix --dry-run
+
+# Analyser code (PHPStan)
+docker-compose exec csweb vendor/bin/phpstan analyse
+```
+
+### 5. Push & Pull Request
+
+```bash
+# Commit changements
+git add .
+git commit -m "feat(breakout): Add parallel processing"
+
+# Push vers votre fork
+git push origin feature/ma-fonctionnalite
+```
+
+**Créer Pull Request sur GitHub :**
+
+1. Aller sur votre fork
+2. Cliquer "Compare & pull request"
+3. Remplir template PR :
+
+```markdown
+## Description
+Description claire des changements
+
+## Type de Changement
+- [ ] Bug fix
+- [ ] Nouvelle fonctionnalité
+- [ ] Breaking change
+- [ ] Documentation
+
+## Tests
+- [ ] Tests unitaires ajoutés
+- [ ] Tests d'intégration ajoutés
+- [ ] Tests manuels effectués
+
+## Checklist
+- [ ] Code suit les conventions
+- [ ] Documentation mise à jour
+- [ ] Aucun warning PHPStan
+- [ ] Tests passent
+```
+
+4. Soumettre PR
+
+### 6. Review & Merge
+
+**Processus review :**
+1. Automated checks (CI/CD)
+2. Code review par mainteneur
+3. Modifications si nécessaire
+4. Approbation
+5. Merge vers master
+
+## Guidelines Techniques
+
+### Code PHP
+
+**PSR-12 Compliance :**
+```php
+<?php
+
+namespace App\Service;
+
+use App\Entity\Dictionary;
+
+class BreakoutService
+{
+    private DatabaseService $database;
+
+    public function __construct(DatabaseService $database)
+    {
+        $this->database = $database;
+    }
+
+    /**
+     * Process cases for specific dictionary
+     */
+    public function processCases(Dictionary $dictionary, int $threads = 1): void
+    {
+        // Implementation
+    }
+}
+```
+
+### Documentation MDX
+
+**Structure :**
+```mdx
+# Page Title
+
+import { Callout } from 'nextra/components'
+
+Brief introduction.
+
+<Callout type="info">
+Important note
+</Callout>
+
+## Section 1
+
+Content...
+
+## Section 2
+
+Content...
+
+---
+
+**Footer**
+```
+
+### Tests PHPUnit
+
+**Exemple :**
+```php
+<?php
+
+namespace App\Tests\Service;
+
+use PHPUnit\Framework\TestCase;
+use App\Service\BreakoutService;
+
+class BreakoutServiceTest extends TestCase
+{
+    public function testProcessCases(): void
+    {
+        $service = new BreakoutService();
+        $result = $service->processCases($dictionary);
+
+        $this->assertTrue($result->isSuccess());
+    }
+}
+```
+
+## Ressources
+
+### Documentation
+
+- 📖 **[Documentation Nextra](/)** : Docs complètes
+- 📄 **[CONTRIBUTING.md](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/blob/master/CONTRIBUTING.md)** : Guide complet
+
+### Outils
+
+- **PHP CS Fixer** : Formatage code automatique
+- **PHPStan** : Analyse statique
+- **PHPUnit** : Tests unitaires
+- **Docker** : Environnement développement
+
+### Communication
+
+- 💬 **Discord** : Lien dans README
+- 🐛 **GitHub Issues** : Questions techniques
+- 📧 **Email** : Voir profil GitHub
+
+## Contributeurs
+
+Voir la liste complète des contributeurs :
+
+👥 **[Contributeurs](/reference/resources/contributors)**
+
+## Licence
+
+En contribuant, vous acceptez que vos contributions soient sous licence MIT.
+
+---
+
+**CSWeb Community Platform - Contributing Guide**
+Mainteneur : Bouna DRAME | [Portfolio](https://bounadrame.github.io)
