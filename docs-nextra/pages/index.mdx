@@ -101,15 +101,47 @@ Deux modes de déploiement adaptés à vos besoins :
 
 ### Breakout Sélectif
 
-Lancez le breakout pour un dictionnaire spécifique au lieu de tous :
+<div className="border-l-4 border-green-500 bg-green-50 dark:bg-green-950 p-6 my-6 rounded-r-lg">
+  <h4 className="text-lg font-bold mb-3 text-green-900 dark:text-green-100">
+    🌟 Innovation par Assietou DIAGNE (ANSD, Sénégal)
+  </h4>
 
-```bash
-# Via CLI
-php bin/console csweb:process-cases-by-dict VOTRE_DICTIONNAIRE
+  <p className="mb-4 text-green-900 dark:text-green-100">
+    Le <strong>breakout sélectif par dictionnaire</strong> révolutionne l'utilisation de CSWeb en permettant de cibler un dictionnaire spécifique au lieu de tout breaker.
+  </p>
 
-# Via API
-curl -X POST http://localhost:8080/api/breakout/VOTRE_DICTIONNAIRE/trigger
-```
+  <div className="grid md:grid-cols-2 gap-4 mb-4">
+    <div className="bg-red-50 dark:bg-red-950/50 p-4 rounded border border-red-200 dark:border-red-800">
+      <h5 className="font-bold mb-2 text-red-700 dark:text-red-400">❌ Avant (CSWeb vanilla)</h5>
+      <ul className="text-sm space-y-1 text-red-900 dark:text-red-200">
+        <li>• Breakout global de TOUS les dictionnaires</li>
+        <li>• Lent (heures pour 100k cases)</li>
+        <li>• Impossible de cibler</li>
+      </ul>
+    </div>
+    <div className="bg-green-50 dark:bg-green-950/50 p-4 rounded border border-green-200 dark:border-green-800">
+      <h5 className="font-bold mb-2 text-green-700 dark:text-green-400">✅ Après (v2.0)</h5>
+      <ul className="text-sm space-y-1 text-green-900 dark:text-green-200">
+        <li>• Breakout sélectif d'un dictionnaire</li>
+        <li>• Rapide (minutes pour 100k cases)</li>
+        <li>• Commande dédiée par dict</li>
+      </ul>
+    </div>
+  </div>
+
+  <div className="bg-white dark:bg-gray-900 p-3 rounded-lg border border-green-300 dark:border-green-700 mb-4 font-mono text-sm">
+    php bin/console csweb:process-cases-by-dict EVAL_PRODUCTEURS
+  </div>
+
+  <div className="flex gap-3">
+    <a href="/guides/breakout/selective" className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded text-sm">
+      📖 Guide Complet
+    </a>
+    <a href="/reference/resources/contributors#assietou-diagne" className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm">
+      👤 Contact Assietou
+    </a>
+  </div>
+</div>
 
 [Guide complet du breakout sélectif →](/guides/breakout/selective)
 
