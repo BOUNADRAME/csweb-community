@@ -1,0 +1,263 @@
+# Vue d'Ensemble CLI
+
+Guide des commandes en ligne de commande (CLI) de CSWeb Community Platform.
+
+## Introduction
+
+CSWeb Community Platform fournit des **commandes CLI Symfony** pour gérer le breakout, vérifier la configuration, et administrer la plateforme.
+
+## Accès au CLI
+
+### Via Docker (Recommandé)
+
+```bash
+# Accéder au container
+docker-compose exec csweb bash
+
+# Exécuter commande
+php bin/console <command>
+
+# Ou directement
+docker-compose exec csweb php bin/console <command>
+```
+
+### Installation Manuelle
+
+```bash
+# Depuis le dossier du projet
+cd /var/www/html
+php bin/console <command>
+```
+
+## Liste des Commandes
+
+### Commandes Principales
+
+| Commande | Description | Page |
+|----------|-------------|------|
+| `csweb:process-cases-by-dict` | Breakout sélectif par dictionnaire | [→ Documentation](/reference/cli/process-cases) |
+| `csweb:check-database-drivers` | Vérifier drivers disponibles | [→ Documentation](/reference/cli/check-drivers) |
+
+### Commandes Symfony Natives
+
+| Commande | Description |
+|----------|-------------|
+| `cache:clear` | Vider le cache Symfony |
+| `debug:router` | Afficher toutes les routes |
+| `doctrine:migrations:migrate` | Exécuter migrations DB |
+| `list` | Lister toutes les commandes disponibles |
+
+## Aide Contextuelle
+
+### Obtenir l'Aide d'une Commande
+
+```bash
+# Format général
+php bin/console <command> --help
+
+# Exemple
+php bin/console csweb:process-cases-by-dict --help
+```
+
+**Output exemple :**
+```
+Description:
+  Process cases by dictionary (selective breakout)
+
+Usage:
+  csweb:process-cases-by-dict dictionnaires=<DICT1>[,<DICT2>] [options]
+
+Arguments:
+  dictionnaires         Comma-separated list of dictionaries to process
+
+Options:
+  --threads=THREADS     Number of parallel threads (default: 1)
+  --overwrite          Overwrite existing tables
+  -v|vv|vvv            Increase verbosity
+```
+
+## Verbosity Levels
+
+Toutes les commandes supportent les niveaux de verbosité :
+
+| Flag | Niveau | Output |
+|------|--------|--------|
+| *(none)* | NORMAL | Messages INFO uniquement |
+| `-v` | VERBOSE | + Messages NOTICE |
+| `-vv` | VERY_VERBOSE | + Messages DEBUG |
+| `-vvv` | DEBUG | Tous messages + SQL queries |
+
+**Exemple :**
+```bash
+# Mode debug complet
+docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+  dictionnaires=EVAL_DICT \
+  -vvv
+```
+
+## Variables d'Environnement
+
+Les commandes CLI utilisent les variables du fichier `.env` :
+
+```bash
+# Database
+BREAKOUT_DB_TYPE=postgresql
+POSTGRES_HOST=postgres
+POSTGRES_DATABASE=csweb_analytics
+
+# Logging
+CSWEB_PROCESS_CASES_LOG_LEVEL=debug
+```
+
+## Exemples Courants
+
+### 1. Vérifier Configuration
+
+```bash
+# Vérifier drivers disponibles
+docker-compose exec csweb php bin/console csweb:check-database-drivers
+
+# Tester connexions aux DB
+docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+```
+
+### 2. Breakout Sélectif
+
+```bash
+# Breakout simple
+docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+  dictionnaires=EVAL_DICT
+
+# Breakout multiple avec threads
+docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+  dictionnaires=EVAL_DICT,KAIROS_DICT \
+  --threads=5
+```
+
+### 3. Vider Cache
+
+```bash
+# Vider cache Symfony
+docker-compose exec csweb php bin/console cache:clear
+
+# Vider cache en environnement prod
+docker-compose exec csweb php bin/console cache:clear --env=prod
+```
+
+### 4. Lister Toutes les Commandes
+
+```bash
+# Lister commandes CSWeb
+docker-compose exec csweb php bin/console list csweb
+
+# Lister toutes les commandes disponibles
+docker-compose exec csweb php bin/console list
+```
+
+## Logs
+
+### Logs des Commandes
+
+Les commandes écrivent dans les logs Symfony :
+
+```bash
+# Voir logs en temps réel
+docker-compose exec csweb tail -f var/logs/dev.log
+
+# Filtrer par commande
+docker-compose exec csweb grep "process-cases" var/logs/dev.log
+```
+
+### Niveaux de Log
+
+Configurable dans `.env` :
+
+```bash
+# Global
+CSWEB_LOG_LEVEL=debug
+
+# Spécifique process-cases
+CSWEB_PROCESS_CASES_LOG_LEVEL=error
+```
+
+## Automatisation
+
+### Cron Jobs
+
+```bash
+# Breakout automatique tous les jours à 2h00
+crontab -e
+
+# Ajouter:
+0 2 * * * docker-compose exec -T csweb php bin/console csweb:process-cases-by-dict dictionnaires=EVAL_DICT >> /var/log/csweb_cron.log 2>&1
+```
+
+### Scripts Bash
+
+```bash
+#!/bin/bash
+# breakout_all.sh - Breakout tous les dictionnaires
+
+DICTS=("EVAL_DICT" "KAIROS_DICT" "CENSUS_DICT")
+
+for DICT in "${DICTS[@]}"; do
+  echo "Processing $DICT..."
+  docker-compose exec -T csweb php bin/console csweb:process-cases-by-dict \
+    dictionnaires=$DICT \
+    --threads=3 \
+    -vvv
+done
+
+echo "All dictionaries processed!"
+```
+
+## Troubleshooting
+
+### Commande Non Trouvée
+
+**Symptôme :**
+```
+Command "csweb:process-cases-by-dict" is not defined.
+```
+
+**Solutions :**
+1. Vérifier que vous êtes dans le bon container
+2. Vider le cache : `php bin/console cache:clear`
+3. Dump autoload : `composer dump-autoload`
+
+### Timeout
+
+**Symptôme :**
+```
+Maximum execution time exceeded
+```
+
+**Solution :**
+```bash
+# Augmenter timeout PHP
+docker-compose exec csweb php -d max_execution_time=0 bin/console <command>
+```
+
+### Permission Denied
+
+**Symptôme :**
+```
+Permission denied: /var/www/html/var/logs
+```
+
+**Solution :**
+```bash
+# Corriger permissions
+docker-compose exec csweb chown -R www-data:www-data /var/www/html/var
+```
+
+## Ressources
+
+- **process-cases-by-dict** : [CLI - process-cases](/reference/cli/process-cases)
+- **check-database-drivers** : [CLI - check-drivers](/reference/cli/check-drivers)
+- **Toutes les commandes** : [CLI - Commands](/reference/cli/commands)
+- **Breakout Guide** : [Guides - Breakout Sélectif](/guides/breakout/selective)
+
+---
+
+**CSWeb Community Platform v2.0 - CLI Overview**

@@ -1,0 +1,363 @@
+# Toutes les Commandes
+
+Liste complète de toutes les commandes CLI disponibles dans CSWeb Community Platform.
+
+## Commandes CSWeb
+
+### csweb:process-cases-by-dict
+
+Breakout sélectif par dictionnaire.
+
+**Syntax :**
+```bash
+php bin/console csweb:process-cases-by-dict dictionnaires=<DICT> [options]
+```
+
+**Documentation :** [→ process-cases-by-dict](/reference/cli/process-cases)
+
+**Exemple :**
+```bash
+docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+  dictionnaires=EVAL_DICT,KAIROS_DICT \
+  --threads=5 \
+  --overwrite
+```
+
+---
+
+### csweb:check-database-drivers
+
+Vérifier drivers de base de données disponibles.
+
+**Syntax :**
+```bash
+php bin/console csweb:check-database-drivers [--test-connections]
+```
+
+**Documentation :** [→ check-database-drivers](/reference/cli/check-drivers)
+
+**Exemple :**
+```bash
+docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+```
+
+---
+
+## Commandes Symfony (Natives)
+
+### cache:clear
+
+Vider le cache Symfony.
+
+**Syntax :**
+```bash
+php bin/console cache:clear [--env=ENV]
+```
+
+**Exemples :**
+```bash
+# Vider cache dev
+docker-compose exec csweb php bin/console cache:clear
+
+# Vider cache prod
+docker-compose exec csweb php bin/console cache:clear --env=prod
+```
+
+---
+
+### cache:warmup
+
+Préchauffer le cache.
+
+**Syntax :**
+```bash
+php bin/console cache:warmup [--env=ENV]
+```
+
+**Exemple :**
+```bash
+docker-compose exec csweb php bin/console cache:warmup --env=prod
+```
+
+---
+
+### debug:router
+
+Afficher toutes les routes de l'application.
+
+**Syntax :**
+```bash
+php bin/console debug:router [ROUTE_NAME]
+```
+
+**Exemples :**
+```bash
+# Lister toutes les routes
+docker-compose exec csweb php bin/console debug:router
+
+# Rechercher routes API
+docker-compose exec csweb php bin/console debug:router | grep api
+
+# Détails d'une route
+docker-compose exec csweb php bin/console debug:router api_breakout_start
+```
+
+---
+
+### debug:container
+
+Afficher services du container Symfony.
+
+**Syntax :**
+```bash
+php bin/console debug:container [SERVICE_NAME]
+```
+
+**Exemples :**
+```bash
+# Lister tous les services
+docker-compose exec csweb php bin/console debug:container
+
+# Rechercher service
+docker-compose exec csweb php bin/console debug:container | grep csweb
+```
+
+---
+
+### doctrine:migrations:migrate
+
+Exécuter migrations de base de données.
+
+**Syntax :**
+```bash
+php bin/console doctrine:migrations:migrate [VERSION]
+```
+
+**Exemples :**
+```bash
+# Migrer à la dernière version
+docker-compose exec csweb php bin/console doctrine:migrations:migrate
+
+# Migrer sans confirmation
+docker-compose exec csweb php bin/console doctrine:migrations:migrate --no-interaction
+```
+
+---
+
+### doctrine:migrations:status
+
+Voir statut des migrations.
+
+**Syntax :**
+```bash
+php bin/console doctrine:migrations:status
+```
+
+**Exemple :**
+```bash
+docker-compose exec csweb php bin/console doctrine:migrations:status
+```
+
+---
+
+### list
+
+Lister toutes les commandes disponibles.
+
+**Syntax :**
+```bash
+php bin/console list [NAMESPACE]
+```
+
+**Exemples :**
+```bash
+# Toutes les commandes
+docker-compose exec csweb php bin/console list
+
+# Commandes CSWeb uniquement
+docker-compose exec csweb php bin/console list csweb
+
+# Commandes cache
+docker-compose exec csweb php bin/console list cache
+```
+
+---
+
+### help
+
+Obtenir l'aide d'une commande.
+
+**Syntax :**
+```bash
+php bin/console help <COMMAND>
+```
+
+**Exemple :**
+```bash
+docker-compose exec csweb php bin/console help csweb:process-cases-by-dict
+```
+
+---
+
+## Commandes Utiles par Contexte
+
+### Installation & Setup
+
+```bash
+# Vérifier drivers installés
+php bin/console csweb:check-database-drivers
+
+# Vérifier connexions DB
+php bin/console csweb:check-database-drivers --test-connections
+
+# Exécuter migrations
+php bin/console doctrine:migrations:migrate --no-interaction
+
+# Vider cache
+php bin/console cache:clear
+```
+
+### Breakout
+
+```bash
+# Breakout simple
+php bin/console csweb:process-cases-by-dict dictionnaires=EVAL_DICT
+
+# Breakout multiple avec threads
+php bin/console csweb:process-cases-by-dict \
+  dictionnaires=EVAL_DICT,KAIROS_DICT \
+  --threads=5
+
+# Breakout avec overwrite
+php bin/console csweb:process-cases-by-dict \
+  dictionnaires=EVAL_DICT \
+  --overwrite \
+  -vvv
+```
+
+### Debug & Développement
+
+```bash
+# Routes disponibles
+php bin/console debug:router
+
+# Services disponibles
+php bin/console debug:container
+
+# Configuration
+php bin/console debug:config
+
+# Événements
+php bin/console debug:event-dispatcher
+
+# Vider cache
+php bin/console cache:clear
+```
+
+### Maintenance
+
+```bash
+# Statut migrations
+php bin/console doctrine:migrations:status
+
+# Vérifier schema DB
+php bin/console doctrine:schema:validate
+
+# Optimiser autoload (prod)
+composer dump-autoload --optimize --classmap-authoritative
+
+# Warmup cache (prod)
+php bin/console cache:warmup --env=prod
+```
+
+## Flags Communs
+
+### Verbosity
+
+| Flag | Output |
+|------|--------|
+| *(none)* | Normal |
+| `-v` | Verbose |
+| `-vv` | Very Verbose |
+| `-vvv` | Debug |
+
+### Environment
+
+```bash
+--env=dev   # Développement (défaut)
+--env=prod  # Production
+--env=test  # Tests
+```
+
+### Autres
+
+```bash
+--no-interaction  # Pas de questions interactives
+--help           # Afficher aide
+--version        # Version Symfony
+```
+
+## Créer des Commandes Custom
+
+### Structure de Base
+
+```php
+<?php
+// src/Command/MyCustomCommand.php
+
+namespace App\Command;
+
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+
+class MyCustomCommand extends Command
+{
+    protected static $defaultName = 'csweb:my-command';
+
+    protected function configure()
+    {
+        $this
+            ->setDescription('Description de ma commande')
+            ->setHelp('Aide détaillée...');
+    }
+
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        $output->writeln('Hello from my command!');
+
+        return Command::SUCCESS;
+    }
+}
+```
+
+### Utilisation
+
+```bash
+docker-compose exec csweb php bin/console csweb:my-command
+```
+
+## Raccourcis Docker
+
+Créer un alias pour simplifier l'utilisation :
+
+```bash
+# Ajouter dans ~/.bashrc ou ~/.zshrc
+alias csweb='docker-compose exec csweb php bin/console'
+
+# Utilisation
+csweb csweb:check-database-drivers
+csweb csweb:process-cases-by-dict dictionnaires=EVAL_DICT
+csweb cache:clear
+```
+
+## Ressources
+
+- **CLI Overview** : [CLI - Vue d'Ensemble](/reference/cli/overview)
+- **process-cases** : [CLI - process-cases-by-dict](/reference/cli/process-cases)
+- **check-drivers** : [CLI - check-database-drivers](/reference/cli/check-drivers)
+- **Symfony Console** : [Symfony Documentation](https://symfony.com/doc/current/console.html)
+
+---
+
+**CSWeb Community Platform v2.0 - All CLI Commands**

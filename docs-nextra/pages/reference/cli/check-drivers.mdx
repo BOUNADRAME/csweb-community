@@ -1,0 +1,318 @@
+# check-database-drivers
+
+Commande CLI pour vérifier les drivers de base de données disponibles.
+
+## Description
+
+La commande `csweb:check-database-drivers` vérifie quels drivers PDO sont installés et disponibles pour CSWeb Community Platform.
+
+## Syntax
+
+```bash
+docker-compose exec csweb php bin/console csweb:check-database-drivers [--test-connections]
+```
+
+## Options
+
+### --test-connections
+
+Tester les connexions aux bases de données configurées.
+
+**Sans option :**
+```bash
+php bin/console csweb:check-database-drivers
+```
+
+**Avec test de connexion :**
+```bash
+php bin/console csweb:check-database-drivers --test-connections
+```
+
+## Output
+
+### Sans --test-connections
+
+```
+Checking available database drivers...
+
+✅ pdo_mysql    : Available
+✅ pdo_pgsql    : Available
+✅ pdo_sqlsrv   : Available
+
+All required drivers are installed.
+```
+
+### Avec --test-connections
+
+```
+Checking available database drivers...
+
+✅ pdo_mysql    : Available
+✅ pdo_pgsql    : Available
+✅ pdo_sqlsrv   : Available
+
+Testing database connections...
+
+✅ MySQL Metadata    : Connected to mysql:3306/csweb_metadata
+✅ PostgreSQL Breakout : Connected to postgres:5432/csweb_analytics
+
+All connections successful!
+```
+
+### Si Driver Manquant
+
+```
+Checking available database drivers...
+
+✅ pdo_mysql    : Available
+❌ pdo_pgsql    : NOT FOUND
+✅ pdo_sqlsrv   : Available
+
+⚠️  WARNING: pdo_pgsql driver is not installed.
+   PostgreSQL breakout will not work.
+
+   To install:
+   docker-compose exec csweb apt-get install php8.1-pgsql
+   docker-compose restart csweb
+```
+
+### Si Connexion Échoue
+
+```
+Testing database connections...
+
+✅ MySQL Metadata    : Connected to mysql:3306/csweb_metadata
+❌ PostgreSQL Breakout : Connection FAILED
+   Error: SQLSTATE[08006] Connection refused
+   Host: postgres, Port: 5432
+
+   Solutions:
+   1. Verify PostgreSQL container is running: docker-compose ps
+   2. Check POSTGRES_HOST in .env
+   3. Verify credentials in .env
+```
+
+## Use Cases
+
+### 1. Vérification Post-Installation
+
+Après installation de CSWeb Community Platform :
+
+```bash
+docker-compose exec csweb php bin/console csweb:check-database-drivers
+```
+
+**Attendu :** Les 3 drivers (mysql, pgsql, sqlsrv) doivent être disponibles.
+
+### 2. Debug Problème de Connexion
+
+Si breakout échoue avec erreur driver :
+
+```bash
+docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+```
+
+**Cela teste :**
+- Drivers installés
+- Connexion MySQL metadata
+- Connexion DB breakout (selon `BREAKOUT_DB_TYPE`)
+
+### 3. Changement de SGBD
+
+Après changement de `BREAKOUT_DB_TYPE` dans `.env` :
+
+```bash
+# Modifier .env
+# BREAKOUT_DB_TYPE=postgresql → mysql
+
+# Redémarrer
+docker-compose restart csweb
+
+# Vérifier
+docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+```
+
+### 4. Installation Driver Manquant
+
+Si driver manquant détecté :
+
+```bash
+# Accéder au container
+docker-compose exec csweb bash
+
+# Installer driver manquant
+apt-get update
+apt-get install -y php8.1-pgsql  # PostgreSQL
+apt-get install -y php8.1-mysql  # MySQL
+
+# Exit container
+exit
+
+# Redémarrer
+docker-compose restart csweb
+
+# Re-vérifier
+docker-compose exec csweb php bin/console csweb:check-database-drivers
+```
+
+## Drivers Supportés
+
+### pdo_mysql
+
+**Pour :**
+- MySQL metadata (obligatoire)
+- MySQL breakout (optionnel)
+
+**Installation :**
+```bash
+apt-get install php8.1-mysql
+```
+
+### pdo_pgsql
+
+**Pour :**
+- PostgreSQL breakout (optionnel)
+
+**Installation :**
+```bash
+apt-get install php8.1-pgsql
+```
+
+### pdo_sqlsrv
+
+**Pour :**
+- SQL Server breakout (optionnel)
+
+**Installation (Linux) :**
+```bash
+# Microsoft ODBC Driver
+curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+curl https://packages.microsoft.com/config/ubuntu/20.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
+apt-get update
+ACCEPT_EULA=Y apt-get install -y msodbcsql18
+
+# Extension PHP
+pecl install sqlsrv pdo_sqlsrv
+echo "extension=pdo_sqlsrv.so" > /etc/php/8.1/cli/conf.d/30-pdo_sqlsrv.ini
+```
+
+## Variables d'Environnement Utilisées
+
+La commande lit les variables suivantes depuis `.env` :
+
+```bash
+# Type de DB pour breakout
+BREAKOUT_DB_TYPE=postgresql
+
+# MySQL Metadata
+MYSQL_HOST=mysql
+MYSQL_PORT=3306
+MYSQL_DATABASE=csweb_metadata
+MYSQL_USER=csweb_user
+MYSQL_PASSWORD=***
+
+# PostgreSQL Breakout
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=csweb_analytics
+POSTGRES_USER=csweb_analytics
+POSTGRES_PASSWORD=***
+
+# MySQL Breakout (si BREAKOUT_DB_TYPE=mysql)
+MYSQL_BREAKOUT_HOST=mysql-breakout
+MYSQL_BREAKOUT_PORT=3307
+MYSQL_BREAKOUT_DATABASE=csweb_breakout
+
+# SQL Server Breakout (si BREAKOUT_DB_TYPE=sqlserver)
+SQLSERVER_HOST=sqlserver
+SQLSERVER_PORT=1433
+SQLSERVER_DATABASE=CSWeb_Analytics
+```
+
+## Code Source
+
+La commande se trouve dans :
+```
+src/Command/CheckDatabaseDriversCommand.php
+```
+
+## Troubleshooting
+
+### Tous les Drivers Manquants
+
+**Symptôme :**
+```
+❌ pdo_mysql    : NOT FOUND
+❌ pdo_pgsql    : NOT FOUND
+❌ pdo_sqlsrv   : NOT FOUND
+```
+
+**Cause :** Extensions PHP pas installées.
+
+**Solution :**
+```bash
+# Rebuild container avec Dockerfile correct
+docker-compose build --no-cache csweb
+docker-compose up -d
+```
+
+### Driver Installé mais Non Détecté
+
+**Symptôme :**
+```
+❌ pdo_pgsql    : NOT FOUND
+```
+
+**Mais extension installée :**
+```bash
+php -m | grep pdo_pgsql
+# pdo_pgsql
+```
+
+**Cause :** Extension installée pour PHP CLI mais pas PHP-FPM.
+
+**Solution :**
+```bash
+# Copier config CLI vers FPM
+cp /etc/php/8.1/cli/conf.d/20-pdo_pgsql.ini /etc/php/8.1/fpm/conf.d/
+
+# Redémarrer PHP-FPM
+service php8.1-fpm restart
+```
+
+### Test Connexion Échoue (Driver OK)
+
+**Symptôme :**
+```
+✅ pdo_pgsql    : Available
+❌ PostgreSQL Breakout : Connection FAILED
+```
+
+**Causes possibles :**
+1. Container DB pas démarré : `docker-compose ps`
+2. Mauvaises credentials dans `.env`
+3. Firewall bloque (mode remote)
+4. Mauvais host (typo dans `.env`)
+
+**Debug :**
+```bash
+# Vérifier containers
+docker-compose ps
+
+# Vérifier variables .env
+docker-compose exec csweb env | grep POSTGRES
+
+# Tester connexion manuelle
+docker-compose exec postgres psql -U csweb_analytics -d csweb_analytics
+```
+
+## Ressources
+
+- **Environment Variables** : [Config - Environment](/reference/config/environment)
+- **Multi-DB Guide** : [Database - Multi-DB](/guides/database/multi-db)
+- **Troubleshooting** : [Common Issues](/reference/troubleshooting/common-issues)
+- **All CLI Commands** : [CLI - Commands](/reference/cli/commands)
+
+---
+
+**CSWeb Community Platform v2.0 - check-database-drivers Command**

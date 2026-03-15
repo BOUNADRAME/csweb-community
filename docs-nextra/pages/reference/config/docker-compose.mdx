@@ -1,0 +1,495 @@
+# Docker Compose
+
+Guide de configuration du fichier `docker-compose.yml`.
+
+## Vue d'Ensemble
+
+Le fichier `docker-compose.yml` définit tous les services de CSWeb Community Platform :
+
+- **csweb** : Application PHP + Apache
+- **mysql** : Base de données metadata (fixe)
+- **postgres** : Base de données breakout PostgreSQL (optionnel)
+- **mysql-breakout** : Base de données breakout MySQL (optionnel)
+- **sqlserver** : Base de données breakout SQL Server (optionnel)
+- **phpmyadmin** : Interface web MySQL (dev)
+- **pgadmin** : Interface web PostgreSQL (dev)
+
+## Structure Complète
+
+```yaml
+version: '3.8'
+
+services:
+  # Application CSWeb
+  csweb:
+    build: .
+    container_name: csweb
+    ports:
+      - "${CSWEB_PORT:-8080}:80"
+    volumes:
+      - ./:/var/www/html
+      - csweb_files:/var/www/html/files
+      - csweb_logs:/var/www/html/var/logs
+    environment:
+      - APP_ENV=${APP_ENV:-prod}
+      - BREAKOUT_DB_TYPE=${BREAKOUT_DB_TYPE:-postgresql}
+      - MYSQL_HOST=${MYSQL_HOST:-mysql}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    depends_on:
+      - mysql
+    networks:
+      - csweb-network
+
+  # MySQL Metadata (TOUJOURS actif)
+  mysql:
+    image: mysql:8.0
+    container_name: csweb-mysql
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-csweb_metadata}
+      - MYSQL_USER=${MYSQL_USER:-csweb_user}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - csweb-network
+
+  # PostgreSQL Breakout (profil local-postgres)
+  postgres:
+    image: postgres:16
+    container_name: csweb-postgres
+    profiles: ["local-postgres"]
+    environment:
+      - POSTGRES_DB=${POSTGRES_DATABASE:-csweb_analytics}
+      - POSTGRES_USER=${POSTGRES_USER:-csweb_analytics}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - csweb-network
+
+  # MySQL Breakout (profil local-mysql)
+  mysql-breakout:
+    image: mysql:8.0
+    container_name: csweb-mysql-breakout
+    profiles: ["local-mysql"]
+    environment:
+      - MYSQL_DATABASE=${MYSQL_BREAKOUT_DATABASE:-csweb_breakout}
+      - MYSQL_USER=${MYSQL_BREAKOUT_USER:-breakout_user}
+      - MYSQL_PASSWORD=${MYSQL_BREAKOUT_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "${MYSQL_BREAKOUT_PORT:-3307}:3306"
+    volumes:
+      - mysql_breakout_data:/var/lib/mysql
+    networks:
+      - csweb-network
+
+  # SQL Server Breakout (profil local-sqlserver)
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: csweb-sqlserver
+    profiles: ["local-sqlserver"]
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=${SQLSERVER_PASSWORD}
+      - MSSQL_PID=Express
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - csweb-network
+
+  # phpMyAdmin (profil dev)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: csweb-phpmyadmin
+    profiles: ["dev"]
+    ports:
+      - "${PHPMYADMIN_PORT:-8081}:80"
+    environment:
+      - PMA_HOST=mysql
+      - PMA_USER=root
+      - PMA_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    depends_on:
+      - mysql
+    networks:
+      - csweb-network
+
+  # pgAdmin (profil dev)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: csweb-pgadmin
+    profiles: ["dev"]
+    ports:
+      - "${PGADMIN_PORT:-8082}:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@csweb.local}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin123}
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - csweb-network
+
+networks:
+  csweb-network:
+    driver: bridge
+
+volumes:
+  csweb_files:
+  csweb_logs:
+  mysql_data:
+  postgres_data:
+  mysql_breakout_data:
+  sqlserver_data:
+  pgadmin_data:
+```
+
+## Services
+
+### csweb (Application)
+
+```yaml
+csweb:
+  build: .                    # Build depuis Dockerfile
+  container_name: csweb
+  ports:
+    - "${CSWEB_PORT:-8080}:80"  # Port configurable
+  volumes:
+    - ./:/var/www/html        # Code source (hot reload)
+    - csweb_files:/var/www/html/files  # Fichiers persistants
+  environment:
+    - APP_ENV=${APP_ENV}      # Variables d'environnement
+  depends_on:
+    - mysql                   # Attend MySQL au démarrage
+  networks:
+    - csweb-network
+```
+
+**Personnalisation :**
+
+- **Port** : Changer `CSWEB_PORT` dans `.env`
+- **Environnement** : Modifier `APP_ENV` (dev/prod)
+- **Volumes** : Ajouter volumes custom si nécessaire
+
+### mysql (Metadata)
+
+```yaml
+mysql:
+  image: mysql:8.0
+  container_name: csweb-mysql
+  environment:
+    - MYSQL_DATABASE=${MYSQL_DATABASE}
+    - MYSQL_USER=${MYSQL_USER}
+    - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+  volumes:
+    - mysql_data:/var/lib/mysql
+```
+
+**Toujours actif** (pas de profil) car obligatoire pour CSWeb metadata.
+
+### postgres (Breakout PostgreSQL)
+
+```yaml
+postgres:
+  image: postgres:16
+  profiles: ["local-postgres"]  # Activé si BREAKOUT_DB_TYPE=postgresql
+  environment:
+    - POSTGRES_DB=${POSTGRES_DATABASE}
+    - POSTGRES_USER=${POSTGRES_USER}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+```
+
+**Activation :**
+```bash
+docker-compose --profile local-postgres up -d
+```
+
+## Profils
+
+Les **profils** permettent d'activer seulement les services nécessaires.
+
+### Profils Breakout
+
+| Profil | Service Activé | BREAKOUT_DB_TYPE |
+|--------|----------------|------------------|
+| `local-postgres` | `postgres` | `postgresql` |
+| `local-mysql` | `mysql-breakout` | `mysql` |
+| `local-sqlserver` | `sqlserver` | `sqlserver` |
+
+**Exemples :**
+
+```bash
+# PostgreSQL
+docker-compose --profile local-postgres up -d
+
+# MySQL
+docker-compose --profile local-mysql up -d
+
+# SQL Server
+docker-compose --profile local-sqlserver up -d
+```
+
+### Profil Dev
+
+Profil `dev` active les outils de développement :
+
+```bash
+# Avec outils dev (phpMyAdmin + pgAdmin)
+docker-compose --profile local-postgres --profile dev up -d
+
+# Sans outils dev (production)
+docker-compose --profile local-postgres up -d
+```
+
+## Volumes
+
+### Volumes Nommés
+
+```yaml
+volumes:
+  csweb_files:        # Fichiers uploadés
+  csweb_logs:         # Logs application
+  mysql_data:         # Données MySQL metadata
+  postgres_data:      # Données PostgreSQL breakout
+  pgadmin_data:       # Config pgAdmin
+```
+
+**Persistance :** Les données survivent aux `docker-compose down`.
+
+**Suppression :**
+```bash
+# ⚠️ Supprime TOUTES les données
+docker-compose down -v
+```
+
+### Bind Mounts
+
+```yaml
+volumes:
+  - ./:/var/www/html  # Code source (hot reload)
+```
+
+**Avantage :** Modifications du code immédiatement visibles.
+
+## Networks
+
+```yaml
+networks:
+  csweb-network:
+    driver: bridge
+```
+
+**Tous les services** communiquent via ce réseau.
+
+**Communication inter-services :**
+```bash
+# Depuis container csweb
+ping postgres      # ✅ Fonctionne (nom du service)
+ping mysql         # ✅ Fonctionne
+ping csweb-postgres # ✅ Fonctionne (nom du container)
+```
+
+## Variables d'Environnement
+
+### Interpolation
+
+```yaml
+ports:
+  - "${CSWEB_PORT:-8080}:80"
+```
+
+- `${CSWEB_PORT}` : Lit depuis `.env`
+- `:-8080` : Valeur par défaut si variable absente
+
+### Variables Disponibles
+
+Toutes les variables du fichier `.env` sont accessibles :
+
+```yaml
+environment:
+  - APP_ENV=${APP_ENV}
+  - BREAKOUT_DB_TYPE=${BREAKOUT_DB_TYPE}
+  - MYSQL_HOST=${MYSQL_HOST}
+```
+
+## Commandes Utiles
+
+### Démarrer Services
+
+```bash
+# Tous les services par défaut
+docker-compose up -d
+
+# Avec profil PostgreSQL
+docker-compose --profile local-postgres up -d
+
+# Avec profil + dev tools
+docker-compose --profile local-postgres --profile dev up -d
+```
+
+### Arrêter Services
+
+```bash
+# Arrêter sans supprimer
+docker-compose stop
+
+# Arrêter et supprimer containers (volumes conservés)
+docker-compose down
+
+# Arrêter et supprimer TOUT (⚠️ perte de données)
+docker-compose down -v
+```
+
+### Voir Logs
+
+```bash
+# Logs de tous les services
+docker-compose logs -f
+
+# Logs d'un service
+docker-compose logs -f csweb
+docker-compose logs -f postgres
+```
+
+### Rebuild
+
+```bash
+# Rebuild image CSWeb
+docker-compose build --no-cache csweb
+
+# Rebuild et redémarrer
+docker-compose up -d --build
+```
+
+### Lister Services
+
+```bash
+# Services actifs
+docker-compose ps
+
+# Tous les services (même arrêtés)
+docker-compose ps -a
+```
+
+## Personnalisation
+
+### Ajouter Service Custom
+
+```yaml
+services:
+  redis:
+    image: redis:7
+    container_name: csweb-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - csweb-network
+```
+
+### Modifier Ports
+
+```bash
+# .env
+CSWEB_PORT=9090
+PHPMYADMIN_PORT=9091
+PGADMIN_PORT=9092
+```
+
+### Ajouter Volume
+
+```yaml
+volumes:
+  - ./backups:/backups  # Dossier backups
+```
+
+## Production
+
+### Optimisations
+
+```yaml
+csweb:
+  # Désactiver bind mount code (utiliser COPY dans Dockerfile)
+  # volumes:
+  #   - ./:/var/www/html  # ❌ Désactiver en prod
+
+  # Limiter ressources
+  deploy:
+    resources:
+      limits:
+        cpus: '2'
+        memory: 4G
+      reservations:
+        cpus: '1'
+        memory: 2G
+
+  # Health check
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost/api/health"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+```
+
+### Désactiver Outils Dev
+
+**NE PAS utiliser** profil `dev` en production :
+
+```bash
+# ❌ Mauvais (expose phpMyAdmin/pgAdmin)
+docker-compose --profile local-postgres --profile dev up -d
+
+# ✅ Bon (production)
+docker-compose --profile local-postgres up -d
+```
+
+## Troubleshooting
+
+### Port Already in Use
+
+**Erreur :**
+```
+Error: port 8080 is already allocated
+```
+
+**Solution :**
+```bash
+# Changer port dans .env
+CSWEB_PORT=9090
+
+# Redémarrer
+docker-compose down
+docker-compose up -d
+```
+
+### Service Not Starting
+
+```bash
+# Voir logs du service
+docker-compose logs csweb
+
+# Tester manuellement
+docker-compose up csweb  # Sans -d pour voir output
+```
+
+### Cannot Connect Between Services
+
+```bash
+# Vérifier réseau
+docker network ls
+docker network inspect pg_csweb8_latest_2026_csweb-network
+
+# Vérifier noms services
+docker-compose ps
+```
+
+## Ressources
+
+- **Environment Variables** : [Config - Environment](/reference/config/environment)
+- **Docker Dev** : [Deployment - Docker Développement](/guides/deployment/docker-dev)
+- **Docker Prod** : [Deployment - Docker Production](/guides/deployment/docker-prod)
+- **Drivers** : [Config - Drivers](/reference/config/drivers)
+
+---
+
+**CSWeb Community Platform v2.0 - Docker Compose Configuration**
