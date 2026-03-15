@@ -22,6 +22,8 @@
 
 **CSWeb Community Platform** transforme CSWeb en une plateforme moderne, facile à déployer et accessible à tous les instituts statistiques africains.
 
+> **Base officielle :** Ce projet est basé sur **CSWeb 8** téléchargé depuis le site officiel [csprousers.org/downloads](https://csprousers.org/downloads/). Toutes nos améliorations (architecture flexible, breakout sélectif, multi-DB) sont construites sur cette base officielle et maintiennent une **compatibilité 100%** avec CSWeb vanilla.
+
 ### Problème résolu
 - ❌ Setup CSWeb : 2-3 jours de configuration manuelle
 - ❌ Breakout global : traite TOUS les dictionnaires (lent, risqué)
