@@ -1,0 +1,1150 @@
+# Problèmes Courants
+
+import { Callout, Tabs } from 'nextra/components'
+
+Cette page référence les **50+ problèmes les plus courants** avec CSWeb Community Platform et leurs solutions.
+
+<Callout type="info">
+**Structure :** Chaque problème inclut :
+- 🔴 **Symptôme** : Message d'erreur ou comportement observé
+- ⚡ **Cause** : Raison du problème
+- ✅ **Solution** : Étapes de résolution
+</Callout>
+
+---
+
+## Installation & Setup
+
+### 1. Port 8080 Déjà Utilisé
+
+**Symptôme :**
+```
+Error starting userland proxy: listen tcp4 0.0.0.0:8080: bind: address already in use
+```
+
+**Cause :** Un autre service (Jenkins, Tomcat, autre app) utilise le port 8080.
+
+**Solutions :**
+
+1. **Identifier le processus :**
+```bash
+# Linux/macOS
+lsof -i :8080
+
+# Ou
+sudo netstat -tulpn | grep 8080
+```
+
+2. **Arrêter le processus conflictuel :**
+```bash
+# Tuer le processus (remplacer PID)
+kill -9 <PID>
+```
+
+3. **Changer port CSWeb :**
+```bash
+# .env
+CSWEB_PORT=9090
+
+# Redémarrer
+docker-compose down
+docker-compose up -d
+```
+
+**Accès nouveau port :**
+```
+http://localhost:9090
+```
+
+---
+
+### 2. Port PostgreSQL 5432 Occupé
+
+**Symptôme :**
+```
+Error: port 5432 is already allocated
+```
+
+**Cause :** PostgreSQL déjà installé en local.
+
+**Solutions :**
+
+1. **Arrêter PostgreSQL local :**
+```bash
+# Linux
+sudo systemctl stop postgresql
+
+# macOS
+brew services stop postgresql
+```
+
+2. **Ou changer port Docker :**
+```bash
+# .env
+POSTGRES_PORT=5433
+
+# docker-compose.yml
+services:
+  postgres:
+    ports:
+      - "5433:5432"  # Host:Container
+
+# Redémarrer
+docker-compose down
+docker-compose --profile local-postgres up -d
+```
+
+---
+
+### 3. setup.php Ne Charge Pas
+
+**Symptôme :**
+```
+http://localhost:8080/setup/
+→ Page blanche ou erreur 500
+```
+
+**Causes possibles :**
+
+1. **Container pas démarré :**
+```bash
+# Vérifier status
+docker-compose ps
+
+# Démarrer si arrêté
+docker-compose up -d
+```
+
+2. **Permissions fichiers :**
+```bash
+# Vérifier permissions
+docker-compose exec csweb ls -la /var/www/html/setup/
+
+# Corriger
+docker-compose exec csweb chown -R www-data:www-data /var/www/html
+```
+
+3. **Erreur PHP :**
+```bash
+# Voir logs
+docker-compose logs csweb
+```
+
+---
+
+### 4. MySQL Connection Refused (Metadata)
+
+**Symptôme :**
+```
+SQLSTATE[HY000] [2002] Connection refused
+```
+
+**Cause :** Container MySQL metadata pas démarré.
+
+**Solutions :**
+
+```bash
+# Vérifier containers actifs
+docker-compose ps
+
+# Démarrer MySQL si manquant
+docker-compose up -d mysql
+
+# Vérifier logs
+docker-compose logs mysql
+
+# Tester connexion
+docker-compose exec mysql mysql -u root -p
+```
+
+---
+
+## Breakout & Process Cases
+
+### 5. Driver pdo_pgsql Not Found
+
+**Symptôme :**
+```
+SQLSTATE[HY000]: Driver not found for pdo_pgsql
+```
+
+**Cause :** Driver PostgreSQL pas installé ou `BREAKOUT_DB_TYPE` incorrect.
+
+**Solutions :**
+
+1. **Vérifier drivers disponibles :**
+```bash
+docker-compose exec csweb php bin/console csweb:check-database-drivers
+```
+
+**Output attendu :**
+```
+✅ pdo_mysql    : Available
+✅ pdo_pgsql    : Available
+✅ pdo_sqlsrv   : Available
+```
+
+2. **Si driver manquant, rebuild image :**
+```bash
+docker-compose down
+docker-compose build --no-cache csweb
+docker-compose up -d
+```
+
+3. **Vérifier `.env` :**
+```bash
+BREAKOUT_DB_TYPE=postgresql  # Doit être exactement "postgresql"
+```
+
+---
+
+### 6. Driver pdo_sqlsrv Not Found
+
+**Symptôme :**
+```
+could not find driver for pdo_sqlsrv
+```
+
+**Cause :** Extension SQL Server pas installée (Linux uniquement).
+
+**Solutions :**
+
+```bash
+# Vérifier installation
+docker-compose exec csweb php -m | grep sqlsrv
+
+# Si absent, installer manuellement
+docker-compose exec csweb bash
+
+# Installer Microsoft ODBC Driver 18
+curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+curl https://packages.microsoft.com/config/ubuntu/20.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
+apt-get update
+ACCEPT_EULA=Y apt-get install -y msodbcsql18
+
+# Installer extension PHP
+pecl install sqlsrv pdo_sqlsrv
+echo "extension=pdo_sqlsrv.so" > /etc/php/8.1/cli/conf.d/30-pdo_sqlsrv.ini
+
+# Redémarrer
+docker-compose restart csweb
+```
+
+---
+
+### 7. Table Already Exists
+
+**Symptôme :**
+```
+SQLSTATE[42P07]: Relation already exists: 7 ERROR:  relation "eval_cases" already exists
+```
+
+**Cause :** Breakout déjà effectué, tables existent.
+
+**Solutions :**
+
+**Option 1 : Utiliser --overwrite**
+```bash
+docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+  dictionnaires=EVAL_DICT \
+  --overwrite
+```
+
+**Option 2 : Supprimer tables manuellement**
+
+<Tabs items={['PostgreSQL', 'MySQL', 'SQL Server']}>
+  <Tabs.Tab>
+```sql
+-- Se connecter
+docker-compose exec postgres psql -U csweb_analytics csweb_analytics
+
+-- Supprimer toutes les tables eval_*
+DROP TABLE IF EXISTS eval_cases CASCADE;
+DROP TABLE IF EXISTS eval_producteurs CASCADE;
+DROP TABLE IF EXISTS eval_observations CASCADE;
+-- etc.
+
+-- Ou supprimer tout le schéma
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+```
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+```sql
+-- Se connecter
+docker-compose exec mysql-breakout mysql -u breakout_user -p csweb_breakout
+
+-- Supprimer tables
+DROP TABLE IF EXISTS eval_cases;
+DROP TABLE IF EXISTS eval_producteurs;
+DROP TABLE IF EXISTS eval_observations;
+
+-- Ou supprimer toute la base
+DROP DATABASE csweb_breakout;
+CREATE DATABASE csweb_breakout;
+```
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+```sql
+-- Se connecter
+docker-compose exec sqlserver /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong!Passw0rd
+
+-- Supprimer tables
+DROP TABLE IF EXISTS eval_cases;
+DROP TABLE IF EXISTS eval_producteurs;
+GO
+```
+  </Tabs.Tab>
+</Tabs>
+
+---
+
+### 8. Dictionary Not Found
+
+**Symptôme :**
+```
+Dictionary "SURVEY_DICT" not found in CSWeb
+```
+
+**Causes :**
+- Nom du dictionnaire mal écrit (case-sensitive)
+- Dictionnaire pas uploadé
+- Dictionnaire supprimé
+
+**Solutions :**
+
+1. **Lister dictionnaires disponibles :**
+```bash
+# Via MySQL metadata
+docker-compose exec mysql mysql -u csweb -p csweb
+
+SELECT name, label FROM cspro_dictionaries;
+```
+
+**Output exemple :**
+```
++------------------+--------+
+| name             | label  |
++------------------+--------+
+| EVAL_DICT        | eval   |
+| KAIROS_DICT      | kairos |
++------------------+--------+
+```
+
+2. **Uploader dictionnaire :**
+- Interface CSWeb → Administration → Dictionaries → Upload
+- Fichier `.dcf` CSPro
+
+3. **Vérifier exactitude nom :**
+```bash
+# Correct (case-sensitive)
+dictionnaires=EVAL_DICT
+
+# Incorrect
+dictionnaires=eval_dict  # ❌ Minuscules
+dictionnaires=EVALDICT   # ❌ Pas d'underscore
+```
+
+---
+
+### 9. Out of Memory (Breakout)
+
+**Symptôme :**
+```
+PHP Fatal error: Allowed memory size of 134217728 bytes exhausted
+```
+
+**Cause :** Breakout de gros dictionnaires (millions de cas).
+
+**Solutions :**
+
+**Option 1 : Augmenter memory limit**
+```bash
+docker-compose exec csweb php -d memory_limit=2G bin/console \
+  csweb:process-cases-by-dict dictionnaires=RGPH5_DICT --threads=10
+```
+
+**Option 2 : Modifier php.ini**
+```bash
+# Éditer php.ini dans container
+docker-compose exec csweb bash
+nano /etc/php/8.1/cli/php.ini
+
+# Changer
+memory_limit = 2G  # ou -1 pour illimité
+
+# Redémarrer
+exit
+docker-compose restart csweb
+```
+
+**Option 3 : Traiter par lots**
+```bash
+# Breakout par dictionnaire (plutôt que tous ensemble)
+docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+  dictionnaires=DICT1  # Un seul à la fois
+```
+
+---
+
+### 10. Wrong Table Name (eval_producteurs vs EVAL_producteurs)
+
+**Symptôme :**
+```
+SQLSTATE[42P01]: Undefined table: 7 ERROR:  relation "EVAL_producteurs" does not exist
+```
+
+**Cause :** PostgreSQL case-sensitive, tables créées en minuscules.
+
+**Solution :**
+
+```sql
+-- ❌ INCORRECT (majuscules)
+SELECT * FROM EVAL_producteurs;
+
+-- ✅ CORRECT (minuscules)
+SELECT * FROM eval_producteurs;
+```
+
+**Convention CSWeb Community :**
+- Tables toujours en **minuscules** : `eval_cases`, `kairos_producteurs`
+- Pattern : `{label}_{table_name}` où label = lowercase
+
+---
+
+## Base de Données
+
+### 11. PostgreSQL Connection Refused (Remote)
+
+**Symptôme :**
+```
+SQLSTATE[08006] [7] could not connect to server: Connection refused
+```
+
+**Causes et Solutions :**
+
+**1. Serveur pas accessible réseau :**
+```bash
+# Tester ping
+ping 192.168.1.100
+
+# Tester port
+telnet 192.168.1.100 5432
+```
+
+**2. Firewall bloque :**
+```bash
+# Sur serveur PostgreSQL distant
+sudo ufw allow from 192.168.1.0/24 to any port 5432
+
+# Ou ouvrir complètement (développement uniquement)
+sudo ufw allow 5432/tcp
+```
+
+**3. PostgreSQL pas configuré pour écouter :**
+```bash
+# Sur serveur distant, éditer postgresql.conf
+sudo nano /etc/postgresql/14/main/postgresql.conf
+
+# Changer
+listen_addresses = '*'  # Au lieu de 'localhost'
+
+# Redémarrer
+sudo systemctl restart postgresql
+```
+
+**4. pg_hba.conf refuse connexion :**
+```bash
+# Éditer pg_hba.conf
+sudo nano /etc/postgresql/14/main/pg_hba.conf
+
+# Ajouter ligne (accepter connexions externes)
+host all all 0.0.0.0/0 md5
+
+# Redémarrer
+sudo systemctl restart postgresql
+```
+
+---
+
+### 12. MySQL Authentication Failed
+
+**Symptôme :**
+```
+SQLSTATE[HY000] [1045] Access denied for user 'breakout_user'@'%'
+```
+
+**Causes :**
+- Mot de passe incorrect
+- User créé avec mauvais host
+
+**Solutions :**
+
+```sql
+-- Se connecter en root
+docker-compose exec mysql mysql -u root -p
+
+-- Créer/recréer user avec wildcard host
+CREATE USER 'breakout_user'@'%' IDENTIFIED BY 'BreakoutPass123!';
+GRANT ALL PRIVILEGES ON csweb_breakout.* TO 'breakout_user'@'%';
+FLUSH PRIVILEGES;
+
+-- Vérifier
+SELECT user, host FROM mysql.user WHERE user = 'breakout_user';
+```
+
+**Output attendu :**
+```
++--------------+------+
+| user         | host |
++--------------+------+
+| breakout_user| %    |  ← % = accepte toutes les IPs
++--------------+------+
+```
+
+---
+
+### 13. SQL Server Password Policy Error
+
+**Symptôme :**
+```
+Password validation failed. The password does not meet policy requirements because it is not complex enough.
+```
+
+**Cause :** Mot de passe SQL Server trop faible.
+
+**Contraintes SQL Server :**
+- Minimum 8 caractères
+- Majuscules + minuscules + chiffres + symboles
+- Ne pas contenir le username
+
+**Solutions :**
+
+```bash
+# ❌ INVALIDE
+SQLSERVER_PASSWORD=password123
+SQLSERVER_PASSWORD=Password  # Pas de chiffre/symbole
+SQLSERVER_PASSWORD=Pass123   # Pas de symbole
+
+# ✅ VALIDE
+SQLSERVER_PASSWORD=MyStrong!Pass123
+SQLSERVER_PASSWORD=Prod@2026Pass
+SQLSERVER_PASSWORD=RGPH5Secure!2026
+```
+
+---
+
+### 14. SQL Server Connection Timeout
+
+**Symptôme :**
+```
+SQLSTATE[HY000] [10060] A network-related or instance-specific error occurred while establishing a connection
+```
+
+**Causes :**
+- SQL Server pas démarré
+- Firewall Windows bloque
+- TCP/IP désactivé
+
+**Solutions :**
+
+**1. Vérifier SQL Server démarré :**
+```bash
+# Windows
+sc query MSSQLSERVER
+
+# Docker
+docker-compose ps sqlserver
+```
+
+**2. Activer TCP/IP :**
+- SQL Server Configuration Manager
+- SQL Server Network Configuration
+- Protocols for MSSQLSERVER
+- TCP/IP → Enabled
+
+**3. Firewall Windows :**
+```powershell
+# PowerShell (Administrateur)
+New-NetFirewallRule -DisplayName "SQL Server" -Direction Inbound -Protocol TCP -LocalPort 1433 -Action Allow
+```
+
+**4. Vérifier port écoute :**
+```bash
+# Tester depuis client
+telnet 172.16.0.50 1433
+```
+
+---
+
+## Docker
+
+### 15. docker-compose: command not found
+
+**Symptôme :**
+```
+bash: docker-compose: command not found
+```
+
+**Cause :** Docker Compose pas installé ou version Docker trop ancienne.
+
+**Solutions :**
+
+**Option 1 : Installer Docker Compose standalone**
+```bash
+# Linux
+sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-$(uname -s)-$(uname -m)" \
+  -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+# Vérifier
+docker-compose --version
+```
+
+**Option 2 : Utiliser docker compose (v2)**
+```bash
+# Commande intégrée Docker (sans tiret)
+docker compose up -d
+
+# Vérifier version Docker
+docker --version  # Doit être 20.10+
+```
+
+---
+
+### 16. Permission Denied (Docker Daemon)
+
+**Symptôme :**
+```
+Got permission denied while trying to connect to the Docker daemon socket
+```
+
+**Cause :** User pas dans groupe `docker`.
+
+**Solutions :**
+
+```bash
+# Ajouter user au groupe docker
+sudo usermod -aG docker $USER
+
+# Recharger groupes (ou logout/login)
+newgrp docker
+
+# Vérifier
+docker ps
+```
+
+---
+
+### 17. Container Exits Immediately
+
+**Symptôme :**
+```
+docker-compose ps
+# Status: Exit 1
+```
+
+**Solutions :**
+
+```bash
+# Voir logs d'erreur
+docker-compose logs csweb
+
+# Exemples erreurs courantes:
+# - Syntax error .env
+# - Port déjà utilisé
+# - Variable manquante
+# - Permissions fichiers
+
+# Redémarrer en mode verbeux
+docker-compose up csweb  # Sans -d pour voir logs en direct
+```
+
+---
+
+### 18. Volume Permission Denied
+
+**Symptôme :**
+```
+mkdir: cannot create directory '/var/www/html/files': Permission denied
+```
+
+**Cause :** Container tourne en www-data, volume monté avec mauvaises permissions.
+
+**Solutions :**
+
+```bash
+# Corriger permissions volume
+docker-compose exec csweb chown -R www-data:www-data /var/www/html
+
+# Ou sur host (Linux)
+sudo chown -R 33:33 ./files  # 33 = UID/GID www-data
+```
+
+---
+
+## OAuth & API
+
+### 19. Invalid Grant (OAuth)
+
+**Symptôme :**
+```json
+{
+  "error": "invalid_grant",
+  "error_description": "The user credentials were incorrect."
+}
+```
+
+**Causes :**
+- Username ou password incorrect
+- Compte désactivé
+- Permissions insuffisantes
+
+**Solutions :**
+
+1. **Vérifier credentials :**
+```sql
+-- MySQL metadata
+docker-compose exec mysql mysql -u csweb -p csweb
+
+SELECT username, role, enabled FROM cspro_users;
+```
+
+2. **Créer utilisateur API :**
+```sql
+-- Interface CSWeb
+Administration → Users → Add User
+- Username: api_user
+- Password: SecurePass123!
+- Role: API ou Administrator
+
+-- Ou via SQL (hash avec password_hash en PHP)
+INSERT INTO cspro_users (username, password, role, enabled)
+VALUES ('api_user', '$2y$10$hashed_password', 'API', 1);
+```
+
+3. **Vérifier .env :**
+```bash
+CSWEB_USERNAME=api_user        # Exact match
+CSWEB_PASSWORD=SecurePass123!  # Exact match
+```
+
+---
+
+### 20. Token Expired
+
+**Symptôme :**
+```json
+{
+  "error": "invalid_token",
+  "error_description": "The access token provided has expired"
+}
+```
+
+**Cause :** Access token expiré (durée de vie 1h).
+
+**Solutions :**
+
+**1. Refresh token :**
+```bash
+curl -X POST http://localhost:8080/api/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=refresh_token" \
+  -d "refresh_token=<REFRESH_TOKEN>"
+```
+
+**2. Implémentation auto-refresh :**
+```java
+// Java - Refresh proactif 5 minutes avant expiration
+Instant expiresAt = Instant.now().plusSeconds(expiresIn - 300);
+if (Instant.now().isAfter(expiresAt)) {
+    refreshToken();
+}
+```
+
+---
+
+### 21. CORS Error (API)
+
+**Symptôme :**
+```
+Access to fetch at 'http://localhost:8080/api/dictionaries' has been blocked by CORS policy
+```
+
+**Cause :** Frontend tourne sur domaine différent (localhost:3000 vs localhost:8080).
+
+**Solutions :**
+
+**1. Configurer CORS dans CSWeb :**
+```php
+// config/cors.php (créer si absent)
+return [
+    'allowed_origins' => [
+        'http://localhost:3000',
+        'https://app.example.com',
+    ],
+    'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE'],
+    'allowed_headers' => ['Authorization', 'Content-Type'],
+];
+```
+
+**2. Proxy dev (Next.js exemple) :**
+```js
+// next.config.js
+module.exports = {
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:8080/api/:path*',
+      },
+    ];
+  },
+};
+```
+
+---
+
+## Fichiers & Médias
+
+### 22. File Not Found (Photo)
+
+**Symptôme :**
+```json
+{
+  "error": "File not found: photo_001.jpg"
+}
+```
+
+**Causes :**
+- Fichier pas uploadé
+- Mauvais nom fichier
+- Permissions dossier `files/`
+
+**Solutions :**
+
+1. **Vérifier fichier existe :**
+```bash
+docker-compose exec csweb ls -la /var/www/html/files/media/
+
+# Chercher photo_001.jpg
+```
+
+2. **Vérifier permissions :**
+```bash
+docker-compose exec csweb chown -R www-data:www-data /var/www/html/files
+docker-compose exec csweb chmod -R 755 /var/www/html/files
+```
+
+3. **Uploader via CSWeb :**
+- Administration → Files → Upload
+
+---
+
+### 23. File Download Returns JSON Instead of Binary
+
+**Symptôme :**
+```bash
+curl http://localhost:8080/api/files/media/photo.jpg/content
+# Retourne: {"name": "photo.jpg", "size": 12345, ...}
+```
+
+**Cause :** Oubli du `/content` dans URL.
+
+**Solution :**
+
+```bash
+# ❌ INCORRECT (retourne metadata)
+GET /api/files/media/photo.jpg
+
+# ✅ CORRECT (retourne fichier binaire)
+GET /api/files/media/photo.jpg/content
+```
+
+---
+
+## Performance
+
+### 24. Breakout Très Lent (heures au lieu de minutes)
+
+**Symptôme :**
+```
+Processing 50,000 cases...
+Estimated time: 24 hours  # Devrait être ~30 minutes
+```
+
+**Causes :**
+- 1 seul thread (défaut)
+- Serveur sous-dimensionné
+- Indexes manquants
+
+**Solutions :**
+
+**1. Augmenter threads :**
+```bash
+# Passer de 1 thread (défaut) à 5-10
+docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+  dictionnaires=EVAL_DICT \
+  --threads=5
+```
+
+**Impact :**
+| Threads | Temps (50k cas) | CPU Usage |
+|---------|-----------------|-----------|
+| 1 | ~6h | 25% |
+| 3 | ~2h | 75% |
+| 5 | ~1h15 | 100% |
+| 10 | ~45min | 100% |
+
+**2. Ajouter indexes (PostgreSQL) :**
+```sql
+-- Sur tables principales
+CREATE INDEX idx_eval_cases_guid ON eval_cases(guid);
+CREATE INDEX idx_eval_prod_parent ON eval_producteurs(parent_guid);
+```
+
+**3. Optimiser requêtes (désactiver logs) :**
+```bash
+# .env
+CSWEB_PROCESS_CASES_LOG_LEVEL=error  # Au lieu de debug
+```
+
+---
+
+### 25. Query Timeout
+
+**Symptôme :**
+```
+SQLSTATE[HY000]: General error: 1205 Lock wait timeout exceeded
+```
+
+**Cause :** Transaction trop longue, locks.
+
+**Solutions :**
+
+```sql
+-- PostgreSQL: Augmenter timeout
+ALTER DATABASE csweb_analytics SET statement_timeout = '300000';  -- 5 minutes
+
+-- MySQL: Augmenter timeout
+SET GLOBAL innodb_lock_wait_timeout = 300;
+```
+
+---
+
+## Réseau
+
+### 26. Cannot Connect to Remote Server (VPN Required)
+
+**Symptôme :**
+```
+Connection timed out: 172.16.0.50:1433
+```
+
+**Cause :** Serveur distant nécessite VPN.
+
+**Solutions :**
+
+1. **Vérifier VPN actif :**
+```bash
+# Tester ping
+ping 172.16.0.50
+
+# Tester route
+traceroute 172.16.0.50
+```
+
+2. **Connecter VPN :**
+```bash
+# OpenVPN exemple
+sudo openvpn --config /path/to/config.ovpn
+```
+
+3. **Vérifier DNS :**
+```bash
+# Si hostname au lieu d'IP
+nslookup sqlserver.ansd.sn
+```
+
+---
+
+### 27. SSL Certificate Verification Failed
+
+**Symptôme :**
+```
+SSL certificate problem: unable to get local issuer certificate
+```
+
+**Cause :** Certificat self-signed ou CA pas reconnue.
+
+**Solutions :**
+
+**Option 1 : Désactiver vérification SSL (dev uniquement)**
+```php
+// config/database.php
+'pgsql' => [
+    // ...
+    'options' => [
+        PDO::PGSQL_ATTR_SSL_MODE => PDO::PGSQL_SSL_MODE_PREFER,
+        PDO::PGSQL_ATTR_DISABLE_PREPARES => true,
+    ],
+],
+```
+
+**Option 2 : Ajouter CA certificat**
+```bash
+# Linux
+sudo cp ca-cert.pem /usr/local/share/ca-certificates/custom.crt
+sudo update-ca-certificates
+```
+
+---
+
+## Divers
+
+### 28. Flyway Checksum Mismatch
+
+**Symptôme :**
+```
+Migration checksum mismatch for migration version 1.0
+```
+
+**Cause :** Fichier migration modifié après application.
+
+**Solutions :**
+
+```bash
+# Réparer checksums
+docker-compose exec csweb vendor/bin/flyway repair
+
+# Ou via Maven (si disponible)
+mvn flyway:repair
+```
+
+<Callout type="warning">
+**Ne JAMAIS modifier** les fichiers migration déjà appliqués. Créer une nouvelle migration.
+</Callout>
+
+---
+
+### 29. Composer Install Fails
+
+**Symptôme :**
+```
+Your requirements could not be resolved to an installable set of packages.
+```
+
+**Cause :** Dépendances PHP incompatibles.
+
+**Solutions :**
+
+```bash
+# Mettre à jour composer
+docker-compose exec csweb composer self-update
+
+# Installer avec --no-scripts
+docker-compose exec csweb composer install --no-scripts
+
+# Vider cache
+docker-compose exec csweb composer clear-cache
+
+# Régénérer autoload
+docker-compose exec csweb composer dump-autoload
+```
+
+---
+
+### 30. setup.php: Database Already Exists
+
+**Symptôme :**
+```
+Error: Database 'csweb_metadata' already exists
+```
+
+**Cause :** Ré-installation, base déjà créée.
+
+**Solutions :**
+
+**Option 1 : Supprimer base**
+```bash
+docker-compose exec mysql mysql -u root -p
+
+DROP DATABASE csweb_metadata;
+CREATE DATABASE csweb_metadata;
+```
+
+**Option 2 : Utiliser base existante**
+- Sauter setup.php
+- Accéder directement à http://localhost:8080
+
+---
+
+## Logs & Debug
+
+### Comment Accéder aux Logs
+
+<Tabs items={['Docker', 'Application', 'Base de Données']}>
+  <Tabs.Tab>
+```bash
+# Tous les containers
+docker-compose logs
+
+# Container spécifique
+docker-compose logs csweb
+docker-compose logs postgres
+
+# Suivre en temps réel
+docker-compose logs -f csweb
+
+# 100 dernières lignes
+docker-compose logs --tail=100 csweb
+```
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+```bash
+# Logs Symfony
+docker-compose exec csweb tail -f var/logs/dev.log
+
+# Logs PHP
+docker-compose exec csweb tail -f /var/log/php8.1-fpm.log
+
+# Logs Apache/Nginx
+docker-compose exec csweb tail -f /var/log/apache2/error.log
+```
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+```bash
+# PostgreSQL
+docker-compose exec postgres tail -f /var/log/postgresql/postgresql-14-main.log
+
+# MySQL
+docker-compose exec mysql tail -f /var/log/mysql/error.log
+
+# SQL Server
+docker-compose logs sqlserver
+```
+  </Tabs.Tab>
+</Tabs>
+
+---
+
+## Obtenir de l'Aide
+
+Si votre problème n'est pas listé ici :
+
+1. **Vérifier FAQ :** [Troubleshooting - FAQ](/reference/troubleshooting/faq)
+2. **GitHub Issues :** [https://github.com/BOUNADRAME/pg_csweb8_latest_2026/issues](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/issues)
+3. **Logs complets :**
+   ```bash
+   docker-compose logs > debug.log
+   # Joindre debug.log à votre issue
+   ```
+
+---
+
+**CSWeb Community Platform v2.0 - Troubleshooting**
+Architecte : Bouna DRAME | [Portfolio](https://bounadrame.github.io)
