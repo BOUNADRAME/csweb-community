@@ -28,21 +28,25 @@ import { Callout } from '../components/Callout'
 
 ### Problème résolu
 
-- ❌ Setup CSWeb : 2-3 jours de configuration manuelle
-- ❌ Breakout global : traite TOUS les dictionnaires (lent, risqué)
-- ❌ Configuration complexe : MySQL uniquement, pas de UI
-- ❌ Pas de monitoring temps réel
-- ❌ Documentation dispersée
+<div className="space-y-2 text-base">
+  <div>❌ Setup CSWeb : 2-3 jours de configuration manuelle</div>
+  <div>❌ Breakout global : traite TOUS les dictionnaires (lent, risqué)</div>
+  <div>❌ Configuration complexe : MySQL uniquement, pas de UI</div>
+  <div>❌ Pas de monitoring temps réel</div>
+  <div>❌ Documentation dispersée</div>
+</div>
 
 ### Solution apportée
 
-- ✅ **Setup Docker : 5 minutes** (`docker-compose up -d`)
-- ✅ **Breakout sélectif** : Par dictionnaire (par Assietou Diagne, ANSD)
-- ✅ **Multi-SGBD** : PostgreSQL, MySQL, SQL Server
-- ✅ **Web Scheduler** : Jobs configurables sans crontab
-- ✅ **Monitoring** : Logs streaming temps réel
-- ✅ **Admin Panel** : Interface React moderne
-- ✅ **Documentation complète** : 255+ pages (FR)
+<div className="space-y-2 text-base">
+  <div>✅ <strong>Setup Docker : 5 minutes</strong> (<code>docker-compose up -d</code>)</div>
+  <div>✅ <strong>Breakout sélectif</strong> : Par dictionnaire (par Assietou Diagne, ANSD)</div>
+  <div>✅ <strong>Multi-SGBD</strong> : PostgreSQL, MySQL, SQL Server</div>
+  <div>✅ <strong>Web Scheduler</strong> : Jobs configurables sans crontab</div>
+  <div>✅ <strong>Monitoring</strong> : Logs streaming temps réel</div>
+  <div>✅ <strong>Admin Panel</strong> : Interface React moderne</div>
+  <div>✅ <strong>Documentation complète</strong> : 255+ pages (FR)</div>
+</div>
 
 ---
 
@@ -50,7 +54,7 @@ import { Callout } from '../components/Callout'
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-8">
   <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6 hover:shadow-lg transition-shadow">
-    <h3 className="text-2xl font-bold mb-4">📦 Installation</h3>
+    <h3 className="text-2xl font-bold mb-4"><span className="text-3xl">📦</span> Installation</h3>
     <p className="text-gray-600 dark:text-gray-400 mb-4">
       Déployez CSWeb en 5 minutes avec Docker
     </p>
@@ -60,7 +64,7 @@ import { Callout } from '../components/Callout'
   </div>
 
   <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6 hover:shadow-lg transition-shadow">
-    <h3 className="text-2xl font-bold mb-4">🎓 Premier Breakout</h3>
+    <h3 className="text-2xl font-bold mb-4"><span className="text-3xl">🎓</span> Premier Breakout</h3>
     <p className="text-gray-600 dark:text-gray-400 mb-4">
       Tutorial step-by-step pour votre premier breakout
     </p>
@@ -70,7 +74,7 @@ import { Callout } from '../components/Callout'
   </div>
 
   <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6 hover:shadow-lg transition-shadow">
-    <h3 className="text-2xl font-bold mb-4">📚 Guides</h3>
+    <h3 className="text-2xl font-bold mb-4"><span className="text-3xl">📚</span> Guides</h3>
     <p className="text-gray-600 dark:text-gray-400 mb-4">
       Guides complets sur Breakout, Multi-DB, Admin
     </p>
@@ -80,7 +84,7 @@ import { Callout } from '../components/Callout'
   </div>
 
   <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6 hover:shadow-lg transition-shadow">
-    <h3 className="text-2xl font-bold mb-4">📖 API Reference</h3>
+    <h3 className="text-2xl font-bold mb-4"><span className="text-3xl">📖</span> API Reference</h3>
     <p className="text-gray-600 dark:text-gray-400 mb-4">
       OAuth2, Breakout API, Webhooks
     </p>
@@ -116,7 +120,7 @@ Deux modes de déploiement adaptés à vos besoins :
 
   <div className="grid md:grid-cols-2 gap-4 mb-4">
     <div className="bg-red-50 dark:bg-red-950/50 p-4 rounded border border-red-200 dark:border-red-800">
-      <h5 className="font-bold mb-2 text-red-700 dark:text-red-400">❌ Avant (CSWeb vanilla)</h5>
+      <h5 className="font-bold mb-2 text-red-700 dark:text-red-400"><span className="text-base">❌</span> Avant (CSWeb vanilla)</h5>
       <ul className="text-sm space-y-1 text-red-900 dark:text-red-200">
         <li>• Breakout global de TOUS les dictionnaires</li>
         <li>• Lent (heures pour 100k cases)</li>
@@ -124,7 +128,7 @@ Deux modes de déploiement adaptés à vos besoins :
       </ul>
     </div>
     <div className="bg-green-50 dark:bg-green-950/50 p-4 rounded border border-green-200 dark:border-green-800">
-      <h5 className="font-bold mb-2 text-green-700 dark:text-green-400">✅ Après (v2.0)</h5>
+      <h5 className="font-bold mb-2 text-green-700 dark:text-green-400"><span className="text-base">✅</span> Après (v2.0)</h5>
       <ul className="text-sm space-y-1 text-green-900 dark:text-green-200">
         <li>• Breakout sélectif d'un dictionnaire</li>
         <li>• Rapide (minutes pour 100k cases)</li>
@@ -269,25 +273,25 @@ Déploiement rapide pour collecte de données avec monitoring temps réel.
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
   <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
-    <h4 className="font-bold mb-2">🌍 CSWeb Community Platform</h4>
+    <h4 className="font-bold mb-2"><span className="text-xl">🌍</span> CSWeb Community Platform</h4>
     <p className="text-sm text-gray-600 dark:text-gray-400">
       Documentation moderne Nextra, architecture flexible multi-DB, breakout sélectif
     </p>
   </div>
   <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
-    <h4 className="font-bold mb-2">📊 KATS (Kairos Analytics)</h4>
+    <h4 className="font-bold mb-2"><span className="text-xl">📊</span> KATS (Kairos Analytics)</h4>
     <p className="text-sm text-gray-600 dark:text-gray-400">
       API d'analyse de sentiment avec IA (Claude, OpenAI), Spring Boot + PostgreSQL
     </p>
   </div>
   <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
-    <h4 className="font-bold mb-2">🔗 CSPro Webhooks Integration</h4>
+    <h4 className="font-bold mb-2"><span className="text-xl">🔗</span> CSPro Webhooks Integration</h4>
     <p className="text-sm text-gray-600 dark:text-gray-400">
       Pont entre CSWeb et systèmes tiers (breakout auto, log monitoring, schema sync)
     </p>
   </div>
   <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
-    <h4 className="font-bold mb-2">🚀 Open Source Contributions</h4>
+    <h4 className="font-bold mb-2"><span className="text-xl">🚀</span> Open Source Contributions</h4>
     <p className="text-sm text-gray-600 dark:text-gray-400">
       Contributions actives sur GitHub, documentation technique, mentoring
     </p>
@@ -296,12 +300,14 @@ Déploiement rapide pour collecte de données avec monitoring temps réel.
 
 ### 💼 Besoin d'un Développeur Full-Stack ?
 
-Vous cherchez un développeur expérimenté pour :
-- 🏗️ Architecture de systèmes statistiques (CSPro, ODK, KoboToolbox)
-- 🔧 Développement backend (Spring Boot, Node.js, API REST)
-- ⚛️ Applications frontend modernes (React, Next.js, TypeScript)
-- 🐳 DevOps & Infrastructure (Docker, CI/CD, PostgreSQL, MongoDB)
-- 📊 Analytics & BI (Power BI, Metabase, Tableau)
+<div className="space-y-2 text-base">
+  <p>Vous cherchez un développeur expérimenté pour :</p>
+  <div>🏗️ Architecture de systèmes statistiques (CSPro, ODK, KoboToolbox)</div>
+  <div>🔧 Développement backend (Spring Boot, Node.js, API REST)</div>
+  <div>⚛️ Applications frontend modernes (React, Next.js, TypeScript)</div>
+  <div>🐳 DevOps & Infrastructure (Docker, CI/CD, PostgreSQL, MongoDB)</div>
+  <div>📊 Analytics & BI (Power BI, Metabase, Tableau)</div>
+</div>
 
 **Contactez-moi :**
 - 📧 Email: bouna.drame@example.com
