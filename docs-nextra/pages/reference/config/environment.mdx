@@ -1,0 +1,1118 @@
+# Variables d'Environnement (.env)
+
+import { Callout, Tabs } from 'nextra/components'
+
+## Vue d'Ensemble
+
+Toutes les configurations de CSWeb Community Platform sont définies dans le fichier **`.env`** situé à la racine du projet.
+
+<Callout type="warning">
+**IMPORTANT :**
+- ✅ Copier `.env.example` vers `.env` lors de l'installation
+- ✅ Modifier les valeurs selon votre environnement
+- ❌ **NE JAMAIS** committer `.env` (contient mots de passe)
+- ❌ `.env` est dans `.gitignore` par défaut
+</Callout>
+
+## Création du Fichier .env
+
+```bash
+# Copier le template
+cp .env.example .env
+
+# Éditer avec vos valeurs
+nano .env  # ou vim, code, etc.
+```
+
+---
+
+## Configuration Breakout (ESSENTIEL)
+
+### BREAKOUT_MODE
+
+Mode de déploiement de la base de données breakout.
+
+**Valeurs :**
+- `local` : Docker containers (développement, test)
+- `remote` : Serveur distant (production, RGPH5, etc.)
+
+**Défaut :** `local`
+
+**Exemples :**
+
+<Tabs items={['Local (Dev)', 'Remote (Prod)']}>
+  <Tabs.Tab>
+```bash
+# Développement avec Docker
+BREAKOUT_MODE=local
+```
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+```bash
+# Production avec serveur distant
+BREAKOUT_MODE=remote
+```
+  </Tabs.Tab>
+</Tabs>
+
+<Callout>
+**Note :** Cette variable est **informative** uniquement. Le choix du driver se fait via `BREAKOUT_DB_TYPE`.
+</Callout>
+
+### BREAKOUT_DB_TYPE
+
+Type de base de données pour le breakout sélectif.
+
+**Valeurs :**
+- `postgresql` : PostgreSQL (recommandé pour analytics)
+- `mysql` : MySQL (compatible, performant)
+- `sqlserver` : SQL Server (RGPH5 Sénégal, production enterprise)
+
+**Défaut :** `postgresql`
+
+**Impact :**
+- Détermine le driver PDO utilisé (`pdo_pgsql`, `pdo_mysql`, `pdo_sqlsrv`)
+- Active le profil Docker Compose correspondant
+- Charge les variables de connexion appropriées
+
+**Exemples :**
+
+<Tabs items={['PostgreSQL', 'MySQL', 'SQL Server']}>
+  <Tabs.Tab>
+```bash
+BREAKOUT_DB_TYPE=postgresql
+```
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+```bash
+BREAKOUT_DB_TYPE=mysql
+```
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+```bash
+BREAKOUT_DB_TYPE=sqlserver
+```
+  </Tabs.Tab>
+</Tabs>
+
+<Callout type="error">
+**Attention :** Si vous changez `BREAKOUT_DB_TYPE`, vous devez **redémarrer les containers** :
+```bash
+docker-compose down
+docker-compose --profile local-<TYPE> up -d
+```
+</Callout>
+
+---
+
+## Application
+
+### APP_ENV
+
+Environnement d'exécution de l'application.
+
+**Valeurs :**
+- `prod` : Production (logs minimaux, cache activé)
+- `dev` : Développement (logs verbose, debug activé)
+- `test` : Tests (isolation, fixtures)
+
+**Défaut :** `prod`
+
+**Exemples :**
+
+```bash
+# Production
+APP_ENV=prod
+
+# Développement
+APP_ENV=dev
+```
+
+### APP_DEBUG
+
+Active le mode debug (affichage erreurs détaillées).
+
+**Valeurs :**
+- `true` : Debug activé (stack traces complètes)
+- `false` : Debug désactivé (messages génériques)
+
+**Défaut :** `false`
+
+<Callout type="warning">
+**JAMAIS** activer debug en production (risque de fuite d'informations sensibles).
+</Callout>
+
+**Exemples :**
+
+```bash
+# Production
+APP_DEBUG=false
+
+# Développement
+APP_DEBUG=true
+```
+
+### APP_TIMEZONE
+
+Fuseau horaire de l'application (format PHP timezone).
+
+**Valeurs :** Tout timezone PHP valide (voir [Liste PHP Timezones](https://www.php.net/manual/en/timezones.php))
+
+**Défaut :** `UTC`
+
+**Exemples :**
+
+```bash
+# Sénégal (GMT)
+APP_TIMEZONE=Africa/Dakar
+
+# France (CET/CEST)
+APP_TIMEZONE=Europe/Paris
+
+# UTC (recommandé)
+APP_TIMEZONE=UTC
+```
+
+### APP_SECRET
+
+Clé secrète pour chiffrement/hachage (Symfony).
+
+**Format :** Chaîne aléatoire longue (32+ caractères)
+
+**Génération :**
+
+```bash
+# Générer une clé aléatoire
+openssl rand -hex 32
+
+# Exemple output:
+# a1b2c3d4e5f67890abcdef1234567890fedcba0987654321abcdef1234567890
+```
+
+**Exemples :**
+
+```bash
+APP_SECRET=a1b2c3d4e5f67890abcdef1234567890fedcba0987654321abcdef1234567890
+```
+
+<Callout type="error">
+**CRITIQUE :**
+- ✅ Générer une clé **unique** par environnement
+- ✅ Ne **JAMAIS** partager cette clé
+- ❌ Ne **JAMAIS** utiliser la valeur d'exemple
+- ❌ Ne **JAMAIS** committer cette valeur
+</Callout>
+
+### CSWEB_PORT
+
+Port HTTP pour accéder à CSWeb.
+
+**Défaut :** `8080`
+
+**Exemples :**
+
+```bash
+# Port par défaut
+CSWEB_PORT=8080
+
+# Port alternatif (si 8080 occupé)
+CSWEB_PORT=9090
+```
+
+**Accès :**
+- Interface web : `http://localhost:8080`
+- API : `http://localhost:8080/api`
+
+---
+
+## MySQL Metadata (FIXE)
+
+<Callout type="info">
+**À SAVOIR :**
+- Base de données **imposée** par CSWeb vanilla (schéma non modifiable)
+- Contient : users, dictionaries, oauth_clients, sync_queue, system_config
+- **TOUJOURS** sur la même machine que CSWeb (localhost ou container `mysql`)
+- **NE JAMAIS** utiliser cette base pour le breakout (performances limitées)
+</Callout>
+
+### MYSQL_HOST
+
+Nom d'hôte du serveur MySQL metadata.
+
+**Valeurs :**
+- `mysql` : Container Docker (mode local)
+- `localhost` : MySQL local (hors Docker)
+- IP/hostname : Serveur distant (déconseillé pour metadata)
+
+**Défaut :** `mysql`
+
+**Exemples :**
+
+```bash
+# Docker (recommandé)
+MYSQL_HOST=mysql
+
+# Local (installation manuelle)
+MYSQL_HOST=localhost
+```
+
+### MYSQL_PORT
+
+Port du serveur MySQL metadata.
+
+**Défaut :** `3306`
+
+**Exemples :**
+
+```bash
+MYSQL_PORT=3306
+```
+
+### MYSQL_DATABASE
+
+Nom de la base de données metadata.
+
+**Défaut :** `csweb_metadata`
+
+**Exemples :**
+
+```bash
+MYSQL_DATABASE=csweb_metadata
+```
+
+<Callout>
+**Note :** Cette base est créée automatiquement par `setup.php` lors de l'installation.
+</Callout>
+
+### MYSQL_USER
+
+Utilisateur MySQL pour la base metadata.
+
+**Défaut :** `csweb_user`
+
+**Exemples :**
+
+```bash
+MYSQL_USER=csweb_user
+```
+
+### MYSQL_PASSWORD
+
+Mot de passe de l'utilisateur MySQL metadata.
+
+**Génération :**
+
+```bash
+# Générer mot de passe sécurisé
+openssl rand -base64 32
+```
+
+**Exemples :**
+
+```bash
+MYSQL_PASSWORD=MySecurePass123!Metadata
+```
+
+<Callout type="warning">
+**Sécurité :**
+- Minimum 12 caractères
+- Majuscules + minuscules + chiffres + symboles
+- Différent du mot de passe root
+</Callout>
+
+### MYSQL_ROOT_PASSWORD
+
+Mot de passe root du serveur MySQL.
+
+**Génération :**
+
+```bash
+openssl rand -base64 32
+```
+
+**Exemples :**
+
+```bash
+MYSQL_ROOT_PASSWORD=MyVerySecureRootPass456!
+```
+
+<Callout type="error">
+**CRITIQUE :**
+- ✅ Mot de passe **très fort** (16+ caractères)
+- ✅ Différent de `MYSQL_PASSWORD`
+- ❌ Ne **JAMAIS** utiliser en production depuis applications
+- ❌ Uniquement pour admin/maintenance
+</Callout>
+
+---
+
+## PostgreSQL Breakout
+
+Variables utilisées si `BREAKOUT_DB_TYPE=postgresql`.
+
+### POSTGRES_HOST
+
+Nom d'hôte du serveur PostgreSQL.
+
+**Valeurs :**
+- `postgres` : Container Docker (mode local)
+- `localhost` : PostgreSQL local
+- IP/hostname : Serveur distant (mode remote)
+
+**Défaut :** `postgres`
+
+**Exemples :**
+
+<Tabs items={['Local', 'Remote']}>
+  <Tabs.Tab>
+```bash
+# Docker container
+POSTGRES_HOST=postgres
+```
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+```bash
+# Serveur distant
+POSTGRES_HOST=192.168.1.100
+
+# Serveur RGPH5 Sénégal
+POSTGRES_HOST=172.16.0.50
+```
+  </Tabs.Tab>
+</Tabs>
+
+### POSTGRES_PORT
+
+Port du serveur PostgreSQL.
+
+**Défaut :** `5432`
+
+**Exemples :**
+
+```bash
+POSTGRES_PORT=5432
+```
+
+### POSTGRES_DATABASE
+
+Nom de la base de données breakout PostgreSQL.
+
+**Défaut :** `csweb_analytics`
+
+**Exemples :**
+
+```bash
+# Développement
+POSTGRES_DATABASE=csweb_analytics
+
+# Production
+POSTGRES_DATABASE=prod_analytics
+
+# RGPH5
+POSTGRES_DATABASE=rgph5_analytics
+```
+
+### POSTGRES_USER
+
+Utilisateur PostgreSQL pour la base breakout.
+
+**Défaut :** `csweb_analytics`
+
+**Exemples :**
+
+```bash
+POSTGRES_USER=csweb_analytics
+```
+
+### POSTGRES_PASSWORD
+
+Mot de passe de l'utilisateur PostgreSQL.
+
+**Génération :**
+
+```bash
+openssl rand -base64 32
+```
+
+**Exemples :**
+
+```bash
+# Développement
+POSTGRES_PASSWORD=dev_postgres_pass_123
+
+# Production
+POSTGRES_PASSWORD=ProdSecurePostgres789!
+```
+
+---
+
+## MySQL Breakout
+
+Variables utilisées si `BREAKOUT_DB_TYPE=mysql`.
+
+### MYSQL_BREAKOUT_HOST
+
+Nom d'hôte du serveur MySQL breakout.
+
+**Défaut :** `mysql-breakout`
+
+**Exemples :**
+
+```bash
+# Docker container
+MYSQL_BREAKOUT_HOST=mysql-breakout
+
+# Serveur distant
+MYSQL_BREAKOUT_HOST=10.20.30.40
+```
+
+### MYSQL_BREAKOUT_PORT
+
+Port du serveur MySQL breakout.
+
+**Défaut :** `3307` (port différent pour éviter conflit avec MySQL metadata)
+
+**Exemples :**
+
+```bash
+# Docker (port customisé)
+MYSQL_BREAKOUT_PORT=3307
+
+# Remote (port standard)
+MYSQL_BREAKOUT_PORT=3306
+```
+
+### MYSQL_BREAKOUT_DATABASE
+
+Nom de la base de données breakout MySQL.
+
+**Défaut :** `csweb_breakout`
+
+**Exemples :**
+
+```bash
+MYSQL_BREAKOUT_DATABASE=csweb_breakout
+```
+
+### MYSQL_BREAKOUT_USER
+
+Utilisateur MySQL pour la base breakout.
+
+**Défaut :** `breakout_user`
+
+**Exemples :**
+
+```bash
+MYSQL_BREAKOUT_USER=breakout_user
+```
+
+### MYSQL_BREAKOUT_PASSWORD
+
+Mot de passe de l'utilisateur MySQL breakout.
+
+**Génération :**
+
+```bash
+openssl rand -base64 32
+```
+
+**Exemples :**
+
+```bash
+MYSQL_BREAKOUT_PASSWORD=BreakoutSecurePass456!
+```
+
+---
+
+## SQL Server Breakout
+
+Variables utilisées si `BREAKOUT_DB_TYPE=sqlserver`.
+
+### SQLSERVER_HOST
+
+Nom d'hôte du serveur SQL Server.
+
+**Défaut :** `sqlserver`
+
+**Exemples :**
+
+```bash
+# Docker container
+SQLSERVER_HOST=sqlserver
+
+# Serveur distant RGPH5
+SQLSERVER_HOST=172.16.0.50
+```
+
+### SQLSERVER_PORT
+
+Port du serveur SQL Server.
+
+**Défaut :** `1433`
+
+**Exemples :**
+
+```bash
+SQLSERVER_PORT=1433
+```
+
+### SQLSERVER_DATABASE
+
+Nom de la base de données breakout SQL Server.
+
+**Défaut :** `CSWeb_Analytics`
+
+**Exemples :**
+
+```bash
+# Développement
+SQLSERVER_DATABASE=CSWeb_Analytics
+
+# RGPH5 Sénégal
+SQLSERVER_DATABASE=RGPH5_Analytics
+```
+
+<Callout>
+**Conventions SQL Server :**
+- Noms avec PascalCase (`CSWeb_Analytics`)
+- Noms de tables avec underscore (`eval_producteurs`)
+</Callout>
+
+### SQLSERVER_USER
+
+Utilisateur SQL Server.
+
+**Défaut :** `sa` (System Administrator)
+
+**Exemples :**
+
+```bash
+# SA (développement uniquement)
+SQLSERVER_USER=sa
+
+# User applicatif (production)
+SQLSERVER_USER=csweb_breakout_user
+```
+
+<Callout type="warning">
+**Production :** Créer un utilisateur dédié avec permissions limitées (pas `sa`).
+</Callout>
+
+### SQLSERVER_PASSWORD
+
+Mot de passe SQL Server.
+
+**Contraintes SQL Server :**
+- Minimum 8 caractères
+- Majuscules + minuscules + chiffres + symboles
+- Ne pas contenir le username
+
+**Exemples :**
+
+```bash
+# Développement
+SQLSERVER_PASSWORD=YourStrong!Passw0rd
+
+# RGPH5 Production
+SQLSERVER_PASSWORD=RGPH5SecurePass!2026
+```
+
+<Callout type="error">
+**Erreur courante :**
+```
+Password validation failed. The password does not meet policy requirements.
+```
+**Solution :** Utiliser majuscule + chiffre + symbole (ex: `MyPass123!`)
+</Callout>
+
+---
+
+## Outils de Développement
+
+### PHPMYADMIN_PORT
+
+Port pour accéder à phpMyAdmin (interface MySQL).
+
+**Défaut :** `8081`
+
+**Exemples :**
+
+```bash
+PHPMYADMIN_PORT=8081
+```
+
+**Accès :**
+- URL : `http://localhost:8081`
+- Server : `mysql` (ou `mysql-breakout` pour breakout DB)
+- Username/Password : Selon DB (`MYSQL_USER` / `MYSQL_BREAKOUT_USER`)
+
+### PGADMIN_PORT
+
+Port pour accéder à pgAdmin (interface PostgreSQL).
+
+**Défaut :** `8082`
+
+**Exemples :**
+
+```bash
+PGADMIN_PORT=8082
+```
+
+**Accès :**
+- URL : `http://localhost:8082`
+- Email : `PGADMIN_EMAIL`
+- Password : `PGADMIN_PASSWORD`
+
+### PGADMIN_EMAIL
+
+Email de login pgAdmin.
+
+**Défaut :** `admin@csweb.local`
+
+**Exemples :**
+
+```bash
+PGADMIN_EMAIL=admin@csweb.local
+```
+
+### PGADMIN_PASSWORD
+
+Mot de passe de login pgAdmin.
+
+**Défaut :** `admin123`
+
+**Exemples :**
+
+```bash
+# Développement
+PGADMIN_PASSWORD=admin123
+
+# Production (désactiver pgAdmin)
+# PGADMIN_PORT=  # Commenter pour désactiver
+```
+
+<Callout type="warning">
+**Production :** Désactiver phpMyAdmin et pgAdmin (risque sécurité). Utiliser CLI ou clients locaux.
+</Callout>
+
+---
+
+## Sécurité
+
+### JWT_SECRET
+
+Clé secrète pour signer les tokens JWT OAuth2.
+
+**Format :** Chaîne aléatoire longue (32+ caractères)
+
+**Génération :**
+
+```bash
+openssl rand -hex 32
+```
+
+**Exemples :**
+
+```bash
+JWT_SECRET=fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
+```
+
+<Callout type="error">
+**CRITIQUE :**
+- ✅ Différent de `APP_SECRET`
+- ✅ Unique par environnement
+- ❌ Ne **JAMAIS** changer en production (invaliderait tous les tokens)
+</Callout>
+
+### JWT_EXPIRATION
+
+Durée de validité des tokens JWT en millisecondes.
+
+**Défaut :** `86400000` (24 heures)
+
+**Exemples :**
+
+```bash
+# 24 heures (défaut)
+JWT_EXPIRATION=86400000
+
+# 1 heure (production sécurisée)
+JWT_EXPIRATION=3600000
+
+# 7 jours (développement)
+JWT_EXPIRATION=604800000
+```
+
+**Conversions :**
+- 1 heure = 3 600 000 ms
+- 24 heures = 86 400 000 ms
+- 7 jours = 604 800 000 ms
+
+### FILES_FOLDER
+
+Dossier de stockage des fichiers uploadés (photos, documents).
+
+**Défaut :** `/var/www/html/files`
+
+**Exemples :**
+
+```bash
+# Docker (défaut)
+FILES_FOLDER=/var/www/html/files
+
+# Montage volume externe
+FILES_FOLDER=/mnt/storage/csweb/files
+```
+
+<Callout>
+**Production :**
+- Utiliser un volume Docker persistant
+- Sauvegarder régulièrement ce dossier
+- Vérifier permissions (www-data:www-data)
+</Callout>
+
+### API_URL
+
+URL de base de l'API CSWeb (utilisée pour webhooks, callbacks).
+
+**Défaut :** `http://localhost:8080/api/`
+
+**Exemples :**
+
+```bash
+# Développement local
+API_URL=http://localhost:8080/api/
+
+# Production
+API_URL=https://csweb.example.org/api/
+
+# RGPH5 Sénégal
+API_URL=http://193.203.15.16/kairos/api/
+```
+
+<Callout type="warning">
+**Attention :** Terminer par `/` (slash final obligatoire).
+</Callout>
+
+---
+
+## Logging
+
+### CSWEB_LOG_LEVEL
+
+Niveau de logs de l'application CSWeb.
+
+**Valeurs :**
+- `debug` : Tous les messages (verbose)
+- `info` : Messages informatifs + erreurs
+- `warning` : Avertissements + erreurs
+- `error` : Erreurs uniquement (recommandé production)
+
+**Défaut :** `error`
+
+**Exemples :**
+
+```bash
+# Production
+CSWEB_LOG_LEVEL=error
+
+# Développement
+CSWEB_LOG_LEVEL=debug
+```
+
+### CSWEB_PROCESS_CASES_LOG_LEVEL
+
+Niveau de logs spécifique à la commande `process-cases-by-dict`.
+
+**Valeurs :** Identiques à `CSWEB_LOG_LEVEL`
+
+**Défaut :** `error`
+
+**Exemples :**
+
+```bash
+# Production (minimal)
+CSWEB_PROCESS_CASES_LOG_LEVEL=error
+
+# Debug breakout (verbose)
+CSWEB_PROCESS_CASES_LOG_LEVEL=debug
+```
+
+### MAX_EXECUTION_TIME
+
+Temps maximum d'exécution PHP en secondes.
+
+**Défaut :** `300` (5 minutes)
+
+**Exemples :**
+
+```bash
+# Requêtes courtes
+MAX_EXECUTION_TIME=300
+
+# Breakout RGPH (très long)
+MAX_EXECUTION_TIME=0  # Illimité (déconseillé)
+```
+
+<Callout type="warning">
+**Breakout :** Pour `process-cases-by-dict` avec millions de cas, augmenter ou désactiver (0 = illimité).
+</Callout>
+
+---
+
+## Exemples Complets
+
+### Configuration Local (PostgreSQL)
+
+```bash
+# .env - Développement Local avec PostgreSQL
+
+# Breakout
+BREAKOUT_MODE=local
+BREAKOUT_DB_TYPE=postgresql
+
+# Application
+APP_ENV=dev
+APP_DEBUG=true
+APP_TIMEZONE=Africa/Dakar
+APP_SECRET=a1b2c3d4e5f67890abcdef1234567890fedcba0987654321abcdef1234567890
+CSWEB_PORT=8080
+
+# MySQL Metadata (Docker)
+MYSQL_HOST=mysql
+MYSQL_PORT=3306
+MYSQL_DATABASE=csweb_metadata
+MYSQL_USER=csweb_user
+MYSQL_PASSWORD=dev_metadata_pass_123
+MYSQL_ROOT_PASSWORD=dev_root_pass_456
+
+# PostgreSQL Breakout (Docker)
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=csweb_analytics
+POSTGRES_USER=csweb_analytics
+POSTGRES_PASSWORD=dev_postgres_pass_789
+
+# Outils Dev
+PHPMYADMIN_PORT=8081
+PGADMIN_PORT=8082
+PGADMIN_EMAIL=admin@csweb.local
+PGADMIN_PASSWORD=admin123
+
+# Sécurité
+JWT_SECRET=fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
+JWT_EXPIRATION=86400000
+FILES_FOLDER=/var/www/html/files
+API_URL=http://localhost:8080/api/
+
+# Logs
+CSWEB_LOG_LEVEL=debug
+CSWEB_PROCESS_CASES_LOG_LEVEL=debug
+MAX_EXECUTION_TIME=300
+```
+
+### Configuration Remote (SQL Server RGPH5)
+
+```bash
+# .env - Production RGPH5 Sénégal avec SQL Server distant
+
+# Breakout
+BREAKOUT_MODE=remote
+BREAKOUT_DB_TYPE=sqlserver
+
+# Application
+APP_ENV=prod
+APP_DEBUG=false
+APP_TIMEZONE=Africa/Dakar
+APP_SECRET=PROD_SECRET_CHANGE_ME_UNIQUE_VALUE_HERE
+CSWEB_PORT=8080
+
+# MySQL Metadata (Container local)
+MYSQL_HOST=mysql
+MYSQL_PORT=3306
+MYSQL_DATABASE=csweb_metadata
+MYSQL_USER=csweb_user
+MYSQL_PASSWORD=ProdMetadataPass123!
+MYSQL_ROOT_PASSWORD=ProdRootPass456!
+
+# SQL Server Breakout (Serveur ANSD distant)
+SQLSERVER_HOST=172.16.0.50
+SQLSERVER_PORT=1433
+SQLSERVER_DATABASE=RGPH5_Analytics
+SQLSERVER_USER=sa
+SQLSERVER_PASSWORD=RGPH5SecurePass!2026
+
+# Sécurité
+JWT_SECRET=PROD_JWT_SECRET_CHANGE_ME_UNIQUE_VALUE
+JWT_EXPIRATION=3600000  # 1h (sécurisé)
+FILES_FOLDER=/var/www/html/files
+API_URL=http://193.203.15.16/kairos/api/
+
+# Logs (production)
+CSWEB_LOG_LEVEL=error
+CSWEB_PROCESS_CASES_LOG_LEVEL=error
+MAX_EXECUTION_TIME=0  # Illimité pour breakout 3.2M cas
+```
+
+### Configuration Hybrid (MySQL local + PostgreSQL remote)
+
+```bash
+# .env - Hybrid: Metadata local + Breakout distant
+
+# Breakout
+BREAKOUT_MODE=remote
+BREAKOUT_DB_TYPE=postgresql
+
+# Application
+APP_ENV=prod
+APP_DEBUG=false
+APP_TIMEZONE=UTC
+APP_SECRET=HYBRID_SECRET_UNIQUE
+CSWEB_PORT=8080
+
+# MySQL Metadata (Container local)
+MYSQL_HOST=mysql
+MYSQL_PORT=3306
+MYSQL_DATABASE=csweb_metadata
+MYSQL_USER=csweb_user
+MYSQL_PASSWORD=LocalMetadataPass!
+MYSQL_ROOT_PASSWORD=LocalRootPass!
+
+# PostgreSQL Breakout (Serveur distant)
+POSTGRES_HOST=192.168.1.100
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=prod_analytics
+POSTGRES_USER=analytics_user
+POSTGRES_PASSWORD=RemotePostgresPass!
+
+# Sécurité
+JWT_SECRET=HYBRID_JWT_SECRET_UNIQUE
+JWT_EXPIRATION=86400000
+FILES_FOLDER=/var/www/html/files
+API_URL=http://csweb.example.org/api/
+
+# Logs
+CSWEB_LOG_LEVEL=error
+CSWEB_PROCESS_CASES_LOG_LEVEL=error
+MAX_EXECUTION_TIME=300
+```
+
+---
+
+## Vérification
+
+### Afficher Variables Actuelles
+
+```bash
+# Toutes les variables
+docker-compose exec csweb env
+
+# Filtrer breakout
+docker-compose exec csweb env | grep BREAKOUT
+
+# Filtrer PostgreSQL
+docker-compose exec csweb env | grep POSTGRES
+
+# Filtrer MySQL
+docker-compose exec csweb env | grep MYSQL
+```
+
+### Tester Connexions
+
+```bash
+# Vérifier drivers disponibles
+docker-compose exec csweb php bin/console csweb:check-database-drivers
+
+# Tester connexions aux DB
+docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+```
+
+**Output attendu :**
+```
+✅ pdo_mysql    : Available
+✅ pdo_pgsql    : Available
+✅ pdo_sqlsrv   : Available
+
+✅ MySQL Metadata : Connected to mysql:3306/csweb_metadata
+✅ PostgreSQL Breakout : Connected to postgres:5432/csweb_analytics
+```
+
+---
+
+## Troubleshooting
+
+### Erreur: Variable Non Définie
+
+**Symptôme :**
+```
+Environment variable "POSTGRES_PASSWORD" is not defined
+```
+
+**Solution :**
+
+1. Vérifier `.env` existe :
+```bash
+ls -la .env
+```
+
+2. Vérifier variable présente :
+```bash
+grep POSTGRES_PASSWORD .env
+```
+
+3. Redémarrer containers :
+```bash
+docker-compose restart
+```
+
+### Erreur: Mauvaise Valeur
+
+**Symptôme :**
+```
+SQLSTATE[HY000]: Driver not found for pdo_sqlsrv
+```
+
+**Cause :** `BREAKOUT_DB_TYPE` ne correspond pas aux variables configurées.
+
+**Solution :**
+
+```bash
+# Vérifier cohérence
+BREAKOUT_DB_TYPE=sqlserver  # ← Doit correspondre
+SQLSERVER_HOST=...          # ← Variables SQL Server doivent être remplies
+```
+
+### Erreur: Mot de Passe Invalide (SQL Server)
+
+**Symptôme :**
+```
+Password validation failed. The password does not meet policy requirements.
+```
+
+**Cause :** Mot de passe SQL Server trop faible.
+
+**Solution :**
+
+```bash
+# Minimum 8 caractères avec majuscule + chiffre + symbole
+SQLSERVER_PASSWORD=MyStrong!Pass123
+```
+
+---
+
+## Ressources
+
+- **Template Complet** : `.env.example` (racine du projet)
+- **Configuration Multi-DB** : [Database - Multi-DB](/guides/database/multi-db)
+- **Architecture Flexible** : [Architecture - Flexible](/guides/architecture/flexible)
+- **Docker Compose** : [Config - Docker Compose](/reference/config/docker-compose)
+- **Troubleshooting** : [Common Issues](/reference/troubleshooting/common-issues)
+
+---
+
+**CSWeb Community Platform v2.0 - Environment Variables Reference**
+Architecte : Bouna DRAME | [Portfolio](https://bounadrame.github.io)
