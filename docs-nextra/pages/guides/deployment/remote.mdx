@@ -1,126 +1,261 @@
-# Déploiement Remote Guide de déploiement avec **serveurs de bases de données distants**.
+---
+title: Déploiement Remote
+description: Guide de déploiement CSWeb avec serveur de base de données distant
+---
 
-## Concept Mode **Remote** = Container CSWeb local + Bases de données sur serveurs distants.
+import { Tabs } from 'nextra/components'
 
-**Use Case :** RGPH5 Sénégal
-- CSWeb : Container Docker local
-- MySQL metadata : Container local
-- SQL Server breakout : Serveur ANSD distant (172.16.0.50)
+# Déploiement Remote
+
+Guide de déploiement avec **serveurs de bases de données distants**.
+
+## Concept
+
+Mode **Remote** = Container CSWeb local + Base de données breakout sur un **serveur distant**.
+
+```
+┌───────────────────┐          ┌─────────────────────┐
+│   Serveur CSWeb   │          │   Serveur Distant    │
+│   (Docker)        │          │                      │
+│                   │          │  ┌────────────────┐  │
+│  ┌─────────────┐  │  réseau  │  │  PostgreSQL    │  │
+│  │   CSWeb     │──┼──────────┼──│  OU MySQL      │  │
+│  │  (Apache)   │  │          │  │  OU SQL Server │  │
+│  └─────────────┘  │          │  │  (Analytics)   │  │
+│                   │          │  └────────────────┘  │
+│  ┌─────────────┐  │          │                      │
+│  │   MySQL     │  │          └─────────────────────┘
+│  │ (Metadata)  │  │
+│  └─────────────┘  │
+└───────────────────┘
+```
+
+**Cas d'usage :**
+- RGPH5 Sénégal (SQL Server distant)
+- Production INS (PostgreSQL dédié)
+- Séparation metadata/analytics pour la performance
+
+---
+
+## Fonctionnement
+
+En mode remote, la configuration se fait en **deux temps** :
+
+1. **`.env`** : Définir `BREAKOUT_MODE=remote` et le **pilote par défaut** (`BREAKOUT_DB_TYPE`)
+   - `postgresql` : utilise le driver `pdo_pgsql`
+   - `mysql` : utilise le driver `pdo_mysql`
+   - `sqlserver` : utilise le driver `pdo_sqlsrv`
+
+2. **Interface CSWeb** : Au moment du breakout, renseigner les informations de connexion au serveur distant (host, port, database, user, password) pour chaque dictionnaire
+
+> Le pilote par défaut est important car il détermine quel driver PDO sera utilisé
+> pour se connecter au serveur distant.
+
+---
 
 ## Configuration
 
-### .env Remote
+### Étape 1 : Modifier le `.env`
 
-```bash
-# Mode
+```env
+# Passer en mode remote
 BREAKOUT_MODE=remote
 
-# Type SGBD distant
-BREAKOUT_DB_TYPE=sqlserver
+# Pilote par défaut selon votre serveur distant
+BREAKOUT_DB_TYPE=postgresql   # ou mysql, ou sqlserver
 
-# SQL Server DISTANT
-SQLSERVER_HOST=172.16.0.50 # IP serveur distant
-SQLSERVER_PORT=1433
-SQLSERVER_DATABASE=RGPH5_Analytics
-SQLSERVER_USER=sa
-SQLSERVER_PASSWORD=ProdPass!
-
-# MySQL Metadata LOCAL (container)
+# MySQL Metadata reste LOCAL (container Docker)
 MYSQL_HOST=mysql
 MYSQL_PORT=3306
 MYSQL_DATABASE=csweb_metadata
 MYSQL_USER=csweb_user
-MYSQL_PASSWORD=LocalPass!
+MYSQL_PASSWORD=VotreMotDePasse
+MYSQL_ROOT_PASSWORD=VotreMotDePasseRoot
 ```
 
-## Démarrage
+### Étape 2 : Démarrer sans conteneur breakout
 
 ```bash
 # Démarrer SEULEMENT CSWeb et MySQL (pas de DB breakout locale)
-docker-compose up -d
+docker compose up -d csweb mysql
 
-# Vérifier connexion au serveur distant
-docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+# Vérifier les conteneurs
+docker compose ps
 ```
 
-**Output attendu :**
+**Sortie attendue :**
+
 ```
- SQL Server Breakout : Connected to 172.16.0.50:1433/RGPH5_Analytics
+NAME                      STATUS              PORTS
+csweb-app                 Up (healthy)        0.0.0.0:8080->80/tcp
+csweb-mysql-metadata      Up (healthy)        0.0.0.0:3306->3306/tcp
 ```
 
-## Prérequis Réseau
-
-### 1. Connectivité
+### Étape 3 : Vérifier les drivers
 
 ```bash
-# Tester ping
-ping 172.16.0.50
-
-# Tester port SQL Server
-telnet 172.16.0.50 1433
+# Vérifier que le driver correspondant est installé
+docker compose exec csweb php bin/console csweb:check-database-drivers
 ```
 
-### 2. Firewall Serveur Distant
+Les 3 drivers (PostgreSQL, MySQL, SQL Server) sont installés par défaut dans l'image Docker.
 
-**Sur serveur SQL Server :**
+### Étape 4 : Configurer le breakout dans CSWeb
+
+1. Se connecter à `http://localhost:8080`
+2. Aller dans **Data** et sélectionner un dictionnaire
+3. Configurer le schéma breakout avec les informations du serveur distant :
+   - **Host** : IP ou hostname du serveur distant
+   - **Port** : Port du SGBD (5432, 3306, 1433)
+   - **Database** : Nom de la base analytics
+   - **User / Password** : Credentials du serveur distant
+
+### Étape 5 : Lancer le breakout
+
 ```bash
-# Windows Firewall
-New-NetFirewallRule -DisplayName "SQL Server" -Direction Inbound -Protocol TCP -LocalPort 1433 -Action Allow
+# Breakout sélectif vers le serveur distant
+docker compose exec csweb php bin/console csweb:process-cases-by-dict NOM_DICTIONNAIRE
 ```
 
-**Sur serveur PostgreSQL :**
+Les tables seront créées directement sur le serveur distant.
+
+---
+
+## Prérequis Serveur Distant
+
+### Connectivité Réseau
+
+Depuis le conteneur CSWeb, le serveur distant doit être joignable :
+
 ```bash
-# Linux ufw
-sudo ufw allow from 192.168.1.0/24 to any port 5432
+# Tester depuis le conteneur CSWeb
+docker compose exec csweb bash
+php -r "echo @fsockopen('192.168.1.100', 5432, \$e, \$m, 5) ? 'OK' : 'FAIL: '.\$m;"
 ```
 
-### 3. Configuration SGBD
+### Configuration SGBD
 
-**PostgreSQL (`postgresql.conf`) :**
+<Tabs items={['PostgreSQL', 'SQL Server', 'MySQL']}>
+ <div>
+
+**`postgresql.conf` :**
 ```ini
 listen_addresses = '*'
 ```
 
-**PostgreSQL (`pg_hba.conf`) :**
+**`pg_hba.conf` :**
 ```
-host all all 0.0.0.0/0 md5
+# Autoriser les connexions depuis le serveur CSWeb
+host    all    all    0.0.0.0/0    md5
+
+# OU restreindre à une IP (recommandé production)
+host    all    all    192.168.1.50/32    md5
 ```
 
-**MySQL (`my.cnf`) :**
+**Firewall :**
+```bash
+sudo ufw allow from [IP_SERVEUR_CSWEB] to any port 5432
+sudo systemctl restart postgresql
+```
+
+ </div>
+ <div>
+
+**SQL Server Configuration Manager :**
+1. Activer TCP/IP dans les protocoles réseau
+2. Configurer le port 1433
+3. Redémarrer le service SQL Server
+
+**Firewall Windows :**
+```powershell
+New-NetFirewallRule -DisplayName "SQL Server" -Direction Inbound -Protocol TCP -LocalPort 1433 -Action Allow
+```
+
+**Activer l'authentification SQL :**
+```sql
+ALTER LOGIN sa ENABLE;
+ALTER LOGIN sa WITH PASSWORD = 'VotreMotDePasseFort!';
+```
+
+ </div>
+ <div>
+
+**`my.cnf` :**
 ```ini
+[mysqld]
 bind-address = 0.0.0.0
 ```
 
-**SQL Server :**
-- SQL Server Configuration Manager
-- TCP/IP Enabled
-- Redémarrer service
+**Créer l'utilisateur distant :**
+```sql
+CREATE USER 'breakout_user'@'%' IDENTIFIED BY 'VotreMotDePasse!';
+GRANT ALL PRIVILEGES ON csweb_breakout.* TO 'breakout_user'@'%';
+FLUSH PRIVILEGES;
+```
 
-## Exemples
+**Firewall :**
+```bash
+sudo ufw allow from [IP_SERVEUR_CSWEB] to any port 3306
+sudo systemctl restart mysql
+```
 
-### RGPH5 Sénégal (Production Réelle)
+ </div>
+</Tabs>
+
+---
+
+## Basculer entre Local et Remote
+
+### Local vers Remote
 
 ```bash
-BREAKOUT_MODE=remote
-BREAKOUT_DB_TYPE=sqlserver SQLSERVER_HOST=172.16.0.50
-SQLSERVER_PORT=1433
-SQLSERVER_DATABASE=RGPH5_Analytics
-SQLSERVER_USER=sa
-SQLSERVER_PASSWORD=<CONFIDENTIEL>
+# 1. Modifier .env : BREAKOUT_MODE=remote
+# 2. Arrêter le conteneur breakout local
+docker compose stop postgres
+
+# 3. Relancer CSWeb
+docker compose up -d csweb mysql
 ```
+
+### Remote vers Local
+
+```bash
+# 1. Modifier .env : BREAKOUT_MODE=local
+# 2. Relancer avec le profil local
+docker compose --profile local-postgres up -d
+```
+
+---
+
+## Exemples Production
+
+### RGPH5 Sénégal (SQL Server)
+
+```env
+BREAKOUT_MODE=remote
+BREAKOUT_DB_TYPE=sqlserver
+```
+
+Connexion configurée dans CSWeb :
+- Host : `172.16.0.50`
+- Port : `1433`
+- Database : `RGPH5_Analytics`
 
 **Résultat :** 3.2M questionnaires traités en 6h.
 
-### INS avec PostgreSQL Remote
+### Institut National de Statistique (PostgreSQL)
 
-```bash
+```env
 BREAKOUT_MODE=remote
-BREAKOUT_DB_TYPE=postgresql POSTGRES_HOST=192.168.1.100
-POSTGRES_PORT=5432
-POSTGRES_DATABASE=census_analytics
-POSTGRES_USER=analytics_user
-POSTGRES_PASSWORD=SecurePass!
+BREAKOUT_DB_TYPE=postgresql
 ```
+
+Connexion configurée dans CSWeb :
+- Host : `10.0.0.100`
+- Port : `5432`
+- Database : `census_analytics`
+
+---
 
 ## Troubleshooting
 
@@ -132,10 +267,10 @@ SQLSTATE[HY000] [2002] Connection refused
 ```
 
 **Solutions :**
-1. Vérifier serveur démarré
-2. Vérifier firewall
-3. Vérifier configuration SGBD (listen_addresses)
-4. Vérifier VPN (si nécessaire)
+1. Vérifier que le serveur distant est démarré
+2. Vérifier le firewall (`ufw status`, `iptables -L`)
+3. Vérifier `listen_addresses` dans la configuration SGBD
+4. Tester la connectivité depuis le conteneur
 
 ### Authentication Failed
 
@@ -145,16 +280,28 @@ SQLSTATE[28000] Invalid authorization
 ```
 
 **Solutions :**
-1. Vérifier credentials
-2. Créer user avec host wildcard (`%`)
-3. Activer authentification SQL Server (pas seulement Windows)
+1. Vérifier les credentials
+2. Créer l'utilisateur avec host wildcard (`'%'`)
+3. Vérifier `pg_hba.conf` pour PostgreSQL
+4. Activer l'authentification SQL pour SQL Server
 
-## Ressources
+### Timeout
 
-- **Architecture** : [Architecture - Local vs Remote](/guides/architecture/local-vs-remote)
-- **Environment Variables** : [Config - Environment](/reference/config/environment)
-- **Troubleshooting** : [Common Issues](/reference/troubleshooting/common-issues)
+**Symptôme :**
+```
+SQLSTATE[HYT00]: Login timeout expired
+```
+
+**Solutions :**
+1. Serveur distant non joignable (réseau)
+2. Firewall bloque le port
+3. VPN requis mais non connecté
 
 ---
 
-**CSWeb Community Platform v2.0 - Remote Deployment**
+## Ressources
+
+- **[Installation](/getting-started/installation)** - Guide d'installation complet
+- **[Variables d'Environnement](/reference/config/environment)** - Référence .env
+- **[Architecture](/guides/architecture)** - Architecture Local vs Remote
+- **[Troubleshooting](/reference/troubleshooting/common-issues)** - Problèmes courants

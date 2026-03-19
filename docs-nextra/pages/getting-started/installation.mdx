@@ -256,6 +256,145 @@ docker compose exec mysql mysql -u root -p
 
 ---
 
+## Setup Mode Remote (Serveur Distant)
+
+Le mode **remote** permet de connecter CSWeb à un serveur de base de données **distant** (PostgreSQL, MySQL ou SQL Server), sans conteneur breakout local.
+
+### Quand utiliser le mode Remote ?
+
+- **Production** : Séparation metadata/analytics sur des serveurs différents
+- **RGPH / Recensement** : Base analytics sur un serveur dédié haute performance
+- **Équipe distribuée** : Plusieurs instances CSWeb pointant vers la même base analytics
+
+### Fonctionnement
+
+En mode remote :
+1. Le **pilote par défaut** (`BREAKOUT_DB_TYPE`) dans `.env` détermine le driver PDO utilisé (PostgreSQL, MySQL ou SQL Server)
+2. La **connexion à la base distante** (host, user, password, database) est configurée **au moment du breakout** dans l'interface CSWeb
+3. CSWeb supporte les 3 types de bases : vous choisissez le pilote selon votre serveur distant
+
+### Étape 1 : Configurer le `.env`
+
+```env
+# Passer en mode remote
+BREAKOUT_MODE=remote
+
+# Pilote par défaut - détermine le driver PDO utilisé
+# postgresql | mysql | sqlserver
+BREAKOUT_DB_TYPE=postgresql
+
+# MySQL Metadata reste LOCAL (container Docker)
+MYSQL_HOST=mysql
+MYSQL_PORT=3306
+MYSQL_DATABASE=csweb_metadata
+```
+
+> **Note :** Les informations de connexion au serveur distant (host, user, password)
+> seront renseignées dans CSWeb lors de la configuration du breakout par dictionnaire.
+
+### Étape 2 : Démarrer sans conteneur breakout
+
+```bash
+# En mode remote, ne PAS utiliser le profil local-postgres
+# Démarrer uniquement CSWeb + MySQL
+docker compose up -d csweb mysql
+
+# Vérifier les conteneurs
+docker compose ps
+```
+
+**Sortie attendue :**
+
+```
+NAME                      STATUS              PORTS
+csweb-app                 Up (healthy)        0.0.0.0:8080->80/tcp
+csweb-mysql-metadata      Up (healthy)        0.0.0.0:3306->3306/tcp
+```
+
+> Pas de conteneur PostgreSQL/SQL Server - la connexion se fait vers le serveur distant.
+
+### Étape 3 : Vérifier les drivers disponibles
+
+```bash
+# Vérifier que le driver correspondant au pilote choisi est installé
+docker compose exec csweb php bin/console csweb:check-database-drivers
+```
+
+**Sortie attendue :**
+
+```
+ POSTGRESQL   ✅ Available
+ MYSQL        ✅ Available
+ SQLSERVER    ✅ Available
+
+ [OK] All database types are supported (3/3)
+```
+
+### Étape 4 : Configurer le breakout dans CSWeb
+
+La connexion au serveur distant se configure **dans l'interface CSWeb** au moment du breakout :
+1. Se connecter à `http://localhost:8080`
+2. Aller dans **Data** et sélectionner un dictionnaire
+3. Configurer le schéma breakout avec les informations du serveur distant :
+   - **Host** : IP ou hostname du serveur distant
+   - **Port** : Port du SGBD (5432, 3306, 1433)
+   - **Database** : Nom de la base analytics
+   - **User / Password** : Credentials du serveur distant
+
+### Prérequis Serveur Distant
+
+Le serveur distant doit être accessible depuis le conteneur CSWeb :
+
+**PostgreSQL :**
+```ini
+# postgresql.conf
+listen_addresses = '*'
+```
+```
+# pg_hba.conf
+host    all    all    0.0.0.0/0    md5
+```
+
+**MySQL :**
+```ini
+# my.cnf
+bind-address = 0.0.0.0
+```
+
+**SQL Server :**
+- TCP/IP activé dans SQL Server Configuration Manager
+- Port 1433 ouvert dans le firewall
+
+**Firewall :**
+```bash
+# PostgreSQL
+sudo ufw allow from [IP_SERVEUR_CSWEB] to any port 5432
+
+# MySQL
+sudo ufw allow from [IP_SERVEUR_CSWEB] to any port 3306
+
+# SQL Server
+sudo ufw allow from [IP_SERVEUR_CSWEB] to any port 1433
+```
+
+### Basculer entre Local et Remote
+
+```bash
+# Passer en local
+# 1. Modifier .env : BREAKOUT_MODE=local
+# 2. Relancer avec le profil
+docker compose --profile local-postgres up -d
+
+# Passer en remote
+# 1. Modifier .env : BREAKOUT_MODE=remote
+# 2. Relancer sans profil breakout
+docker compose up -d csweb mysql
+```
+
+[Guide complet déploiement Remote](/guides/deployment/remote)
+
+---
+
 ## Architecture Docker
 
 ### Services Déployés
