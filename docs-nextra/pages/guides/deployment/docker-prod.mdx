@@ -117,11 +117,11 @@ nano .env
 
 ```bash
 # Démarrer SANS outils dev
-docker-compose --profile local-postgres up -d
+docker compose --profile local-postgres up -d
 
 # Vérifier
-docker-compose ps
-docker-compose logs
+docker compose ps
+docker compose logs
 ```
 
 ---
@@ -218,12 +218,12 @@ PROJECT_DIR="/home/csweb/pg_csweb8_latest_2026"
 mkdir -p $BACKUP_DIR cd $PROJECT_DIR echo "[$DATE] Starting backup..."
 
 # 1. Backup MySQL metadata
-docker-compose exec -T mysql mysqldump \
+docker compose exec -T mysql mysqldump \
  -u csweb_prod -p$MYSQL_PASSWORD csweb_prod \
  > $BACKUP_DIR/metadata.sql
 
 # 2. Backup PostgreSQL analytics (si local)
-docker-compose exec -T postgres pg_dump \
+docker compose exec -T postgres pg_dump \
  -U csweb_analytics csweb_analytics \
  > $BACKUP_DIR/analytics.sql
 
@@ -309,7 +309,7 @@ services:
 
 ```sql
 -- Se connecter
-docker-compose exec mysql mysql -u root -p
+docker compose exec mysql mysql -u root -p
 
 -- Supprimer users anonymes
 DELETE FROM mysql.user WHERE User='';
@@ -340,14 +340,14 @@ cd /home/csweb/pg_csweb8_latest_2026
 git pull origin master
 
 # 3. Rebuild images
-docker-compose build --no-cache
+docker compose build --no-cache
 
 # 4. Redémarrer
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 
 # 5. Vérifier
-docker-compose logs -f
+docker compose logs -f
 ```
 
 ---

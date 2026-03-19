@@ -2,7 +2,7 @@
 
 Référence complète des codes d'erreur CSWeb Community Platform avec solutions.
 
-import { Callout } from '../../../components/Callout'
+import { Callout } from 'nextra/components'
 
 ## Erreurs Database
 
@@ -23,10 +23,10 @@ SQLSTATE[08006] Connection refused
 
 ```bash
 # Vérifier service
-docker-compose ps postgres
+docker compose ps postgres
 
 # Restart
-docker-compose restart postgres
+docker compose restart postgres
 
 # Vérifier .env
 POSTGRES_HOST=postgres  # Nom service Docker
@@ -54,7 +54,7 @@ echo $POSTGRES_USER
 echo $POSTGRES_PASSWORD
 
 # Reset password
-docker-compose exec postgres psql -U postgres -c \
+docker compose exec postgres psql -U postgres -c \
   "ALTER USER csweb_analytics PASSWORD 'new_password';"
 ```
 
@@ -70,12 +70,12 @@ SQLSTATE[3D000] database "csweb_analytics" does not exist
 
 ```bash
 # Créer database
-docker-compose exec postgres psql -U postgres -c \
+docker compose exec postgres psql -U postgres -c \
   "CREATE DATABASE csweb_analytics OWNER csweb_analytics;"
 
 # Ou rebuild
-docker-compose down -v
-docker-compose up -d
+docker compose down -v
+docker compose up -d
 ```
 
 ### DB-004: Driver Not Found
@@ -166,7 +166,7 @@ Breakout process terminated with exit code 1
 
 ```bash
 # Vérifier logs
-docker-compose logs csweb | grep -A 10 "Breakout"
+docker compose logs csweb | grep -A 10 "Breakout"
 
 # Drop table existante
 DROP TABLE IF EXISTS eval_dict_producteurs;
@@ -403,7 +403,7 @@ kill -9 <PID>
 
 # Ou changer port
 CSWEB_PORT=8081
-docker-compose up -d
+docker compose up -d
 ```
 
 ### DCK-002: Volume Permission Denied
@@ -421,8 +421,8 @@ Permission denied: '/var/lib/postgresql/data'
 sudo chown -R 999:999 ./postgres-data
 
 # Ou recreate volume
-docker-compose down -v
-docker-compose up -d
+docker compose down -v
+docker compose up -d
 ```
 
 ### DCK-003: Out of Memory
@@ -458,8 +458,8 @@ network csweb_default not found
 
 ```bash
 # Recreate network
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 
 # Ou créer manuellement
 docker network create csweb_default
@@ -599,13 +599,13 @@ LOG_LEVEL=debug
 
 ```bash
 # Tous les logs
-docker-compose logs -f
+docker compose logs -f
 
 # Service spécifique
-docker-compose logs -f csweb
+docker compose logs -f csweb
 
 # Filtrer erreurs
-docker-compose logs csweb | grep ERROR
+docker compose logs csweb | grep ERROR
 ```
 
 ### Logs PostgreSQL
@@ -616,7 +616,7 @@ ALTER SYSTEM SET log_min_duration_statement = 1000;
 SELECT pg_reload_conf();
 
 # Voir logs
-docker-compose exec postgres tail -f /var/lib/postgresql/data/log/postgresql.log
+docker compose exec postgres tail -f /var/lib/postgresql/data/log/postgresql.log
 ```
 
 ## Ressources

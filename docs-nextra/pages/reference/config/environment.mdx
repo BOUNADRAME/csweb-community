@@ -766,7 +766,7 @@ API_URL=http://193.203.15.16/kairos/api/
 # Logs (production)
 CSWEB_LOG_LEVEL=error
 CSWEB_PROCESS_CASES_LOG_LEVEL=error
-MAX_EXECUTION_TIME=0 # Illimité pour breakout 3.2M cas
+MAX_EXECUTION_TIME=0 # Illimité pour breakout sur gros volumes
 ```
 
 ### Configuration Hybrid (MySQL local + PostgreSQL remote)
@@ -820,26 +820,26 @@ MAX_EXECUTION_TIME=300
 
 ```bash
 # Toutes les variables
-docker-compose exec csweb env
+docker compose exec csweb env
 
 # Filtrer breakout
-docker-compose exec csweb env | grep BREAKOUT
+docker compose exec csweb env | grep BREAKOUT
 
 # Filtrer PostgreSQL
-docker-compose exec csweb env | grep POSTGRES
+docker compose exec csweb env | grep POSTGRES
 
 # Filtrer MySQL
-docker-compose exec csweb env | grep MYSQL
+docker compose exec csweb env | grep MYSQL
 ```
 
 ### Tester Connexions
 
 ```bash
 # Vérifier drivers disponibles
-docker-compose exec csweb php bin/console csweb:check-database-drivers
+docker compose exec csweb php bin/console csweb:check-database-drivers
 
 # Tester connexions aux DB
-docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+docker compose exec csweb php bin/console csweb:check-database-drivers --test-connections
 ```
 
 **Output attendu :**
@@ -872,7 +872,7 @@ grep POSTGRES_PASSWORD .env
 
 3. Redémarrer containers :
 ```bash
-docker-compose restart
+docker compose restart
 ```
 
 ### Erreur: Mauvaise Valeur

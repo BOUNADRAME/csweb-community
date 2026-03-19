@@ -8,7 +8,7 @@ Surveiller et diagnostiquer les jobs de breakout en temps réel.
 
 ```bash
 # Logs Docker
-docker-compose logs -f csweb
+docker compose logs -f csweb
 
 # Logs fichier
 tail -f /var/www/html/var/logs/breakout.log
@@ -18,10 +18,10 @@ tail -f /var/www/html/var/logs/breakout.log
 
 ```bash
 # Grep pour dictionnaire spécifique
-docker-compose logs csweb | grep "EVAL_DICT"
+docker compose logs csweb | grep "EVAL_DICT"
 
 # Grep erreurs
-docker-compose logs csweb | grep ERROR
+docker compose logs csweb | grep ERROR
 ```
 
 ## Progress Tracking
@@ -47,7 +47,7 @@ Output exemple :
 
 ```bash
 # Compter rows pendant breakout
-watch -n 5 'docker-compose exec postgres psql -U csweb_analytics -d csweb_analytics -c "SELECT COUNT(*) FROM eval_cases;"'
+watch -n 5 'docker compose exec postgres psql -U csweb_analytics -d csweb_analytics -c "SELECT COUNT(*) FROM eval_cases;"'
 ```
 
 ## Métriques Performance
@@ -83,7 +83,7 @@ Calculer débit :
 docker stats csweb
 
 # Top processes
-docker-compose exec csweb top
+docker compose exec csweb top
 ```
 
 ## Détection Erreurs
@@ -92,7 +92,7 @@ docker-compose exec csweb top
 
 | Erreur | Cause | Solution |
 |--------|-------|----------|
-| `Connection refused` | DB non accessible | Vérifier docker-compose ps |
+| `Connection refused` | DB non accessible | Vérifier docker compose ps |
 | `Driver not found` | pdo_pgsql manquant | Installer driver |
 | `Table already exists` | Breakout déjà fait | Utiliser --overwrite |
 | `Out of memory` | Trop de cases | Augmenter memory_limit |
@@ -107,13 +107,13 @@ php bin/console csweb:check-database-drivers
 
 ```bash
 # PostgreSQL
-docker-compose exec postgres pg_isready
+docker compose exec postgres pg_isready
 
 # MySQL
-docker-compose exec mysql-breakout mysqladmin ping
+docker compose exec mysql-breakout mysqladmin ping
 
 # SQL Server
-docker-compose exec sqlserver /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -Q "SELECT 1"
+docker compose exec sqlserver /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -Q "SELECT 1"
 ```
 
 ## Alertes
@@ -218,13 +218,13 @@ find /var/log/csweb -name "*.log" -mtime +30 -delete
 ### Vacuum PostgreSQL
 
 ```bash
-docker-compose exec postgres vacuumdb -U csweb_analytics -d csweb_analytics --analyze
+docker compose exec postgres vacuumdb -U csweb_analytics -d csweb_analytics --analyze
 ```
 
 ### Optimize MySQL
 
 ```bash
-docker-compose exec mysql-breakout mysqlcheck -u breakout_user -p --optimize --all-databases
+docker compose exec mysql-breakout mysqlcheck -u breakout_user -p --optimize --all-databases
 ```
 
 ## Troubleshooting
@@ -249,13 +249,13 @@ rm -f /tmp/breakout-*.lock
 PostgreSQL :
 
 ```bash
-docker-compose exec postgres psql -U csweb_analytics -c "REINDEX DATABASE csweb_analytics;"
+docker compose exec postgres psql -U csweb_analytics -c "REINDEX DATABASE csweb_analytics;"
 ```
 
 MySQL :
 
 ```bash
-docker-compose exec mysql-breakout mysqlcheck -u breakout_user -p --repair csweb_breakout
+docker compose exec mysql-breakout mysqlcheck -u breakout_user -p --repair csweb_breakout
 ```
 
 ## Ressources

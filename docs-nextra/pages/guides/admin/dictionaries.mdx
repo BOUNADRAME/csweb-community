@@ -2,10 +2,10 @@
 
 Uploader, gérer et supprimer les dictionnaires CSPro.
 
-import { Callout } from '../../../components/Callout'
+import { Callout } from 'nextra/components'
 
 <Callout type="info">
-**v2.1 (Avril 2026)** : Admin Panel React pour gestion dictionnaires. Actuellement : Interface CSWeb vanilla.
+**Prochaine version** : Admin Panel React pour gestion dictionnaires. Actuellement : Interface CSWeb vanilla.
 </Callout>
 
 ## Upload Dictionnaire
@@ -137,7 +137,7 @@ Sinon :
 
 ```bash
 # Copier depuis container
-docker-compose cp csweb:/var/www/html/files/dictionaries ./backup/
+docker compose cp csweb:/var/www/html/files/dictionaries ./backup/
 
 # Archive
 tar -czf dictionaries-backup-$(date +%Y%m%d).tar.gz ./backup/dictionaries
@@ -162,7 +162,7 @@ Vérifier :
 
 ```bash
 # Lister fichiers
-docker-compose exec csweb ls -la /var/www/html/files/dictionaries/
+docker compose exec csweb ls -la /var/www/html/files/dictionaries/
 ```
 
 ## Ressources

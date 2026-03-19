@@ -13,7 +13,7 @@
 ### Commande CLI
 
 ```bash
-docker-compose exec csweb php bin/console csweb:check-database-drivers
+docker compose exec csweb php bin/console csweb:check-database-drivers
 ```
 
 **Output attendu :**
@@ -24,7 +24,7 @@ docker-compose exec csweb php bin/console csweb:check-database-drivers
 ### Via PHP
 
 ```bash
-docker-compose exec csweb php -m | grep pdo
+docker compose exec csweb php -m | grep pdo
 ```
 
 **Output attendu :**
@@ -79,10 +79,10 @@ MYSQL_BREAKOUT_USER=breakout_user
 
 ```bash
 # Metadata
-docker-compose exec mysql mysql -u csweb_user -p csweb_metadata
+docker compose exec mysql mysql -u csweb_user -p csweb_metadata
 
 # Breakout (si MySQL)
-docker-compose exec mysql-breakout mysql -u breakout_user -p csweb_breakout
+docker compose exec mysql-breakout mysql -u breakout_user -p csweb_breakout
 ```
 
 ## pdo_pgsql
@@ -125,7 +125,7 @@ POSTGRES_PASSWORD=***
 ### Test Connexion
 
 ```bash
-docker-compose exec postgres psql \
+docker compose exec postgres psql \
  -U csweb_analytics \
  -d csweb_analytics
 ```
@@ -187,7 +187,7 @@ SQLSERVER_PASSWORD=YourStrong!Passw0rd
 ### Test Connexion
 
 ```bash
-docker-compose exec sqlserver /opt/mssql-tools/bin/sqlcmd \
+docker compose exec sqlserver /opt/mssql-tools/bin/sqlcmd \
  -S localhost \
  -U sa \
  -P YourStrong!Passw0rd
@@ -314,7 +314,7 @@ cp /etc/php/8.1/cli/conf.d/20-pdo_pgsql.ini \
 
 # Redémarrer FPM
 service php8.1-fpm restart
-docker-compose restart csweb
+docker compose restart csweb
 ```
 
 ### SQL Server Driver Installation Fails

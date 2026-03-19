@@ -5,7 +5,7 @@
 ## Syntax
 
 ```bash
-docker-compose exec csweb php bin/console csweb:check-database-drivers [--test-connections]
+docker compose exec csweb php bin/console csweb:check-database-drivers [--test-connections]
 ```
 
 ## Options
@@ -51,7 +51,7 @@ Checking available database drivers...
  PostgreSQL breakout will not work.
 
  To install:
- docker-compose exec csweb apt-get install php8.1-pgsql docker-compose restart csweb
+ docker compose exec csweb apt-get install php8.1-pgsql docker compose restart csweb
 ```
 
 ### Si Connexion Échoue
@@ -62,7 +62,7 @@ Testing database connections...
  MySQL Metadata : Connected to mysql:3306/csweb_metadata PostgreSQL Breakout : Connection FAILED Error: SQLSTATE[08006] Connection refused Host: postgres, Port: 5432
 
  Solutions:
- 1. Verify PostgreSQL container is running: docker-compose ps
+ 1. Verify PostgreSQL container is running: docker compose ps
  2. Check POSTGRES_HOST in .env
  3. Verify credentials in .env
 ```
@@ -72,7 +72,7 @@ Testing database connections...
 ### 1. Vérification Post-Installation Après installation de CSWeb Community Platform :
 
 ```bash
-docker-compose exec csweb php bin/console csweb:check-database-drivers
+docker compose exec csweb php bin/console csweb:check-database-drivers
 ```
 
 **Attendu :** Les 3 drivers (mysql, pgsql, sqlsrv) doivent être disponibles.
@@ -80,7 +80,7 @@ docker-compose exec csweb php bin/console csweb:check-database-drivers
 ### 2. Debug Problème de Connexion Si breakout échoue avec erreur driver :
 
 ```bash
-docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+docker compose exec csweb php bin/console csweb:check-database-drivers --test-connections
 ```
 
 **Cela teste :**
@@ -95,17 +95,17 @@ docker-compose exec csweb php bin/console csweb:check-database-drivers --test-co
 # BREAKOUT_DB_TYPE=postgresql mysql
 
 # Redémarrer
-docker-compose restart csweb
+docker compose restart csweb
 
 # Vérifier
-docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+docker compose exec csweb php bin/console csweb:check-database-drivers --test-connections
 ```
 
 ### 4. Installation Driver Manquant Si driver manquant détecté :
 
 ```bash
 # Accéder au container
-docker-compose exec csweb bash
+docker compose exec csweb bash
 
 # Installer driver manquant
 apt-get update
@@ -116,10 +116,10 @@ apt-get install -y php8.1-mysql # MySQL
 exit
 
 # Redémarrer
-docker-compose restart csweb
+docker compose restart csweb
 
 # Re-vérifier
-docker-compose exec csweb php bin/console csweb:check-database-drivers
+docker compose exec csweb php bin/console csweb:check-database-drivers
 ```
 
 ## Drivers Supportés
@@ -213,8 +213,8 @@ src/Command/CheckDatabaseDriversCommand.php
 **Solution :**
 ```bash
 # Rebuild container avec Dockerfile correct
-docker-compose build --no-cache csweb
-docker-compose up -d
+docker compose build --no-cache csweb
+docker compose up -d
 ```
 
 ### Driver Installé mais Non Détecté
@@ -249,7 +249,7 @@ service php8.1-fpm restart
 ```
 
 **Causes possibles :**
-1. Container DB pas démarré : `docker-compose ps`
+1. Container DB pas démarré : `docker compose ps`
 2. Mauvaises credentials dans `.env`
 3. Firewall bloque (mode remote)
 4. Mauvais host (typo dans `.env`)
@@ -257,13 +257,13 @@ service php8.1-fpm restart
 **Debug :**
 ```bash
 # Vérifier containers
-docker-compose ps
+docker compose ps
 
 # Vérifier variables .env
-docker-compose exec csweb env | grep POSTGRES
+docker compose exec csweb env | grep POSTGRES
 
 # Tester connexion manuelle
-docker-compose exec postgres psql -U csweb_analytics -d csweb_analytics
+docker compose exec postgres psql -U csweb_analytics -d csweb_analytics
 ```
 
 ## Ressources

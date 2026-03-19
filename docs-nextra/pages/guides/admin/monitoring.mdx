@@ -2,10 +2,10 @@
 
 Surveiller l'état et les performances de CSWeb Community Platform.
 
-import { Callout } from '../../../components/Callout'
+import { Callout } from 'nextra/components'
 
 <Callout type="warning">
-**v2.1 (Avril 2026)** : Dashboard monitoring temps réel à venir. Actuellement : monitoring via CLI et logs.
+**Prochaine version** : Dashboard monitoring temps réel à venir. Actuellement : monitoring via CLI et logs.
 </Callout>
 
 ## Logs Docker
@@ -14,21 +14,21 @@ import { Callout } from '../../../components/Callout'
 
 ```bash
 # Tous les services
-docker-compose logs -f
+docker compose logs -f
 
 # Service spécifique
-docker-compose logs -f csweb
-docker-compose logs -f postgres
+docker compose logs -f csweb
+docker compose logs -f postgres
 ```
 
 ### Filtrer par Niveau
 
 ```bash
 # Erreurs seulement
-docker-compose logs csweb | grep ERROR
+docker compose logs csweb | grep ERROR
 
 # Warnings
-docker-compose logs csweb | grep WARN
+docker compose logs csweb | grep WARN
 ```
 
 ## Métriques Système
@@ -52,7 +52,7 @@ docker stats
 docker system df -v
 
 # Taille base de données
-docker-compose exec postgres du -sh /var/lib/postgresql/data
+docker compose exec postgres du -sh /var/lib/postgresql/data
 ```
 
 ## Health Checks
@@ -60,7 +60,7 @@ docker-compose exec postgres du -sh /var/lib/postgresql/data
 ### Services Running
 
 ```bash
-docker-compose ps
+docker compose ps
 
 # Output :
 # csweb      running
@@ -72,10 +72,10 @@ docker-compose ps
 
 ```bash
 # PostgreSQL
-docker-compose exec postgres pg_isready
+docker compose exec postgres pg_isready
 
 # MySQL
-docker-compose exec mysql mysqladmin ping
+docker compose exec mysql mysqladmin ping
 ```
 
 ### CSWeb Endpoint
@@ -165,12 +165,12 @@ Script monitoring :
 # /usr/local/bin/csweb-monitor.sh
 
 # Check service
-if ! docker-compose ps csweb | grep -q "Up"; then
+if ! docker compose ps csweb | grep -q "Up"; then
     echo "CSWeb service down" | mail -s "ALERT: CSWeb Down" admin@example.com
 fi
 
 # Check database
-if ! docker-compose exec postgres pg_isready > /dev/null 2>&1; then
+if ! docker compose exec postgres pg_isready > /dev/null 2>&1; then
     echo "PostgreSQL down" | mail -s "ALERT: PostgreSQL Down" admin@example.com
 fi
 ```
@@ -187,7 +187,7 @@ Cron :
 #!/bin/bash
 SLACK_WEBHOOK="https://hooks.slack.com/services/YOUR/WEBHOOK"
 
-STATUS=$(docker-compose ps csweb | grep -c "Up")
+STATUS=$(docker compose ps csweb | grep -c "Up")
 
 if [ $STATUS -eq 0 ]; then
     curl -X POST -H 'Content-type: application/json' \
@@ -282,21 +282,21 @@ Import dashboard PostgreSQL :
 
 ```bash
 # Vérifier logs
-docker-compose logs csweb
+docker compose logs csweb
 
 # Vérifier config
-docker-compose config
+docker compose config
 
 # Rebuild
-docker-compose build --no-cache csweb
-docker-compose up -d
+docker compose build --no-cache csweb
+docker compose up -d
 ```
 
 ### High Memory Usage
 
 ```bash
 # Identifier processus
-docker-compose exec csweb top
+docker compose exec csweb top
 
 # Limite mémoire PHP
 echo "memory_limit = 512M" > /etc/php/8.1/cli/conf.d/99-memory.ini

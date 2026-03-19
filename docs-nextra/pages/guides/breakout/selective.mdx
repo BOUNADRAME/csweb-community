@@ -5,7 +5,7 @@ description: Innovation majeure de CSWeb Community Platform pour le traitement c
 
 # Breakout Sélectif par Dictionnaire
 
-> **Innovation** : Développée par **Assietou DIAGNE** (ANSD, Sénégal) et validée lors du **RGPH5 Sénégal** avec 3.2M questionnaires.
+> **Innovation** : Développée par **Assietou DIAGNE** (ANSD, Sénégal) et validée en production lors du **RGPH5 Sénégal**.
 
 ## Qu'est-ce que le Breakout Sélectif ?
 
@@ -19,7 +19,7 @@ Le breakout sélectif permet de traiter **un seul dictionnaire CSPro** au lieu d
 - **Risque critique** : Si un dictionnaire échoue, TOUT le processus s'arrête
 - **Effet domino** : Les dictionnaires suivants ne sont jamais traités
 - **Exemple** : Si dict 2/5 échoue → dicts 3, 4, 5 bloqués
-- Commande : `php bin/console csweb:process-all`
+- Commande : `php bin/console csweb:process-cases`
 
 **CSWeb Community** (Sélectif - Traitement Isolé)
 - Traite UN SEUL dictionnaire à la fois
@@ -31,9 +31,7 @@ Le breakout sélectif permet de traiter **un seul dictionnaire CSPro** au lieu d
 
 ### Impact RGPH5 Sénégal
 
-- **Avant** : 48 heures de traitement
-- **Après** : 6 heures (8x plus rapide)
-- **Volume** : 3.2 millions de questionnaires
+Le breakout sélectif a permis de réduire considérablement le temps de traitement lors du RGPH5, en passant d'un traitement global très long à un traitement ciblé par dictionnaire bien plus rapide.
 
 ---
 
@@ -48,7 +46,7 @@ Imaginons 5 dictionnaires :
 
 **Avec CSWeb Vanilla** (Traitement Global en Cascade) :
 ```bash
-php bin/console csweb:process-all
+php bin/console csweb:process-cases
 
 # Processus séquentiel :
 # 1. RECENSEMENT (3M) → démarre
@@ -148,7 +146,7 @@ php bin/console csweb:process-cases-by-dict <NOM_DICTIONNAIRE>
 #### Breakout Simple
 
 ```bash
-docker-compose exec csweb php bin/console \
+docker compose exec csweb php bin/console \
   csweb:process-cases-by-dict EVAL_PRODUCTEURS
 
 # Sortie:
@@ -172,7 +170,7 @@ php bin/console csweb:process-cases-by-dict RGPH5_MENAGES --limit=10
 
 ```bash
 # Crontab : breakout quotidien à 2h
-0 2 * * * docker-compose exec -T csweb \
+0 2 * * * docker compose exec -T csweb \
   php bin/console csweb:process-cases-by-dict EVAL_PROD \
   --no-interaction >> /var/log/breakout.log 2>&1
 ```
@@ -302,13 +300,13 @@ php bin/console csweb:process-cases-by-dict EVAL_PRODUCTEURS_USAID
 
 ```bash
 # Vérifier services
-docker-compose ps
+docker compose ps
 
 # Tester connexions
 php bin/console csweb:check-database-drivers --test-connections
 
 # Redémarrer si nécessaire
-docker-compose restart postgres
+docker compose restart postgres
 ```
 
 ### Performance Lente

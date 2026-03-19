@@ -40,8 +40,8 @@ kill -9 <PID>
 CSWEB_PORT=9090
 
 # Redémarrer
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 ```
 
 **Accès nouveau port :**
@@ -83,8 +83,8 @@ services:
  - "5433:5432" # Host:Container
 
 # Redémarrer
-docker-compose down
-docker-compose --profile local-postgres up -d
+docker compose down
+docker compose --profile local-postgres up -d
 ```
 
 ---
@@ -102,25 +102,25 @@ http://localhost:8080/setup/
 1. **Container pas démarré :**
 ```bash
 # Vérifier status
-docker-compose ps
+docker compose ps
 
 # Démarrer si arrêté
-docker-compose up -d
+docker compose up -d
 ```
 
 2. **Permissions fichiers :**
 ```bash
 # Vérifier permissions
-docker-compose exec csweb ls -la /var/www/html/setup/
+docker compose exec csweb ls -la /var/www/html/setup/
 
 # Corriger
-docker-compose exec csweb chown -R www-data:www-data /var/www/html
+docker compose exec csweb chown -R www-data:www-data /var/www/html
 ```
 
 3. **Erreur PHP :**
 ```bash
 # Voir logs
-docker-compose logs csweb
+docker compose logs csweb
 ```
 
 ---
@@ -138,16 +138,16 @@ SQLSTATE[HY000] [2002] Connection refused
 
 ```bash
 # Vérifier containers actifs
-docker-compose ps
+docker compose ps
 
 # Démarrer MySQL si manquant
-docker-compose up -d mysql
+docker compose up -d mysql
 
 # Vérifier logs
-docker-compose logs mysql
+docker compose logs mysql
 
 # Tester connexion
-docker-compose exec mysql mysql -u root -p
+docker compose exec mysql mysql -u root -p
 ```
 
 ---
@@ -167,7 +167,7 @@ SQLSTATE[HY000]: Driver not found for pdo_pgsql
 
 1. **Vérifier drivers disponibles :**
 ```bash
-docker-compose exec csweb php bin/console csweb:check-database-drivers
+docker compose exec csweb php bin/console csweb:check-database-drivers
 ```
 
 **Output attendu :**
@@ -177,9 +177,9 @@ docker-compose exec csweb php bin/console csweb:check-database-drivers
 
 2. **Si driver manquant, rebuild image :**
 ```bash
-docker-compose down
-docker-compose build --no-cache csweb
-docker-compose up -d
+docker compose down
+docker compose build --no-cache csweb
+docker compose up -d
 ```
 
 3. **Vérifier `.env` :**
@@ -202,10 +202,10 @@ could not find driver for pdo_sqlsrv
 
 ```bash
 # Vérifier installation
-docker-compose exec csweb php -m | grep sqlsrv
+docker compose exec csweb php -m | grep sqlsrv
 
 # Si absent, installer manuellement
-docker-compose exec csweb bash
+docker compose exec csweb bash
 
 # Installer Microsoft ODBC Driver 18
 curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
@@ -218,7 +218,7 @@ pecl install sqlsrv pdo_sqlsrv
 echo "extension=pdo_sqlsrv.so" > /etc/php/8.1/cli/conf.d/30-pdo_sqlsrv.ini
 
 # Redémarrer
-docker-compose restart csweb
+docker compose restart csweb
 ```
 
 ---
@@ -236,7 +236,7 @@ SQLSTATE[42P07]: Relation already exists: 7 ERROR: relation "eval_cases" already
 
 **Option 1 : Utiliser --overwrite**
 ```bash
-docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+docker compose exec csweb php bin/console csweb:process-cases-by-dict \
  dictionnaires=EVAL_DICT \
  --overwrite
 ```
@@ -247,7 +247,7 @@ docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
  <Tabs.Tab>
 ```sql
 -- Se connecter
-docker-compose exec postgres psql -U csweb_analytics csweb_analytics
+docker compose exec postgres psql -U csweb_analytics csweb_analytics
 
 -- Supprimer toutes les tables eval_*
 DROP TABLE IF EXISTS eval_cases CASCADE;
@@ -264,7 +264,7 @@ CREATE SCHEMA public;
  <Tabs.Tab>
 ```sql
 -- Se connecter
-docker-compose exec mysql-breakout mysql -u breakout_user -p csweb_breakout
+docker compose exec mysql-breakout mysql -u breakout_user -p csweb_breakout
 
 -- Supprimer tables
 DROP TABLE IF EXISTS eval_cases;
@@ -280,7 +280,7 @@ CREATE DATABASE csweb_breakout;
  <Tabs.Tab>
 ```sql
 -- Se connecter
-docker-compose exec sqlserver /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong!Passw0rd
+docker compose exec sqlserver /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong!Passw0rd
 
 -- Supprimer tables
 DROP TABLE IF EXISTS eval_cases;
@@ -309,7 +309,7 @@ Dictionary "SURVEY_DICT" not found in CSWeb
 1. **Lister dictionnaires disponibles :**
 ```bash
 # Via MySQL metadata
-docker-compose exec mysql mysql -u csweb -p csweb SELECT name, label FROM cspro_dictionaries;
+docker compose exec mysql mysql -u csweb -p csweb SELECT name, label FROM cspro_dictionaries;
 ```
 
 **Output exemple :**
@@ -351,14 +351,14 @@ PHP Fatal error: Allowed memory size of 134217728 bytes exhausted
 
 **Option 1 : Augmenter memory limit**
 ```bash
-docker-compose exec csweb php -d memory_limit=2G bin/console \
+docker compose exec csweb php -d memory_limit=2G bin/console \
  csweb:process-cases-by-dict dictionnaires=RGPH5_DICT --threads=10
 ```
 
 **Option 2 : Modifier php.ini**
 ```bash
 # Éditer php.ini dans container
-docker-compose exec csweb bash
+docker compose exec csweb bash
 nano /etc/php/8.1/cli/php.ini
 
 # Changer
@@ -366,13 +366,13 @@ memory_limit = 2G # ou -1 pour illimité
 
 # Redémarrer
 exit
-docker-compose restart csweb
+docker compose restart csweb
 ```
 
 **Option 3 : Traiter par lots**
 ```bash
 # Breakout par dictionnaire (plutôt que tous ensemble)
-docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+docker compose exec csweb php bin/console csweb:process-cases-by-dict \
  dictionnaires=DICT1 # Un seul à la fois
 ```
 
@@ -473,7 +473,7 @@ SQLSTATE[HY000] [1045] Access denied for user 'breakout_user'@'%'
 
 ```sql
 -- Se connecter en root
-docker-compose exec mysql mysql -u root -p
+docker compose exec mysql mysql -u root -p
 
 -- Créer/recréer user avec wildcard host
 CREATE USER 'breakout_user'@'%' IDENTIFIED BY 'BreakoutPass123!';
@@ -545,7 +545,7 @@ SQLSTATE[HY000] [10060] A network-related or instance-specific error occurred wh
 sc query MSSQLSERVER
 
 # Docker
-docker-compose ps sqlserver
+docker compose ps sqlserver
 ```
 
 **2. Activer TCP/IP :**
@@ -589,7 +589,7 @@ sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.0/docker
 sudo chmod +x /usr/local/bin/docker-compose
 
 # Vérifier
-docker-compose --version
+docker compose --version
 ```
 
 **Option 2 : Utiliser docker compose (v2)**
@@ -631,7 +631,7 @@ docker ps
 
 **Symptôme :**
 ```
-docker-compose ps
+docker compose ps
 # Status: Exit 1
 ```
 
@@ -639,7 +639,7 @@ docker-compose ps
 
 ```bash
 # Voir logs d'erreur
-docker-compose logs csweb
+docker compose logs csweb
 
 # Exemples erreurs courantes:
 # - Syntax error .env
@@ -648,7 +648,7 @@ docker-compose logs csweb
 # - Permissions fichiers
 
 # Redémarrer en mode verbeux
-docker-compose up csweb # Sans -d pour voir logs en direct
+docker compose up csweb # Sans -d pour voir logs en direct
 ```
 
 ---
@@ -666,7 +666,7 @@ mkdir: cannot create directory '/var/www/html/files': Permission denied
 
 ```bash
 # Corriger permissions volume
-docker-compose exec csweb chown -R www-data:www-data /var/www/html
+docker compose exec csweb chown -R www-data:www-data /var/www/html
 
 # Ou sur host (Linux)
 sudo chown -R 33:33 ./files # 33 = UID/GID www-data
@@ -696,7 +696,7 @@ sudo chown -R 33:33 ./files # 33 = UID/GID www-data
 1. **Vérifier credentials :**
 ```sql
 -- MySQL metadata
-docker-compose exec mysql mysql -u csweb -p csweb SELECT username, role, enabled FROM cspro_users;
+docker compose exec mysql mysql -u csweb -p csweb SELECT username, role, enabled FROM cspro_users;
 ```
 
 2. **Créer utilisateur API :**
@@ -814,15 +814,15 @@ module.exports = {
 
 1. **Vérifier fichier existe :**
 ```bash
-docker-compose exec csweb ls -la /var/www/html/files/media/
+docker compose exec csweb ls -la /var/www/html/files/media/
 
 # Chercher photo_001.jpg
 ```
 
 2. **Vérifier permissions :**
 ```bash
-docker-compose exec csweb chown -R www-data:www-data /var/www/html/files
-docker-compose exec csweb chmod -R 755 /var/www/html/files
+docker compose exec csweb chown -R www-data:www-data /var/www/html/files
+docker compose exec csweb chmod -R 755 /var/www/html/files
 ```
 
 3. **Uploader via CSWeb :**
@@ -872,7 +872,7 @@ Estimated time: 24 hours # Devrait être ~30 minutes
 **1. Augmenter threads :**
 ```bash
 # Passer de 1 thread (défaut) à 5-10
-docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+docker compose exec csweb php bin/console csweb:process-cases-by-dict \
  dictionnaires=EVAL_DICT \
  --threads=5
 ```
@@ -1004,7 +1004,7 @@ Migration checksum mismatch for migration version 1.0
 
 ```bash
 # Réparer checksums
-docker-compose exec csweb vendor/bin/flyway repair
+docker compose exec csweb vendor/bin/flyway repair
 
 # Ou via Maven (si disponible)
 mvn flyway:repair
@@ -1025,16 +1025,16 @@ Your requirements could not be resolved to an installable set of packages.
 
 ```bash
 # Mettre à jour composer
-docker-compose exec csweb composer self-update
+docker compose exec csweb composer self-update
 
 # Installer avec --no-scripts
-docker-compose exec csweb composer install --no-scripts
+docker compose exec csweb composer install --no-scripts
 
 # Vider cache
-docker-compose exec csweb composer clear-cache
+docker compose exec csweb composer clear-cache
 
 # Régénérer autoload
-docker-compose exec csweb composer dump-autoload
+docker compose exec csweb composer dump-autoload
 ```
 
 ---
@@ -1052,7 +1052,7 @@ Error: Database 'csweb_metadata' already exists
 
 **Option 1 : Supprimer base**
 ```bash
-docker-compose exec mysql mysql -u root -p DROP DATABASE csweb_metadata;
+docker compose exec mysql mysql -u root -p DROP DATABASE csweb_metadata;
 CREATE DATABASE csweb_metadata;
 ```
 
@@ -1070,43 +1070,43 @@ CREATE DATABASE csweb_metadata;
  <Tabs.Tab>
 ```bash
 # Tous les containers
-docker-compose logs
+docker compose logs
 
 # Container spécifique
-docker-compose logs csweb
-docker-compose logs postgres
+docker compose logs csweb
+docker compose logs postgres
 
 # Suivre en temps réel
-docker-compose logs -f csweb
+docker compose logs -f csweb
 
 # 100 dernières lignes
-docker-compose logs --tail=100 csweb
+docker compose logs --tail=100 csweb
 ```
  </Tabs.Tab>
 
  <Tabs.Tab>
 ```bash
 # Logs Symfony
-docker-compose exec csweb tail -f var/logs/dev.log
+docker compose exec csweb tail -f var/logs/dev.log
 
 # Logs PHP
-docker-compose exec csweb tail -f /var/log/php8.1-fpm.log
+docker compose exec csweb tail -f /var/log/php8.1-fpm.log
 
 # Logs Apache/Nginx
-docker-compose exec csweb tail -f /var/log/apache2/error.log
+docker compose exec csweb tail -f /var/log/apache2/error.log
 ```
  </Tabs.Tab>
 
  <Tabs.Tab>
 ```bash
 # PostgreSQL
-docker-compose exec postgres tail -f /var/log/postgresql/postgresql-14-main.log
+docker compose exec postgres tail -f /var/log/postgresql/postgresql-14-main.log
 
 # MySQL
-docker-compose exec mysql tail -f /var/log/mysql/error.log
+docker compose exec mysql tail -f /var/log/mysql/error.log
 
 # SQL Server
-docker-compose logs sqlserver
+docker compose logs sqlserver
 ```
  </Tabs.Tab>
 </Tabs>
@@ -1118,7 +1118,7 @@ docker-compose logs sqlserver
 1. **Vérifier FAQ :** [Troubleshooting - FAQ](/reference/troubleshooting/faq)
 2. **GitHub Issues :** [https://github.com/BOUNADRAME/pg_csweb8_latest_2026/issues](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/issues)
 3. **Logs complets :**
- ```bash docker-compose logs > debug.log
+ ```bash docker compose logs > debug.log
  # Joindre debug.log à votre issue
  ```
 

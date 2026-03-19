@@ -176,7 +176,7 @@ pages/
 
 **Checklist Complète 12 Catégories :**
 
-1. Services Docker (`docker-compose ps`)
+1. Services Docker (`docker compose ps`)
 2. Accès Web (CSWeb, phpMyAdmin, pgAdmin)
 3. Connexion Admin CSWeb
 4. Drivers DB (pdo_pgsql, pdo_mysql, pdo_sqlsrv)

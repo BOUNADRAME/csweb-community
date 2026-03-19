@@ -7,7 +7,7 @@ import { Tabs } from 'nextra/components'
 ## Syntax
 
 ```bash
-docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+docker compose exec csweb php bin/console csweb:process-cases-by-dict \
  dictionnaires=<DICT_NAME>[,<DICT_NAME2>,...] \
  [--threads=<NUMBER>] \
  [--overwrite] \
@@ -60,6 +60,8 @@ dictionnaires=EVAL_DICT,KAIROS_DICT,CENSUS_DICT
 | 3 | ~16h | 75% |
 | 5 | ~9.6h | 100% |
 | 10 | ~6h (RGPH5 réel) | 100% |
+
+> **Note** : Résultats observés lors du RGPH5 Sénégal. Les performances varient selon le matériel et le volume de données.
 
 ### --overwrite
 
@@ -117,7 +119,7 @@ php bin/console csweb:process-cases-by-dict dictionnaires=KAIROS_DICT -vvv
 ### Exemple 1: Breakout Simple (1 dictionnaire)
 
 ```bash
-docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+docker compose exec csweb php bin/console csweb:process-cases-by-dict \
  dictionnaires=EVAL_DICT
 ```
 
@@ -128,7 +130,7 @@ docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
 ### Exemple 2: Breakout Multiple (3 dictionnaires)
 
 ```bash
-docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+docker compose exec csweb php bin/console csweb:process-cases-by-dict \
  dictionnaires=SURVEY_DICT,CENSUS_DICT,KAIROS_DICT \
  --threads=5 \
  -vvv
@@ -143,7 +145,7 @@ docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
 ### Exemple 3: Re-breakout avec Overwrite
 
 ```bash
-docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+docker compose exec csweb php bin/console csweb:process-cases-by-dict \
  dictionnaires=EVAL_DICT \
  --overwrite \
  --threads=3
@@ -157,14 +159,14 @@ docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
 ### Exemple 4: Production RGPH5 (3.2M cas)
 
 ```bash
-docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+docker compose exec csweb php bin/console csweb:process-cases-by-dict \
  dictionnaires=RGPH5_DICT \
  --threads=10 \
  -vvv > /tmp/rgph5_breakout.log 2>&1 &
 ```
 
 **Résultat :**
-- 3.2M questionnaires traités en **6h** (vs 48h en global)
+- Gain de temps significatif vs breakout global
 - Logs sauvegardés dans `/tmp/rgph5_breakout.log`
 - Processus en arrière-plan (detached)
 
@@ -320,7 +322,7 @@ MYSQL_PASSWORD=csweb_pass
  <Tabs.Tab>
 ```sql
 -- Se connecter à PostgreSQL
-docker-compose exec postgres psql -U csweb_analytics csweb_analytics
+docker compose exec postgres psql -U csweb_analytics csweb_analytics
 
 -- Lister toutes les tables
 \dt
@@ -337,7 +339,7 @@ docker-compose exec postgres psql -U csweb_analytics csweb_analytics
  <Tabs.Tab>
 ```sql
 -- Se connecter à MySQL
-docker-compose exec mysql-breakout mysql -u breakout_user -p csweb_breakout
+docker compose exec mysql-breakout mysql -u breakout_user -p csweb_breakout
 
 -- Lister tables
 SHOW TABLES;
@@ -356,7 +358,7 @@ SHOW TABLES;
  <Tabs.Tab>
 ```sql
 -- Se connecter à SQL Server
-docker-compose exec sqlserver /opt/mssql-tools/bin/sqlcmd \
+docker compose exec sqlserver /opt/mssql-tools/bin/sqlcmd \
  -S localhost -U sa -P YourStrong!Passw0rd
 
 -- Lister tables
@@ -436,7 +438,7 @@ Dictionary "SURVEY_DICT" not found in CSWeb
 1. **Vérifier dictionnaires disponibles** :
 ```bash
 # Via MySQL metadata
-docker-compose exec csweb-mysql mysql -u csweb -p csweb SELECT name, label FROM cspro_dictionaries;
+docker compose exec csweb-mysql mysql -u csweb -p csweb SELECT name, label FROM cspro_dictionaries;
 ```
 
 2. **Uploader dictionnaire** dans CSWeb UI :
@@ -455,10 +457,10 @@ SQLSTATE[HY000] [2002] Connection refused
 
 ```bash
 # Vérifier containers actifs
-docker-compose ps
+docker compose ps
 
 # Démarrer container manquant
-docker-compose up -d postgres # ou mysql-breakout, sqlserver
+docker compose up -d postgres # ou mysql-breakout, sqlserver
 ```
 
 ### Erreur: Out of Memory
@@ -474,7 +476,7 @@ PHP Fatal error: Allowed memory size of 134217728 bytes exhausted
 
 ```bash
 # Augmenter memory limit PHP
-docker-compose exec csweb php -d memory_limit=2G bin/console \
+docker compose exec csweb php -d memory_limit=2G bin/console \
  csweb:process-cases-by-dict dictionnaires=RGPH5_DICT --threads=10
 ```
 
@@ -534,7 +536,7 @@ general_log_file = /var/log/mysql/queries.log
  <Tabs.Tab>
 ```bash
 # Logs SQL Server
-docker-compose logs -f sqlserver
+docker compose logs -f sqlserver
 
 # Activer query logging
 sp_configure 'show advanced options', 1;
@@ -559,6 +561,8 @@ RECONFIGURE;
 | **Temps total** | **6 heures** |
 | **Temps global (sans breakout sélectif)** | 48 heures |
 | **Gain de performance** | **8x plus rapide** |
+
+> Résultats observés lors du RGPH5. Les performances varient selon le matériel.
 
 ### Recommandations
 

@@ -15,7 +15,7 @@ MYSQL_BREAKOUT_PASSWORD=your_secure_password
 ```
 
 ```bash
-docker-compose --profile local-mysql up -d
+docker compose --profile local-mysql up -d
 ```
 
 ## Configuration
@@ -53,7 +53,7 @@ mysql-breakout:
 ### CLI MySQL
 
 ```bash
-docker-compose exec mysql-breakout mysql -u breakout_user -p csweb_breakout
+docker compose exec mysql-breakout mysql -u breakout_user -p csweb_breakout
 ```
 
 ### Vérification Driver
@@ -100,7 +100,7 @@ SELECT COUNT(*) FROM eval_cases WHERE verified = 1;
 Avec profil `dev` :
 
 ```bash
-docker-compose --profile local-mysql --profile dev up -d
+docker compose --profile local-mysql --profile dev up -d
 ```
 
 **URL** : http://localhost:8081
@@ -115,7 +115,7 @@ docker-compose --profile local-mysql --profile dev up -d
 ### Export PostgreSQL
 
 ```bash
-docker-compose exec postgres pg_dump -U csweb_analytics -t eval_cases --data-only csweb_analytics > data.sql
+docker compose exec postgres pg_dump -U csweb_analytics -t eval_cases --data-only csweb_analytics > data.sql
 ```
 
 ### Conversion SQL
@@ -134,7 +134,7 @@ sed -i 's/false/0/g' data.sql
 ### Import MySQL
 
 ```bash
-cat data.sql | docker-compose exec -T mysql-breakout mysql -u breakout_user -p csweb_breakout
+cat data.sql | docker compose exec -T mysql-breakout mysql -u breakout_user -p csweb_breakout
 ```
 
 ## Performance
@@ -165,10 +165,10 @@ OPTIMIZE TABLE eval_cases;
 
 ```bash
 # Vérifier service
-docker-compose ps mysql-breakout
+docker compose ps mysql-breakout
 
 # Logs
-docker-compose logs mysql-breakout
+docker compose logs mysql-breakout
 ```
 
 ### Port Conflict
@@ -193,13 +193,13 @@ FLUSH PRIVILEGES;
 ### Backup
 
 ```bash
-docker-compose exec mysql-breakout mysqldump -u breakout_user -p csweb_breakout > backup.sql
+docker compose exec mysql-breakout mysqldump -u breakout_user -p csweb_breakout > backup.sql
 ```
 
 ### Restore
 
 ```bash
-cat backup.sql | docker-compose exec -T mysql-breakout mysql -u breakout_user -p csweb_breakout
+cat backup.sql | docker compose exec -T mysql-breakout mysql -u breakout_user -p csweb_breakout
 ```
 
 ## Ressources

@@ -18,7 +18,7 @@ CSWeb Community Platform v2.0 est une **extension open-source** de CSWeb (Census
 - **Déploiement Docker** : Installation en 5 minutes
 - **Multi-database** : 2 bases distinctes (metadata + analytics)
 - **Local & Remote** : Développement local ou serveurs distants
-- **Production-ready** : Validé sur RGPH5 Sénégal (3.2M questionnaires)
+- **Production-ready** : Validé en production lors du RGPH5 Sénégal
 
 ---
 
@@ -31,7 +31,7 @@ CSWeb Community Platform v2.0 est une **extension open-source** de CSWeb (Census
 | **Installation** | Manuelle (2-3h) | Docker (5 minutes) |
 | **Architecture** | 1 base MySQL | 2 bases (metadata + analytics) |
 | **Drivers** | MySQL seulement | pdo_mysql + pdo_pgsql + pdo_sqlsrv |
-| **Performance (RGPH)** | 48h pour 3.2M cas | **6h pour 3.2M cas** (8x plus rapide) |
+| **Performance (RGPH)** | Heures voire jours | **Fraction du temps** (gain significatif) |
 | **Déploiement** | Local uniquement | Local + Remote |
 
 ---
@@ -127,7 +127,7 @@ CSWeb Community Platform v2.0 est une **extension open-source** de CSWeb (Census
 
 ```bash
 # Arrêter et supprimer containers
-docker-compose down -v # -v = supprimer volumes
+docker compose down -v # -v = supprimer volumes
 
 # Supprimer images
 docker rmi $(docker images 'pg_csweb8*' -q)
@@ -174,7 +174,7 @@ docker system prune -a
 | **Analytics & BI** | PostgreSQL | Meilleur pour requêtes complexes, analytics |
 | **Compatibilité existante** | MySQL | Infrastructure MySQL déjà en place |
 | **Enterprise (Windows)** | SQL Server | Intégration écosystème Microsoft, HA |
-| **RGPH / Recensement** | SQL Server | Validation RGPH5 Sénégal (3.2M cas en 6h) |
+| **RGPH / Recensement** | SQL Server | Validé en production lors du RGPH5 Sénégal |
 | **INS Afrique** | PostgreSQL ou SQL Server | Selon infrastructure existante |
 
 **Benchmark performances (50k cas) :**
@@ -229,7 +229,7 @@ Processus de transformation de questionnaires CSPro en tables SQL **par dictionn
 - **Isolation** : Tables séparées par dictionnaire (`eval_cases`, `kairos_cases`)
 - **Performance** : Traitement parallèle, pas de contention
 - **Flexibilité** : Breakout uniquement les dictionnaires nécessaires
-- **Scalabilité** : RGPH5 Sénégal = 3.2M cas en 6h (vs 48h en global)
+- **Scalabilité** : Validé en production lors du RGPH5 Sénégal avec un gain de temps significatif
 
 **Pattern de nommage :**
 ```
@@ -251,7 +251,7 @@ Exemples:
 | **Commande** | `csweb:process-cases` | `csweb:process-cases-by-dict` |
 | **Performance** | Lent (locks, contention) | Rapide (parallèle, isolation) |
 | **Exemple** | `cases`, `level_1` | `eval_cases`, `kairos_cases` |
-| **RGPH5 (3.2M)** | ~48h | **~6h** (8x plus rapide) |
+| **RGPH5 Sénégal** | Heures/jours | **Fraction du temps** (gain significatif) |
 
 ---
 
@@ -285,10 +285,10 @@ Temps (min) (Nb_cas × 0.005) / Nb_threads
 
 ```bash
 # Trouver processus
-docker-compose exec csweb ps aux | grep process-cases
+docker compose exec csweb ps aux | grep process-cases
 
 # Tuer processus (remplacer PID)
-docker-compose exec csweb kill -9 <PID>
+docker compose exec csweb kill -9 <PID>
 
 # Ou Ctrl+C si lancé en foreground
 ```
@@ -298,7 +298,7 @@ docker-compose exec csweb kill -9 <PID>
 **Nettoyage :**
 ```bash
 # Relancer avec --overwrite pour écraser
-docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+docker compose exec csweb php bin/console csweb:process-cases-by-dict \
  dictionnaires=EVAL_DICT \
  --overwrite
 ```
@@ -312,7 +312,7 @@ docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
 **Oui, production-ready.**
 
 **Validations :**
-- **RGPH5 Sénégal** : 3.2M questionnaires (ANSD, 2025)
+- **RGPH5 Sénégal** : Validé en production (ANSD)
 - **Gambie, Guinée** : Recensements nationaux
 - **Autres INS africains** : En cours de déploiement
 
@@ -357,7 +357,7 @@ SQLSERVER_PASSWORD=SecurePass!
 
 3. **Démarrer :**
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 **Accès :**
@@ -501,7 +501,7 @@ $2y$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
 **Via MySQL Direct :**
 ```bash
 # Se connecter à MySQL metadata
-docker-compose exec mysql mysql -u csweb -p csweb
+docker compose exec mysql mysql -u csweb -p csweb
 
 # Générer hash
 # (Utiliser https://bcrypt-generator.com/ ou PHP)
@@ -528,7 +528,7 @@ WHERE username = 'admin';
 - [https://github.com/BOUNADRAME/pg_csweb8_latest_2026/issues](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/issues)
 - Créer issue avec :
  - Description problème
- - Logs (`docker-compose logs > debug.log`)
+ - Logs (`docker compose logs > debug.log`)
  - Configuration (`.env` **sans mots de passe**)
 
 **3. Community :**
@@ -617,9 +617,9 @@ WHERE username = 'admin';
 
 1. **ANSD Sénégal** (Agence Nationale de la Statistique et de la Démographie)
  - RGPH5 (Recensement Général de la Population et de l'Habitat)
- - 3.2M questionnaires
+ - Plusieurs millions de questionnaires
  - SQL Server breakout
- - Temps : 6h (vs 48h CSWeb vanilla)
+ - Gain de temps significatif vs CSWeb vanilla
 
 2. **Gambie**
  - Census national
@@ -638,11 +638,11 @@ WHERE username = 'admin';
 **Oui, validation production RGPH5 Sénégal 2025.**
 
 **Chiffres :**
-- **3.2 millions** de questionnaires
+- **Plusieurs millions** de questionnaires
 - **10 threads** parallèles
 - **SQL Server 2019** (serveur ANSD)
-- **6 heures** de breakout total
-- **8x plus rapide** que breakout global
+- **Fraction du temps** de breakout vs mode global
+- **Gain de performance significatif** vs breakout global
 
 **Innovation :** Breakout sélectif par dictionnaire (Assietou DIAGNE, ANSD).
 
@@ -694,10 +694,10 @@ BACKUP_DIR="/backups/csweb/$DATE"
 mkdir -p $BACKUP_DIR
 
 # 1. Backup MySQL metadata
-docker-compose exec mysql mysqldump -u csweb -p csweb > $BACKUP_DIR/metadata.sql
+docker compose exec mysql mysqldump -u csweb -p csweb > $BACKUP_DIR/metadata.sql
 
 # 2. Backup PostgreSQL breakout
-docker-compose exec postgres pg_dump -U csweb_analytics csweb_analytics > $BACKUP_DIR/analytics.sql
+docker compose exec postgres pg_dump -U csweb_analytics csweb_analytics > $BACKUP_DIR/analytics.sql
 
 # 3. Backup fichiers
 tar -czf $BACKUP_DIR/files.tar.gz ./files

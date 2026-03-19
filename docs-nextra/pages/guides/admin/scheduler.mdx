@@ -2,10 +2,10 @@
 
 Planifier et automatiser les jobs CSWeb (breakout, exports, cleanups).
 
-import { Callout } from '../../../components/Callout'
+import { Callout } from 'nextra/components'
 
 <Callout type="warning">
-**v2.1 (Avril 2026)** : Web Scheduler UI à venir. Actuellement : configuration manuelle via cron.
+**Prochaine version** : Web Scheduler UI à venir. Actuellement : configuration manuelle via cron.
 </Callout>
 
 ## Configuration Actuelle (Cron)
@@ -33,7 +33,7 @@ Pour jobs dans container Docker :
 
 ```bash
 # Crontab sur hôte
-0 * * * * docker-compose exec -T csweb php bin/console csweb:process-cases-by-dict EVAL_DICT >> /var/log/cron.log 2>&1
+0 * * * * docker compose exec -T csweb php bin/console csweb:process-cases-by-dict EVAL_DICT >> /var/log/cron.log 2>&1
 ```
 
 ## Jobs Recommandés
@@ -58,14 +58,14 @@ PostgreSQL :
 
 ```bash
 # Tous les dimanches à 2h
-0 2 * * 0 docker-compose exec -T postgres vacuumdb -U csweb_analytics -d csweb_analytics
+0 2 * * 0 docker compose exec -T postgres vacuumdb -U csweb_analytics -d csweb_analytics
 ```
 
 MySQL :
 
 ```bash
 # Tous les dimanches à 2h
-0 2 * * 0 docker-compose exec -T mysql-breakout mysqlcheck -u breakout_user --password=PASSWORD --optimize --all-databases
+0 2 * * 0 docker compose exec -T mysql-breakout mysqlcheck -u breakout_user --password=PASSWORD --optimize --all-databases
 ```
 
 ### 4. Backup Automatique
@@ -90,7 +90,7 @@ DATE=$(date +%Y%m%d-%H%M%S)
 BACKUP_DIR="/backups/csweb"
 
 # Backup PostgreSQL
-docker-compose exec -T postgres pg_dump -U csweb_analytics csweb_analytics > "$BACKUP_DIR/db-$DATE.sql"
+docker compose exec -T postgres pg_dump -U csweb_analytics csweb_analytics > "$BACKUP_DIR/db-$DATE.sql"
 
 # Backup fichiers
 tar -czf "$BACKUP_DIR/files-$DATE.tar.gz" /var/www/html/files

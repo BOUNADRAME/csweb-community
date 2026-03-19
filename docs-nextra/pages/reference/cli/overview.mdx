@@ -8,13 +8,13 @@
 
 ```bash
 # Accéder au container
-docker-compose exec csweb bash
+docker compose exec csweb bash
 
 # Exécuter commande
 php bin/console <command>
 
 # Ou directement
-docker-compose exec csweb php bin/console <command>
+docker compose exec csweb php bin/console <command>
 ```
 
 ### Installation Manuelle
@@ -82,7 +82,7 @@ Arguments:
 **Exemple :**
 ```bash
 # Mode debug complet
-docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+docker compose exec csweb php bin/console csweb:process-cases-by-dict \
  dictionnaires=EVAL_DICT \
  -vvv
 ```
@@ -105,21 +105,21 @@ CSWEB_PROCESS_CASES_LOG_LEVEL=debug
 
 ```bash
 # Vérifier drivers disponibles
-docker-compose exec csweb php bin/console csweb:check-database-drivers
+docker compose exec csweb php bin/console csweb:check-database-drivers
 
 # Tester connexions aux DB
-docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+docker compose exec csweb php bin/console csweb:check-database-drivers --test-connections
 ```
 
 ### 2. Breakout Sélectif
 
 ```bash
 # Breakout simple
-docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+docker compose exec csweb php bin/console csweb:process-cases-by-dict \
  dictionnaires=EVAL_DICT
 
 # Breakout multiple avec threads
-docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+docker compose exec csweb php bin/console csweb:process-cases-by-dict \
  dictionnaires=EVAL_DICT,KAIROS_DICT \
  --threads=5
 ```
@@ -128,20 +128,20 @@ docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
 
 ```bash
 # Vider cache Symfony
-docker-compose exec csweb php bin/console cache:clear
+docker compose exec csweb php bin/console cache:clear
 
 # Vider cache en environnement prod
-docker-compose exec csweb php bin/console cache:clear --env=prod
+docker compose exec csweb php bin/console cache:clear --env=prod
 ```
 
 ### 4. Lister Toutes les Commandes
 
 ```bash
 # Lister commandes CSWeb
-docker-compose exec csweb php bin/console list csweb
+docker compose exec csweb php bin/console list csweb
 
 # Lister toutes les commandes disponibles
-docker-compose exec csweb php bin/console list
+docker compose exec csweb php bin/console list
 ```
 
 ## Logs
@@ -150,10 +150,10 @@ docker-compose exec csweb php bin/console list
 
 ```bash
 # Voir logs en temps réel
-docker-compose exec csweb tail -f var/logs/dev.log
+docker compose exec csweb tail -f var/logs/dev.log
 
 # Filtrer par commande
-docker-compose exec csweb grep "process-cases" var/logs/dev.log
+docker compose exec csweb grep "process-cases" var/logs/dev.log
 ```
 
 ### Niveaux de Log Configurable dans `.env` :
@@ -175,7 +175,7 @@ CSWEB_PROCESS_CASES_LOG_LEVEL=error
 crontab -e
 
 # Ajouter:
-0 2 * * * docker-compose exec -T csweb php bin/console csweb:process-cases-by-dict dictionnaires=EVAL_DICT >> /var/log/csweb_cron.log 2>&1
+0 2 * * * docker compose exec -T csweb php bin/console csweb:process-cases-by-dict dictionnaires=EVAL_DICT >> /var/log/csweb_cron.log 2>&1
 ```
 
 ### Scripts Bash
@@ -185,7 +185,7 @@ crontab -e
 # breakout_all.sh - Breakout tous les dictionnaires DICTS=("EVAL_DICT" "KAIROS_DICT" "CENSUS_DICT")
 
 for DICT in "${DICTS[@]}"; do echo "Processing $DICT..."
- docker-compose exec -T csweb php bin/console csweb:process-cases-by-dict \
+ docker compose exec -T csweb php bin/console csweb:process-cases-by-dict \
  dictionnaires=$DICT \
  --threads=3 \
  -vvv
@@ -216,7 +216,7 @@ Maximum execution time exceeded
 **Solution :**
 ```bash
 # Augmenter timeout PHP
-docker-compose exec csweb php -d max_execution_time=0 bin/console <command>
+docker compose exec csweb php -d max_execution_time=0 bin/console <command>
 ```
 
 ### Permission Denied
@@ -229,7 +229,7 @@ Permission denied: /var/www/html/var/logs
 **Solution :**
 ```bash
 # Corriger permissions
-docker-compose exec csweb chown -R www-data:www-data /var/www/html/var
+docker compose exec csweb chown -R www-data:www-data /var/www/html/var
 ```
 
 ## Ressources

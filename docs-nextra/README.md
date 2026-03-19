@@ -223,7 +223,7 @@ Contenu...
 ```mdx
 \```bash
 # Commandes bash
-docker-compose up -d
+docker compose up -d
 \```
 
 \```sql

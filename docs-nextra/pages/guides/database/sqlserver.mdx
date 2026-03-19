@@ -2,7 +2,7 @@
 
 SQL Server peut être utilisé pour le breakout dans un écosystème Microsoft.
 
-import { Callout } from '../../../components/Callout'
+import { Callout } from 'nextra/components'
 
 <Callout type="warning">
 **Architecture ARM non supportée** : SQL Server fonctionne uniquement sur x86_64 (pas Apple M1/M2).
@@ -21,7 +21,7 @@ SQLSERVER_PASSWORD=YourStrong!Passw0rd
 ```
 
 ```bash
-docker-compose --profile local-sqlserver up -d
+docker compose --profile local-sqlserver up -d
 ```
 
 ## Configuration
@@ -82,7 +82,7 @@ php -m | grep pdo_sqlsrv
 ### CLI sqlcmd
 
 ```bash
-docker-compose exec sqlserver /opt/mssql-tools/bin/sqlcmd \
+docker compose exec sqlserver /opt/mssql-tools/bin/sqlcmd \
   -S localhost \
   -U sa \
   -P 'YourStrong!Passw0rd'
@@ -179,10 +179,10 @@ SQLSERVER_PASSWORD='MyStrong@Pass123'
 
 ```bash
 # Vérifier service
-docker-compose ps sqlserver
+docker compose ps sqlserver
 
 # Logs
-docker-compose logs sqlserver
+docker compose logs sqlserver
 
 # Test connexion
 telnet localhost 1433
@@ -213,7 +213,7 @@ Si erreur SSL :
 ### Backup
 
 ```bash
-docker-compose exec sqlserver /opt/mssql-tools/bin/sqlcmd \
+docker compose exec sqlserver /opt/mssql-tools/bin/sqlcmd \
   -S localhost -U sa -P 'YourStrong!Passw0rd' \
   -Q "BACKUP DATABASE [CSWeb_Analytics] TO DISK = N'/var/opt/mssql/backup.bak'"
 ```
@@ -221,7 +221,7 @@ docker-compose exec sqlserver /opt/mssql-tools/bin/sqlcmd \
 ### Restore
 
 ```bash
-docker-compose exec sqlserver /opt/mssql-tools/bin/sqlcmd \
+docker compose exec sqlserver /opt/mssql-tools/bin/sqlcmd \
   -S localhost -U sa -P 'YourStrong!Passw0rd' \
   -Q "RESTORE DATABASE [CSWeb_Analytics] FROM DISK = N'/var/opt/mssql/backup.bak'"
 ```

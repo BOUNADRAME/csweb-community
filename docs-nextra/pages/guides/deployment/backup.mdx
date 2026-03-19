@@ -19,12 +19,12 @@
 
 ```bash
 # Dump complet
-docker-compose exec mysql mysqldump \
+docker compose exec mysql mysqldump \
  -u csweb_user -p \
  csweb_metadata > backup_metadata_$(date +%Y%m%d).sql
 
 # Dump avec structure uniquement (sans données)
-docker-compose exec mysql mysqldump \
+docker compose exec mysql mysqldump \
  -u csweb_user -p \
  --no-data \
  csweb_metadata > backup_metadata_structure.sql
@@ -34,12 +34,12 @@ docker-compose exec mysql mysqldump \
 
 ```bash
 # Dump complet
-docker-compose exec postgres pg_dump \
+docker compose exec postgres pg_dump \
  -U csweb_analytics \
  csweb_analytics > backup_analytics_$(date +%Y%m%d).sql
 
 # Dump format custom (compressé)
-docker-compose exec postgres pg_dump \
+docker compose exec postgres pg_dump \
  -U csweb_analytics \
  -Fc csweb_analytics > backup_analytics_$(date +%Y%m%d).dump
 ```
@@ -84,12 +84,12 @@ RETENTION_DAYS=30
 mkdir -p $BACKUP_DIR/$DATE cd $PROJECT_DIR echo "[$DATE] Starting backup..."
 
 # 1. MySQL metadata
-docker-compose exec -T mysql mysqldump \
+docker compose exec -T mysql mysqldump \
  -u csweb_user -p$MYSQL_PASSWORD \
  csweb_metadata > $BACKUP_DIR/$DATE/metadata.sql
 
 # 2. PostgreSQL breakout
-docker-compose exec -T postgres pg_dump \
+docker compose exec -T postgres pg_dump \
  -U csweb_analytics \
  -Fc csweb_analytics > $BACKUP_DIR/$DATE/analytics.dump
 
@@ -127,27 +127,27 @@ crontab -e
 
 ```bash
 # Arrêter CSWeb
-docker-compose stop csweb
+docker compose stop csweb
 
 # Restore
-docker-compose exec -T mysql mysql \
+docker compose exec -T mysql mysql \
  -u csweb_user -p$MYSQL_PASSWORD \
  csweb_metadata < backup_metadata_20260315.sql
 
 # Redémarrer
-docker-compose start csweb
+docker compose start csweb
 ```
 
 ### 2. Restore PostgreSQL Breakout
 
 ```bash
 # Format SQL
-docker-compose exec -T postgres psql \
+docker compose exec -T postgres psql \
  -U csweb_analytics \
  csweb_analytics < backup_analytics_20260315.sql
 
 # Format custom (.dump)
-docker-compose exec -T postgres pg_restore \
+docker compose exec -T postgres pg_restore \
  -U csweb_analytics \
  -d csweb_analytics \
  -Fc backup_analytics_20260315.dump
@@ -160,7 +160,7 @@ docker-compose exec -T postgres pg_restore \
 tar -xzf backup_files_20260315.tar.gz -C files/
 
 # Corriger permissions
-docker-compose exec csweb chown -R www-data:www-data /var/www/html/files
+docker compose exec csweb chown -R www-data:www-data /var/www/html/files
 ```
 
 ### 4. Restore Complet
@@ -170,10 +170,10 @@ docker-compose exec csweb chown -R www-data:www-data /var/www/html/files
 tar -xzf csweb_backup_20260315_020000.tar.gz cd 20260315_020000/
 
 # Restore MySQL
-docker-compose exec -T mysql mysql -u csweb_user -p < metadata.sql
+docker compose exec -T mysql mysql -u csweb_user -p < metadata.sql
 
 # Restore PostgreSQL
-docker-compose exec -T postgres pg_restore -U csweb_analytics -d csweb_analytics -Fc analytics.dump
+docker compose exec -T postgres pg_restore -U csweb_analytics -d csweb_analytics -Fc analytics.dump
 
 # Restore fichiers
 tar -xzf files.tar.gz -C /path/to/project/files/
@@ -250,17 +250,17 @@ cd /tmp/csweb_test
 tar -xzf /backups/csweb/csweb_backup_latest.tar.gz
 
 # 3. Restore dans containers test
-docker-compose -f docker-compose.test.yml up -d
+docker compose -f docker-compose.test.yml up -d
 
 # 4. Restore data
 # ... (commandes restore ci-dessus)
 
 # 5. Vérifier
 curl http://localhost:9090/api/
-docker-compose exec csweb php bin/console csweb:check-database-drivers
+docker compose exec csweb php bin/console csweb:check-database-drivers
 
 # 6. Nettoyer
-docker-compose down -v
+docker compose down -v
 cd ..
 rm -rf /tmp/csweb_test
 ```

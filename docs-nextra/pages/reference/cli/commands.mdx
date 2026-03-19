@@ -13,7 +13,7 @@ php bin/console csweb:process-cases-by-dict dictionnaires=<DICT> [options]
 
 **Exemple :**
 ```bash
-docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+docker compose exec csweb php bin/console csweb:process-cases-by-dict \
  dictionnaires=EVAL_DICT,KAIROS_DICT \
  --threads=5 \
  --overwrite
@@ -32,7 +32,7 @@ php bin/console csweb:check-database-drivers [--test-connections]
 
 **Exemple :**
 ```bash
-docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+docker compose exec csweb php bin/console csweb:check-database-drivers --test-connections
 ```
 
 ---
@@ -49,10 +49,10 @@ php bin/console cache:clear [--env=ENV]
 **Exemples :**
 ```bash
 # Vider cache dev
-docker-compose exec csweb php bin/console cache:clear
+docker compose exec csweb php bin/console cache:clear
 
 # Vider cache prod
-docker-compose exec csweb php bin/console cache:clear --env=prod
+docker compose exec csweb php bin/console cache:clear --env=prod
 ```
 
 ---
@@ -66,7 +66,7 @@ php bin/console cache:warmup [--env=ENV]
 
 **Exemple :**
 ```bash
-docker-compose exec csweb php bin/console cache:warmup --env=prod
+docker compose exec csweb php bin/console cache:warmup --env=prod
 ```
 
 ---
@@ -81,13 +81,13 @@ php bin/console debug:router [ROUTE_NAME]
 **Exemples :**
 ```bash
 # Lister toutes les routes
-docker-compose exec csweb php bin/console debug:router
+docker compose exec csweb php bin/console debug:router
 
 # Rechercher routes API
-docker-compose exec csweb php bin/console debug:router | grep api
+docker compose exec csweb php bin/console debug:router | grep api
 
 # Détails d'une route
-docker-compose exec csweb php bin/console debug:router api_breakout_start
+docker compose exec csweb php bin/console debug:router api_breakout_start
 ```
 
 ---
@@ -102,10 +102,10 @@ php bin/console debug:container [SERVICE_NAME]
 **Exemples :**
 ```bash
 # Lister tous les services
-docker-compose exec csweb php bin/console debug:container
+docker compose exec csweb php bin/console debug:container
 
 # Rechercher service
-docker-compose exec csweb php bin/console debug:container | grep csweb
+docker compose exec csweb php bin/console debug:container | grep csweb
 ```
 
 ---
@@ -120,10 +120,10 @@ php bin/console doctrine:migrations:migrate [VERSION]
 **Exemples :**
 ```bash
 # Migrer à la dernière version
-docker-compose exec csweb php bin/console doctrine:migrations:migrate
+docker compose exec csweb php bin/console doctrine:migrations:migrate
 
 # Migrer sans confirmation
-docker-compose exec csweb php bin/console doctrine:migrations:migrate --no-interaction
+docker compose exec csweb php bin/console doctrine:migrations:migrate --no-interaction
 ```
 
 ---
@@ -137,7 +137,7 @@ php bin/console doctrine:migrations:status
 
 **Exemple :**
 ```bash
-docker-compose exec csweb php bin/console doctrine:migrations:status
+docker compose exec csweb php bin/console doctrine:migrations:status
 ```
 
 ---
@@ -152,13 +152,13 @@ php bin/console list [NAMESPACE]
 **Exemples :**
 ```bash
 # Toutes les commandes
-docker-compose exec csweb php bin/console list
+docker compose exec csweb php bin/console list
 
 # Commandes CSWeb uniquement
-docker-compose exec csweb php bin/console list csweb
+docker compose exec csweb php bin/console list csweb
 
 # Commandes cache
-docker-compose exec csweb php bin/console list cache
+docker compose exec csweb php bin/console list cache
 ```
 
 ---
@@ -172,7 +172,7 @@ php bin/console help <COMMAND>
 
 **Exemple :**
 ```bash
-docker-compose exec csweb php bin/console help csweb:process-cases-by-dict
+docker compose exec csweb php bin/console help csweb:process-cases-by-dict
 ```
 
 ---
@@ -310,14 +310,14 @@ class MyCustomCommand extends Command
 ### Utilisation
 
 ```bash
-docker-compose exec csweb php bin/console csweb:my-command
+docker compose exec csweb php bin/console csweb:my-command
 ```
 
 ## Raccourcis Docker Créer un alias pour simplifier l'utilisation :
 
 ```bash
 # Ajouter dans ~/.bashrc ou ~/.zshrc
-alias csweb='docker-compose exec csweb php bin/console'
+alias csweb='docker compose exec csweb php bin/console'
 
 # Utilisation
 csweb csweb:check-database-drivers

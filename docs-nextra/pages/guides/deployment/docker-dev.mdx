@@ -68,7 +68,7 @@ newgrp docker
 
 # Vérifier
 docker --version
-docker-compose --version
+docker compose --version
 ```
  </Tabs.Tab>
 
@@ -82,7 +82,7 @@ open /Applications/Docker.app
 
 # Vérifier
 docker --version
-docker-compose --version
+docker compose --version
 ```
  </Tabs.Tab>
 
@@ -95,7 +95,7 @@ docker-compose --version
 4. Vérifier dans PowerShell :
 ```powershell
 docker --version
-docker-compose --version
+docker compose --version
 ```
  </Tabs.Tab>
 </Tabs>
@@ -143,10 +143,10 @@ openssl rand -hex 32 # APP_SECRET
 nano .env
 
 # 5. Démarrer containers
-docker-compose --profile local-postgres up -d
+docker compose --profile local-postgres up -d
 
 # 6. Vérifier status
-docker-compose ps
+docker compose ps
 ```
 
 ---
@@ -201,10 +201,10 @@ CSWEB_PROCESS_CASES_LOG_LEVEL=debug
 
 ```bash
 # Démarrer stack complète (avec outils dev)
-docker-compose --profile local-postgres --profile dev up -d
+docker compose --profile local-postgres --profile dev up -d
 
 # Vérifier status
-docker-compose ps
+docker compose ps
 ```
 
 **Output attendu :**
@@ -221,7 +221,7 @@ pgadmin running 0.0.0.0:8082->80/tcp
 
 ```bash
 # Sans phpMyAdmin ni pgAdmin
-docker-compose --profile local-postgres up -d
+docker compose --profile local-postgres up -d
 ```
 
 ### Choisir SGBD Breakout
@@ -233,7 +233,7 @@ docker-compose --profile local-postgres up -d
 BREAKOUT_DB_TYPE=postgresql
 
 # Démarrer
-docker-compose --profile local-postgres up -d
+docker compose --profile local-postgres up -d
 ```
  </Tabs.Tab>
 
@@ -243,7 +243,7 @@ docker-compose --profile local-postgres up -d
 BREAKOUT_DB_TYPE=mysql
 
 # Démarrer
-docker-compose --profile local-mysql up -d
+docker compose --profile local-mysql up -d
 ```
  </Tabs.Tab>
 
@@ -253,7 +253,7 @@ docker-compose --profile local-mysql up -d
 BREAKOUT_DB_TYPE=sqlserver
 
 # Démarrer
-docker-compose --profile local-sqlserver up -d
+docker compose --profile local-sqlserver up -d
 ```
  </Tabs.Tab>
 </Tabs>
@@ -309,47 +309,47 @@ docker-compose --profile local-sqlserver up -d
 
 ```bash
 # Démarrer
-docker-compose up -d
+docker compose up -d
 
 # Arrêter
-docker-compose down
+docker compose down
 
 # Redémarrer
-docker-compose restart
+docker compose restart
 
 # Voir logs
-docker-compose logs -f
+docker compose logs -f
 
 # Logs d'un service spécifique
-docker-compose logs -f csweb
-docker-compose logs -f postgres
+docker compose logs -f csweb
+docker compose logs -f postgres
 
 # Status containers
-docker-compose ps
+docker compose ps
 
 # Accéder au shell d'un container
-docker-compose exec csweb bash
-docker-compose exec postgres psql -U csweb_analytics csweb_analytics
+docker compose exec csweb bash
+docker compose exec postgres psql -U csweb_analytics csweb_analytics
 ```
 
 ### Rebuild Images
 
 ```bash
 # Rebuild après modification Dockerfile
-docker-compose build --no-cache
+docker compose build --no-cache
 
 # Rebuild et redémarrer
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 ### Nettoyer
 
 ```bash
 # Arrêter et supprimer containers (SANS supprimer volumes)
-docker-compose down
+docker compose down
 
 # Arrêter et supprimer containers + volumes ( PERTE DONNÉES)
-docker-compose down -v
+docker compose down -v
 
 # Nettoyer images inutilisées
 docker system prune -a
@@ -427,7 +427,7 @@ nano src/Controller/MyController.php
 **Après modification config/routes :**
 ```bash
 # Vider cache Symfony
-docker-compose exec csweb php bin/console cache:clear
+docker compose exec csweb php bin/console cache:clear
 ```
 
 ### Dockerfile/docker-compose.yml
@@ -435,9 +435,9 @@ docker-compose exec csweb php bin/console cache:clear
 **Modifications nécessitent rebuild :**
 ```bash
 # Rebuild après modification Dockerfile
-docker-compose down
-docker-compose build --no-cache
-docker-compose up -d
+docker compose down
+docker compose build --no-cache
+docker compose up -d
 ```
 
 ---
@@ -448,20 +448,20 @@ docker-compose up -d
 
 ```bash
 # Tous les containers
-docker-compose logs -f
+docker compose logs -f
 
 # Container spécifique
-docker-compose logs -f csweb
+docker compose logs -f csweb
 
 # Filtrer par niveau
-docker-compose logs csweb | grep ERROR
+docker compose logs csweb | grep ERROR
 ```
 
 ### Accéder au Shell
 
 ```bash
 # Shell container CSWeb
-docker-compose exec csweb bash
+docker compose exec csweb bash
 
 # Vérifier extensions PHP
 php -m | grep pdo
@@ -479,7 +479,7 @@ exit
  <Tabs.Tab>
 ```bash
 # Accéder à psql
-docker-compose exec postgres psql -U csweb_analytics csweb_analytics
+docker compose exec postgres psql -U csweb_analytics csweb_analytics
 
 # Lister tables
 \dt
@@ -495,7 +495,7 @@ SELECT COUNT(*) FROM eval_cases;
  <Tabs.Tab>
 ```bash
 # Accéder à mysql
-docker-compose exec mysql mysql -u csweb_user -p csweb_metadata
+docker compose exec mysql mysql -u csweb_user -p csweb_metadata
 
 # Lister tables
 SHOW TABLES;
@@ -526,8 +526,8 @@ Error: port 8080 is already allocated
 CSWEB_PORT=9090
 
 # Redémarrer
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 
 # Accès : http://localhost:9090
 ```
@@ -536,14 +536,14 @@ docker-compose up -d
 
 **Erreur :**
 ```
-docker-compose ps
+docker compose ps
 # Status: Exit 1
 ```
 
 **Solution :**
 ```bash
 # Voir logs erreur
-docker-compose logs csweb
+docker compose logs csweb
 
 # Causes courantes :
 # - Syntax error .env
@@ -561,7 +561,7 @@ mkdir: cannot create directory '/var/www/html/files': Permission denied
 **Solution :**
 ```bash
 # Corriger permissions
-docker-compose exec csweb chown -R www-data:www-data /var/www/html
+docker compose exec csweb chown -R www-data:www-data /var/www/html
 ```
 
 ---

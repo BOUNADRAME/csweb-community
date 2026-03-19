@@ -99,13 +99,13 @@ MYSQL_PASSWORD=metadata_pass
 
 ```bash
 # Lancer tous les containers
-docker-compose --profile local-postgres up -d
+docker compose --profile local-postgres up -d
 
 # Vérifier les services
-docker-compose ps
+docker compose ps
 
 # Tester les drivers
-docker-compose exec csweb php bin/console csweb:check-database-drivers
+docker compose exec csweb php bin/console csweb:check-database-drivers
 ```
 
 ---
@@ -182,10 +182,10 @@ MYSQL_PASSWORD=MetadataSecurePass!
 
 ```bash
 # Seul le container CSWeb démarre (pas de containers DB)
-docker-compose up -d
+docker compose up -d
 
 # Vérifier connexion aux serveurs distants
-docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+docker compose exec csweb php bin/console csweb:check-database-drivers --test-connections
 ```
 
 **Output attendu :**
@@ -261,10 +261,10 @@ Vous pouvez changer de SGBD **sans réinstaller CSWeb**.
 
 ```bash
 # PostgreSQL
-docker-compose exec postgres pg_dump -U csweb_analytics csweb_analytics > backup.sql
+docker compose exec postgres pg_dump -U csweb_analytics csweb_analytics > backup.sql
 
 # MySQL
-docker-compose exec mysql-breakout mysqldump -u breakout_user -p csweb_breakout > backup.sql
+docker compose exec mysql-breakout mysqldump -u breakout_user -p csweb_breakout > backup.sql
 ```
 
 #### 2. Modifier `.env`
@@ -284,17 +284,17 @@ MYSQL_BREAKOUT_PORT=3307
 
 ```bash
 # Arrêter ancien profil
-docker-compose --profile local-postgres down
+docker compose --profile local-postgres down
 
 # Démarrer nouveau profil
-docker-compose --profile local-mysql up -d
+docker compose --profile local-mysql up -d
 ```
 
 #### 4. Re-Breakout
 
 ```bash
 # Recommandé : re-breakout complet
-docker-compose exec csweb php bin/console csweb:process-cases-by-dict eval --overwrite
+docker compose exec csweb php bin/console csweb:process-cases-by-dict eval --overwrite
 ```
 
 ---
@@ -303,7 +303,7 @@ docker-compose exec csweb php bin/console csweb:process-cases-by-dict eval --ove
 
 **Contexte :**
 - ANSD (Agence Nationale de la Statistique et de la Démographie)
-- 3.2 millions de questionnaires RGPH5
+- Plusieurs millions de questionnaires RGPH5
 - Serveur SQL Server existant
 
 **Configuration :**
@@ -321,7 +321,7 @@ SQLSERVER_PASSWORD=RGPH5SecurePass!
 ```
 
 **Résultat :**
-- Breakout de 3.2M cas en **6h** (vs 48h en mode global)
+- Gain de temps significatif grâce au breakout sélectif (vs mode global)
 - Données stockées sur SQL Server de production
 - Analyses SQL directes sur serveur ANSD
 
@@ -332,7 +332,7 @@ SQLSERVER_PASSWORD=RGPH5SecurePass!
 Tous les drivers sont **pré-installés** dans le container CSWeb :
 
 ```bash
-docker-compose exec csweb php bin/console csweb:check-database-drivers
+docker compose exec csweb php bin/console csweb:check-database-drivers
 ```
 
 **Output attendu :**
@@ -422,16 +422,16 @@ GRANT ALL ON database.* TO 'user'@'%';
 
 ```bash
 # Variables breakout
-docker-compose exec csweb env | grep BREAKOUT
+docker compose exec csweb env | grep BREAKOUT
 
 # Variables PostgreSQL
-docker-compose exec csweb env | grep POSTGRES
+docker compose exec csweb env | grep POSTGRES
 ```
 
 ### Tester Connexions
 
 ```bash
-docker-compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+docker compose exec csweb php bin/console csweb:check-database-drivers --test-connections
 ```
 
 ### Changer Mode à Chaud
@@ -441,10 +441,10 @@ docker-compose exec csweb php bin/console csweb:check-database-drivers --test-co
 nano .env
 
 # 2. Redémarrer CSWeb
-docker-compose restart csweb
+docker compose restart csweb
 
 # 3. Vérifier
-docker-compose exec csweb php bin/console csweb:check-database-drivers
+docker compose exec csweb php bin/console csweb:check-database-drivers
 ```
 
 ---

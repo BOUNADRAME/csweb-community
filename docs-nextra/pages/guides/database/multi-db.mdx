@@ -323,10 +323,10 @@ POSTGRES_SCHEMA=public # ou nom custom
 **Services Docker démarrés :**
 ```bash
 # Mode LOCAL
-docker-compose --profile local-postgres up -d
+docker compose --profile local-postgres up -d
 
 # Mode REMOTE (ne démarre PAS postgres local)
-docker-compose up -d csweb mysql
+docker compose up -d csweb mysql
 ```
 
 </div>
@@ -353,10 +353,10 @@ MYSQL_BREAKOUT_PASSWORD=SecurePassword123!
 **Services Docker démarrés :**
 ```bash
 # Mode LOCAL
-docker-compose --profile local-mysql up -d
+docker compose --profile local-mysql up -d
 
 # Mode REMOTE
-docker-compose up -d csweb mysql
+docker compose up -d csweb mysql
 ```
 
 </div>
@@ -384,10 +384,10 @@ SQLSERVER_INSTANCE=MSSQLSERVER # ou nom instance custom
 **Services Docker démarrés :**
 ```bash
 # Mode LOCAL
-docker-compose --profile local-sqlserver up -d
+docker compose --profile local-sqlserver up -d
 
 # Mode REMOTE
-docker-compose up -d csweb mysql
+docker compose up -d csweb mysql
 ```
 
 </div>
@@ -405,7 +405,7 @@ docker-compose up -d csweb mysql
 
 ```bash
 # 1. Export données MySQL
-docker-compose exec mysql-breakout mysqldump \
+docker compose exec mysql-breakout mysqldump \
  -u breakout_user -p csweb_breakout > mysql_backup.sql
 
 # 2. Installer pgloader (outil conversion)
@@ -425,8 +425,8 @@ POSTGRES_HOST=localhost
 POSTGRES_DATABASE=csweb_analytics
 
 # 5. Redémarrer services
-docker-compose down
-docker-compose --profile local-postgres up -d
+docker compose down
+docker compose --profile local-postgres up -d
 
 # 6. Vérifier données
 psql -h localhost -U csweb_user -d csweb_analytics
@@ -444,7 +444,7 @@ SELECT COUNT(*) FROM eval_producteurs_cases;
 
 ```bash
 # 1. Export PostgreSQL
-docker-compose exec postgres pg_dump \
+docker compose exec postgres pg_dump \
  -U csweb_user -F c csweb_analytics > postgres_backup.dump
 
 # 2. Conversion manuelle (ou outil tiers)
@@ -464,8 +464,8 @@ SQLSERVER_HOST=localhost
 SQLSERVER_DATABASE=CSWeb_Analytics
 
 # 6. Redémarrer
-docker-compose down
-docker-compose --profile local-sqlserver up -d
+docker compose down
+docker compose --profile local-sqlserver up -d
 ```
 
 ---
@@ -476,7 +476,7 @@ docker-compose --profile local-sqlserver up -d
 
 ```bash
 # Commande CSWeb intégrée
-docker-compose exec csweb php bin/console csweb:check-database-drivers
+docker compose exec csweb php bin/console csweb:check-database-drivers
 
 # Sortie attendue:
 # pdo_mysql: Available (MySQL metadata + breakout)
@@ -484,7 +484,7 @@ docker-compose exec csweb php bin/console csweb:check-database-drivers
 # pdo_sqlsrv: Available (SQL Server breakout)
 
 # Commande PHP standard
-docker-compose exec csweb php -m | grep pdo
+docker compose exec csweb php -m | grep pdo
 
 # Sortie:
 # pdo_mysql
@@ -593,7 +593,7 @@ sudo apt-get install php-pgsql
 sudo systemctl restart apache2
 
 # Vérifier à nouveau
-docker-compose exec csweb php bin/console csweb:check-database-drivers
+docker compose exec csweb php bin/console csweb:check-database-drivers
 ```
 
 ---

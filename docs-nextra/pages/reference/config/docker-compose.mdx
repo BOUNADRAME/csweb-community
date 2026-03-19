@@ -166,7 +166,7 @@ postgres:
 
 **Activation :**
 ```bash
-docker-compose --profile local-postgres up -d
+docker compose --profile local-postgres up -d
 ```
 
 ## Profils Les **profils** permettent d'activer seulement les services nécessaires.
@@ -183,23 +183,23 @@ docker-compose --profile local-postgres up -d
 
 ```bash
 # PostgreSQL
-docker-compose --profile local-postgres up -d
+docker compose --profile local-postgres up -d
 
 # MySQL
-docker-compose --profile local-mysql up -d
+docker compose --profile local-mysql up -d
 
 # SQL Server
-docker-compose --profile local-sqlserver up -d
+docker compose --profile local-sqlserver up -d
 ```
 
 ### Profil Dev Profil `dev` active les outils de développement :
 
 ```bash
 # Avec outils dev (phpMyAdmin + pgAdmin)
-docker-compose --profile local-postgres --profile dev up -d
+docker compose --profile local-postgres --profile dev up -d
 
 # Sans outils dev (production)
-docker-compose --profile local-postgres up -d
+docker compose --profile local-postgres up -d
 ```
 
 ## Volumes
@@ -211,12 +211,12 @@ volumes:
  csweb_files: # Fichiers uploadés csweb_logs: # Logs application mysql_data: # Données MySQL metadata postgres_data: # Données PostgreSQL breakout pgadmin_data: # Config pgAdmin
 ```
 
-**Persistance :** Les données survivent aux `docker-compose down`.
+**Persistance :** Les données survivent aux `docker compose down`.
 
 **Suppression :**
 ```bash
 # Supprime TOUTES les données
-docker-compose down -v
+docker compose down -v
 ```
 
 ### Bind Mounts
@@ -273,57 +273,57 @@ environment:
 
 ```bash
 # Tous les services par défaut
-docker-compose up -d
+docker compose up -d
 
 # Avec profil PostgreSQL
-docker-compose --profile local-postgres up -d
+docker compose --profile local-postgres up -d
 
 # Avec profil + dev tools
-docker-compose --profile local-postgres --profile dev up -d
+docker compose --profile local-postgres --profile dev up -d
 ```
 
 ### Arrêter Services
 
 ```bash
 # Arrêter sans supprimer
-docker-compose stop
+docker compose stop
 
 # Arrêter et supprimer containers (volumes conservés)
-docker-compose down
+docker compose down
 
 # Arrêter et supprimer TOUT ( perte de données)
-docker-compose down -v
+docker compose down -v
 ```
 
 ### Voir Logs
 
 ```bash
 # Logs de tous les services
-docker-compose logs -f
+docker compose logs -f
 
 # Logs d'un service
-docker-compose logs -f csweb
-docker-compose logs -f postgres
+docker compose logs -f csweb
+docker compose logs -f postgres
 ```
 
 ### Rebuild
 
 ```bash
 # Rebuild image CSWeb
-docker-compose build --no-cache csweb
+docker compose build --no-cache csweb
 
 # Rebuild et redémarrer
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 ### Lister Services
 
 ```bash
 # Services actifs
-docker-compose ps
+docker compose ps
 
 # Tous les services (même arrêtés)
-docker-compose ps -a
+docker compose ps -a
 ```
 
 ## Personnalisation
@@ -385,10 +385,10 @@ csweb:
 
 ```bash
 # Mauvais (expose phpMyAdmin/pgAdmin)
-docker-compose --profile local-postgres --profile dev up -d
+docker compose --profile local-postgres --profile dev up -d
 
 # Bon (production)
-docker-compose --profile local-postgres up -d
+docker compose --profile local-postgres up -d
 ```
 
 ## Troubleshooting
@@ -406,18 +406,18 @@ Error: port 8080 is already allocated
 CSWEB_PORT=9090
 
 # Redémarrer
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 ```
 
 ### Service Not Starting
 
 ```bash
 # Voir logs du service
-docker-compose logs csweb
+docker compose logs csweb
 
 # Tester manuellement
-docker-compose up csweb # Sans -d pour voir output
+docker compose up csweb # Sans -d pour voir output
 ```
 
 ### Cannot Connect Between Services
@@ -428,7 +428,7 @@ docker network ls
 docker network inspect pg_csweb8_latest_2026_csweb-network
 
 # Vérifier noms services
-docker-compose ps
+docker compose ps
 ```
 
 ## Ressources

@@ -35,7 +35,7 @@ php bin/console csweb:process-cases-by-dict EVAL_DICT
 ### 1. Export MySQL
 
 ```bash
-docker-compose exec mysql-breakout mysqldump \
+docker compose exec mysql-breakout mysqldump \
   -u breakout_user -p \
   --no-create-info \
   --complete-insert \
@@ -59,7 +59,7 @@ sed -i 's/ 0/ false/g' mysql_data.sql
 ### 3. Import PostgreSQL
 
 ```bash
-cat mysql_data.sql | docker-compose exec -T postgres \
+cat mysql_data.sql | docker compose exec -T postgres \
   psql -U csweb_analytics -d csweb_analytics
 ```
 
@@ -68,7 +68,7 @@ cat mysql_data.sql | docker-compose exec -T postgres \
 ### 1. Export PostgreSQL
 
 ```bash
-docker-compose exec postgres pg_dump \
+docker compose exec postgres pg_dump \
   -U csweb_analytics \
   --data-only \
   --inserts \
@@ -92,7 +92,7 @@ sed -i 's/"/`/g' pg_data.sql
 ### 3. Import MySQL
 
 ```bash
-cat pg_data.sql | docker-compose exec -T mysql-breakout \
+cat pg_data.sql | docker compose exec -T mysql-breakout \
   mysql -u breakout_user -p csweb_breakout
 ```
 
@@ -101,7 +101,7 @@ cat pg_data.sql | docker-compose exec -T mysql-breakout \
 ### 1. Export PostgreSQL
 
 ```bash
-docker-compose exec postgres pg_dump \
+docker compose exec postgres pg_dump \
   -U csweb_analytics \
   --data-only \
   --inserts \
@@ -122,7 +122,7 @@ sed -i "s/\"/'/g" pg_data.sql
 ### 3. Import SQL Server
 
 ```bash
-cat pg_data.sql | docker-compose exec -T sqlserver \
+cat pg_data.sql | docker compose exec -T sqlserver \
   /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'YourStrong!Passw0rd'
 ```
 
@@ -155,7 +155,7 @@ pgloader mysql://user:pass@localhost/csweb_breakout \
 
 ```bash
 # Désactiver CSWeb
-docker-compose stop csweb
+docker compose stop csweb
 ```
 
 **Étape 2** : Backup Source
@@ -184,7 +184,7 @@ SELECT COUNT(*) FROM eval_cases;
 **Étape 5** : Redémarrage
 
 ```bash
-docker-compose --profile local-postgres up -d
+docker compose --profile local-postgres up -d
 ```
 
 ## Migration Sans Downtime
@@ -245,7 +245,7 @@ cat backup.sql | psql/mysql/sqlcmd
 BREAKOUT_DB_TYPE=mysql  # (ancien)
 
 # 3. Redémarrer
-docker-compose restart csweb
+docker compose restart csweb
 ```
 
 ## Ressources

@@ -5,7 +5,9 @@ description: Aller plus loin avec CSWeb Community Platform
 
 
 
-# Prochaines Étapes Félicitations ! Vous avez installé CSWeb Community Platform et réalisé votre premier breakout. 
+# Prochaines Étapes
+
+Félicitations ! Vous avez installé CSWeb Community Platform et réalisé votre premier breakout.
 
 Voici comment aller plus loin et tirer le maximum de la plateforme.
 
@@ -105,9 +107,9 @@ Voici comment aller plus loin et tirer le maximum de la plateforme.
  <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6">
  <h4 className="text-lg font-bold mb-3">1. Architecture Flexible</h4>
  <ul className="space-y-2 text-sm">
- <li> <a href="/guides/architecture/flexible">Local vs Remote</a></li>
- <li> <a href="/guides/architecture/local-vs-remote">Cas d'usage (RGPH5)</a></li>
- <li> <a href="/guides/architecture/flexible#migration">Migration vers Remote</a></li>
+ <li> <a href="/guides/architecture">Architecture Flexible</a></li>
+ <li> <a href="/guides/deployment/remote">Déploiement Remote (RGPH5)</a></li>
+ <li> <a href="/guides/architecture#migration">Migration vers Remote</a></li>
  </ul>
  </div>
 
@@ -132,9 +134,9 @@ Voici comment aller plus loin et tirer le maximum de la plateforme.
  <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6">
  <h4 className="text-lg font-bold mb-3">4. Performance</h4>
  <ul className="space-y-2 text-sm">
- <li> <a href="/guides/architecture/performance">Optimisation PostgreSQL</a></li>
- <li> <a href="/guides/architecture/performance#caching">Caching Strategies</a></li>
- <li> <a href="/guides/architecture/performance#scaling">Scaling Horizontal</a></li>
+ <li> <a href="/guides/database/postgresql">Optimisation PostgreSQL</a></li>
+ <li> <a href="/guides/database/postgresql#performance">Performance PostgreSQL</a></li>
+ <li> <a href="/guides/deployment/docker-prod">Scaling en Production</a></li>
  </ul>
  </div>
 </div>
@@ -166,8 +168,8 @@ Voici comment aller plus loin et tirer le maximum de la plateforme.
 
 ### Architecture
 
-- **[Flexible Architecture](/guides/architecture/flexible)** - Architecture à 2 bases
-- **[Local vs Remote](/guides/architecture/local-vs-remote)** - Choisir le bon mode
+- **[Architecture](/guides/architecture)** - Architecture flexible à 2 bases
+- **[Déploiement Remote](/guides/deployment/remote)** - Mode remote (RGPH5)
 - **[Security](/guides/architecture/security)** - Best practices sécurité
 
 ### Déploiement
@@ -233,39 +235,31 @@ Voici comment aller plus loin et tirer le maximum de la plateforme.
 
 ### Rejoindre la Communauté
 
-<div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-8">
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-8">
  <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6 text-center">
  <h4 className="text-lg font-bold mb-3">GitHub</h4>
  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
  Issues, Discussions, Pull Requests
  </p>
  <a href="https://github.com/BOUNADRAME/pg_csweb8_latest_2026" className="text-blue-600 dark:text-blue-400 font-medium hover:underline">
- Visiter le repo 
+ Visiter le repo
  </a>
  </div>
 
  <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6 text-center">
- <h4 className="text-lg font-bold mb-3">Discord</h4>
+ <h4 className="text-lg font-bold mb-3">GitHub Issues</h4>
  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
- Chat en temps réel, support communauté
+ Support technique, questions
  </p>
- <a href="https://discord.gg/csweb-community" className="text-blue-600 dark:text-blue-400 font-medium hover:underline">
- Rejoindre 
- </a>
- </div>
-
- <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6 text-center">
- <h4 className="text-lg font-bold mb-3">Email</h4>
- <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
- Support technique, questions privées
- </p>
- <a href="mailto:support@csweb-community.org" className="text-blue-600 dark:text-blue-400 font-medium hover:underline">
- Contacter 
+ <a href="https://github.com/BOUNADRAME/pg_csweb8_latest_2026/issues" className="text-blue-600 dark:text-blue-400 font-medium hover:underline">
+ Poser une question
  </a>
  </div>
 </div>
 
-### Contribuer au Projet Vous voulez contribuer ? Voici comment :
+### Contribuer au Projet
+
+Vous voulez contribuer ? Voici comment :
 
 1. **[Contributing Guide](/reference/resources/contributing)** - Comment contribuer
 2. **[Roadmap](/reference/resources/roadmap)** - Fonctionnalités à venir
@@ -284,67 +278,7 @@ Architecture remote avec séparation metadata/analytics :
 - Breakout sélectif par région
 - Scheduler pour breakouts nocturnes
 
-[Guide complet RGPH5 ](/guides/architecture/local-vs-remote#rgph5-senegal)
-
-### Pipeline ETL avec Power BI Automatiser l'extraction vers Power BI :
-
-1. Breakout automatique (scheduler)
-2. Export PostgreSQL CSV
-3. Import Power BI (scheduled refresh)
-4. Dashboards publiés
-
-[Guide Power BI Integration ](/guides/integrations/powerbi)
-
-### API pour Applications Mobiles Exposer les données breakées via API REST :
-
-1. Breakout dans PostgreSQL
-2. GraphQL API (Hasura ou PostGraphile)
-3. Consommation depuis app mobile (React Native, Flutter)
-
-[Guide API Mobile ](/guides/integrations/mobile)
-
----
-
-## Ressources Complémentaires
-
-### Vidéos Tutoriels (À venir)
-
-- Installation CSWeb en 5 minutes
-- Premier breakout step-by-step
-- Configuration Multi-DB
-- Déploiement production sur AWS/Azure
-
-### Webinars (À venir)
-
-- CSWeb Community Platform : Deep Dive Architecture
-- Best Practices pour RGPH
-- Sécurité et Performance en Production
-
-### Blog Articles techniques sur le blog CSWeb Community :
-
-- Architecture à 2 bases : Pourquoi et comment ?
-- PostgreSQL vs MySQL pour analytics CSPro
-- Retour d'expérience RGPH5 Sénégal
-
----
-
-## Roadmap Fonctionnalités à venir dans les prochaines versions :
-
-### v1.5 (Q2 2026)
-
-- Admin Panel React (UI moderne)
-- Breakout incrémental (delta uniquement)
-- Support Oracle Database
-- Export automatique vers S3/Azure Blob
-
-### v2.0 (Q3 2026)
-
-- GraphQL API
-- Real-time Dashboard (WebSockets)
-- Machine Learning intégration
-- Multi-tenancy
-
-[Roadmap complète ](/reference/resources/roadmap)
+[Guide déploiement remote ](/guides/deployment/remote)
 
 ---
 

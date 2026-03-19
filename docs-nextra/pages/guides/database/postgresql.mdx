@@ -15,7 +15,7 @@ POSTGRES_PASSWORD=your_secure_password
 ```
 
 ```bash
-docker-compose --profile local-postgres up -d
+docker compose --profile local-postgres up -d
 ```
 
 ## Configuration
@@ -53,7 +53,7 @@ postgres:
 ### CLI PostgreSQL
 
 ```bash
-docker-compose exec postgres psql -U csweb_analytics -d csweb_analytics
+docker compose exec postgres psql -U csweb_analytics -d csweb_analytics
 ```
 
 ### Vérification Driver
@@ -104,7 +104,7 @@ GROUP BY verified;
 Avec profil `dev` :
 
 ```bash
-docker-compose --profile local-postgres --profile dev up -d
+docker compose --profile local-postgres --profile dev up -d
 ```
 
 **URL** : http://localhost:8082
@@ -137,7 +137,7 @@ CREATE INDEX IF NOT EXISTS idx_cases_modified ON eval_cases(modified_date);
 ### Vacuum Régulier
 
 ```bash
-docker-compose exec postgres vacuumdb -U csweb_analytics -d csweb_analytics
+docker compose exec postgres vacuumdb -U csweb_analytics -d csweb_analytics
 ```
 
 ## Troubleshooting
@@ -146,10 +146,10 @@ docker-compose exec postgres vacuumdb -U csweb_analytics -d csweb_analytics
 
 ```bash
 # Vérifier service running
-docker-compose ps postgres
+docker compose ps postgres
 
 # Logs
-docker-compose logs postgres
+docker compose logs postgres
 ```
 
 ### Driver Not Found
@@ -159,7 +159,7 @@ docker-compose logs postgres
 apt-get install php8.1-pgsql
 
 # Redémarrer
-docker-compose restart csweb
+docker compose restart csweb
 ```
 
 ### Port Déjà Utilisé
@@ -182,13 +182,13 @@ ports:
 ### Backup
 
 ```bash
-docker-compose exec postgres pg_dump -U csweb_analytics csweb_analytics > backup.sql
+docker compose exec postgres pg_dump -U csweb_analytics csweb_analytics > backup.sql
 ```
 
 ### Restore
 
 ```bash
-cat backup.sql | docker-compose exec -T postgres psql -U csweb_analytics -d csweb_analytics
+cat backup.sql | docker compose exec -T postgres psql -U csweb_analytics -d csweb_analytics
 ```
 
 ## Ressources

@@ -65,14 +65,14 @@ cd pg_csweb8_latest_2026
 
 ```bash
 # Arrêter containers
-docker-compose down
+docker compose down
 
 # Restore MySQL metadata
-docker-compose up -d mysql
-sleep 10 # Attendre démarrage MySQL docker-compose exec -T mysql mysql -u root -p csweb_metadata < /tmp/backup_vanilla_metadata.sql
+docker compose up -d mysql
+sleep 10 # Attendre démarrage MySQL docker compose exec -T mysql mysql -u root -p csweb_metadata < /tmp/backup_vanilla_metadata.sql
 
 # Vérifier
-docker-compose exec mysql mysql -u root -p csweb_metadata SHOW TABLES; # Doit afficher tables CSPro
+docker compose exec mysql mysql -u root -p csweb_metadata SHOW TABLES; # Doit afficher tables CSPro
 SELECT COUNT(*) FROM cspro_dictionaries;
 ```
 
@@ -83,18 +83,18 @@ SELECT COUNT(*) FROM cspro_dictionaries;
 tar -xzf /tmp/backup_vanilla_files.tar.gz -C files/
 
 # Corriger permissions
-docker-compose exec csweb chown -R www-data:www-data /var/www/html/files
+docker compose exec csweb chown -R www-data:www-data /var/www/html/files
 ```
 
 ### Étape 5: Redémarrer CSWeb Community
 
 ```bash
 # Démarrer stack complète
-docker-compose --profile local-postgres up -d
+docker compose --profile local-postgres up -d
 
 # Vérifier
-docker-compose ps
-docker-compose logs csweb
+docker compose ps
+docker compose logs csweb
 ```
 
 ### Étape 6: Vérification
@@ -111,10 +111,10 @@ docker-compose logs csweb
 
 ```bash
 # Lister dictionnaires
-docker-compose exec mysql mysql -u csweb_user -p csweb_metadata SELECT name, label FROM cspro_dictionaries;
+docker compose exec mysql mysql -u csweb_user -p csweb_metadata SELECT name, label FROM cspro_dictionaries;
 
 # Breakout vers PostgreSQL
-docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
+docker compose exec csweb php bin/console csweb:process-cases-by-dict \
  dictionnaires=SURVEY_DICT,CENSUS_DICT \
  --threads=5 \
  -vvv
@@ -155,7 +155,7 @@ docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
 **Exemple RGPH5 Sénégal :**
 ```bash
 # Migration metadata: 30 min
-# Breakout 3.2M cas: 6h (10 threads, SQL Server)
+# Breakout gros volume: gain significatif avec threads (SQL Server)
 # Total downtime: 7h
 ```
 
@@ -172,7 +172,7 @@ docker-compose exec csweb php bin/console csweb:process-cases-by-dict \
 
 ```bash
 # 1. Arrêter CSWeb Community
-docker-compose down
+docker compose down
 
 # 2. Restaurer CSWeb vanilla depuis backup
 # (sur ancien serveur ou nouveau)
