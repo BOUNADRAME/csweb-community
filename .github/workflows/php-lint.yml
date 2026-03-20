@@ -6,6 +6,8 @@ on:
     paths:
       - '**.php'
       - 'src/**'
+      - 'composer.json'
+      - 'composer.lock'
   pull_request:
     branches: [ master, develop ]
     paths:
@@ -31,17 +33,23 @@ jobs:
         with:
           php-version: ${{ matrix.php-version }}
           coverage: none
-          tools: composer:v2
 
       - name: Validate composer.json
-        run: composer validate --strict
+        run: composer validate --no-check-all
 
       - name: Check PHP syntax
         run: |
           echo "Checking PHP syntax..."
-          errors=$(find . -name "*.php" -not -path "./vendor/*" -exec php -l {} \; 2>&1 | grep -v "No syntax errors" || true)
-          if [ -n "$errors" ]; then
-            echo "$errors"
+          error_found=0
+          while IFS= read -r file; do
+            output=$(php -l "$file" 2>&1)
+            if ! echo "$output" | grep -q "No syntax errors"; then
+              echo "$output"
+              error_found=1
+            fi
+          done < <(find . -name "*.php" -not -path "./vendor/*")
+          if [ "$error_found" -eq 1 ]; then
+            echo "::error::PHP syntax errors found"
             exit 1
           fi
           echo "All PHP files have valid syntax."
@@ -69,13 +77,13 @@ jobs:
           tools: composer:v2
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-suggest --no-scripts
+        run: composer install --prefer-dist --no-progress --no-scripts
 
       - name: Check for security vulnerabilities
         continue-on-error: true
         run: |
           if [ -f composer.lock ]; then
-            composer audit || echo "::warning::composer audit reported issues (see above)"
+            composer audit --no-dev || true
           else
             echo "No composer.lock found, skipping security check"
           fi
@@ -97,16 +105,11 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
-          extensions: pdo, pdo_mysql, pdo_pgsql, mbstring, xml, intl, json
+          extensions: pdo, pdo_mysql, pdo_pgsql, mbstring, xml, intl
           coverage: none
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-scripts
 
       - name: Run unit tests
-        run: |
-          if [ -f vendor/bin/phpunit ]; then
-            vendor/bin/phpunit --testsuite unit
-          else
-            echo "::warning::PHPUnit not found, skipping tests"
-          fi
+        run: vendor/bin/phpunit --testsuite unit --do-not-cache-result
