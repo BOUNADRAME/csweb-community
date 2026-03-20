@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/router'
 import versions from '../versions.json'
 
 type VersionStatus = 'current' | 'lts' | 'eol' | 'beta'
@@ -24,6 +25,8 @@ const statusConfig: Record<VersionStatus, { color: string; bg: string; label: st
 export function VersionSwitcher() {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const router = useRouter()
+  const basePath = router.basePath || ''
 
   const current = (versions.versions as VersionEntry[]).find(
     (v) => v.version === versions.current
@@ -123,7 +126,7 @@ export function VersionSwitcher() {
             return (
               <a
                 key={v.version}
-                href={v.docsUrl}
+                href={isCurrent ? basePath + '/' : v.docsUrl}
                 role="option"
                 aria-selected={isCurrent}
                 onClick={() => setOpen(false)}
