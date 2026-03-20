@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     unixodbc-dev \
     gnupg2 \
+    gettext-base \
     default-mysql-client \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*

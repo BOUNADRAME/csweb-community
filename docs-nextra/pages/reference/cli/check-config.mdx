@@ -1,0 +1,148 @@
+---
+title: check-config
+description: Commande csweb:check-config - Verifier la configuration performance de CSWeb
+---
+
+import { Callout } from "nextra/components";
+
+# csweb:check-config
+
+Verifie la configuration performance de CSWeb et detecte les incoherences.
+
+---
+
+## Usage
+
+```bash
+docker exec csweb-app php bin/console csweb:check-config [options]
+```
+
+## Options
+
+| Option | Alias | Description |
+|--------|-------|-------------|
+| `--test-connections` | `-t` | Tester les connexions MySQL metadata et PostgreSQL breakout |
+| `--json` | `-j` | Sortie au format JSON (pour monitoring automatise) |
+
+---
+
+## Sortie standard
+
+La commande affiche 5 sections :
+
+### 1. PHP Configuration
+
+```
+PHP Configuration
+=================
+
+ ----------- -------
+  Parameter   Value
+ ----------- -------
+  PHP Version 8.1.27
+  memory_limit 512M
+  max_execution_time 300
+  upload_max_filesize 100M
+  opcache.memory_consumption 128
+ ----------- -------
+```
+
+### 2. Apache MPM Prefork
+
+```
+Apache MPM Prefork
+==================
+
+ ---------------------- -------
+  MaxRequestWorkers      150
+  ServerLimit            150
+  KeepAliveTimeout       5
+  Timeout                300
+ ---------------------- -------
+```
+
+### 3. MySQL Metadata
+
+```
+MySQL Metadata
+==============
+
+ ----------------------- -------
+  max_connections         200
+  innodb_buffer_pool_size 256M
+  innodb_log_file_size    64M
+  max_allowed_packet      64M
+ ----------------------- -------
+```
+
+### 4. PostgreSQL Breakout
+
+```
+PostgreSQL Breakout
+===================
+
+ -------------------- -------
+  max_connections      200
+  shared_buffers       256MB
+  effective_cache_size 1GB
+  work_mem             4MB
+ -------------------- -------
+```
+
+### 5. Disk Usage
+
+```
+Disk Usage
+==========
+
+ -------------- ----------
+  var/            245.3 MB
+  files/          12.8 MB
+  var/backups/    89.1 MB
+  Disk free       15.2 GB / 50 GB
+ -------------- ----------
+```
+
+### 6. Recommendations
+
+La commande detecte automatiquement les problemes :
+
+```
+ [WARNING] Apache MaxRequestWorkers (400) > MySQL max_connections (200).
+           Set MYSQL_MAX_CONNECTIONS >= APACHE_MAX_REQUEST_WORKERS.
+
+ [WARNING] Apache ServerLimit (100) < MaxRequestWorkers (150).
+           ServerLimit must be >= MaxRequestWorkers.
+```
+
+Si tout est correct :
+
+```
+ [OK] Configuration looks good! No issues detected.
+```
+
+---
+
+## Exemples
+
+```bash
+# Configuration complete
+docker exec csweb-app php bin/console csweb:check-config
+
+# Avec test des connexions
+docker exec csweb-app php bin/console csweb:check-config --test-connections
+
+# JSON pour monitoring
+docker exec csweb-app php bin/console csweb:check-config --json
+
+# JSON pipe vers jq
+docker exec csweb-app php bin/console csweb:check-config --json | jq '.php.memory_limit'
+```
+
+---
+
+## Voir aussi
+
+- [Performance Tuning](/guides/deployment/performance) - Guide complet d'optimisation
+- [check-database-drivers](/reference/cli/check-drivers) - Verifier les drivers disponibles
+- [Variables d'Environnement](/reference/config/environment) - Reference `.env`

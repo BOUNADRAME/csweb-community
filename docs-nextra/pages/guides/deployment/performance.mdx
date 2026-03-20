@@ -1,0 +1,330 @@
+---
+title: Performance Tuning
+description: Optimiser PHP, MySQL, PostgreSQL et Apache pour CSWeb en production
+---
+
+import { Tabs, Callout } from "nextra/components";
+
+# Performance Tuning
+
+Toutes les configurations PHP, MySQL, PostgreSQL et Apache sont pilotables depuis le fichier `.env`.
+Modifier les variables + `docker compose up -d` suffit pour appliquer les changements.
+
+---
+
+## Architecture
+
+CSWeb utilise un mecanisme de **templates envsubst** :
+
+1. Les fichiers `docker/php/php.ini` et `docker/apache/*.conf` contiennent des variables `${VAR}`
+2. Au demarrage du container, `docker-entrypoint.sh` execute `envsubst` pour generer les fichiers finaux
+3. MySQL et PostgreSQL recoivent leurs parametres via `command:` dans `docker-compose.yml`
+
+---
+
+## Variables par composant
+
+<Tabs items={['PHP', 'MySQL', 'PostgreSQL', 'Apache']}>
+ <div>
+
+### PHP
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PHP_MEMORY_LIMIT` | `512M` | Memoire max par processus PHP |
+| `PHP_MAX_EXECUTION_TIME` | `300` | Temps max d'execution (secondes) |
+| `PHP_MAX_INPUT_TIME` | `300` | Temps max de parsing input |
+| `PHP_UPLOAD_MAX_FILESIZE` | `100M` | Taille max d'un fichier uploade |
+| `PHP_POST_MAX_SIZE` | `100M` | Taille max d'une requete POST |
+| `PHP_SESSION_GC_MAXLIFETIME` | `7200` | Duree de session (secondes) |
+| `PHP_OPCACHE_MEMORY` | `128` | Memoire OPcache (MB) |
+| `PHP_OPCACHE_MAX_FILES` | `10000` | Nombre max de fichiers en cache |
+
+**Exemple `.env` :**
+
+```env
+PHP_MEMORY_LIMIT=1G
+PHP_MAX_EXECUTION_TIME=600
+PHP_OPCACHE_MEMORY=256
+```
+
+**Verifier apres deploiement :**
+
+```bash
+docker exec csweb-app php -i | grep memory_limit
+docker exec csweb-app php -i | grep max_execution_time
+```
+
+ </div>
+ <div>
+
+### MySQL Metadata
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MYSQL_MAX_CONNECTIONS` | `200` | Connexions simultanees max |
+| `MYSQL_INNODB_BUFFER_POOL_SIZE` | `256M` | Cache InnoDB (75% RAM dispo ideal) |
+| `MYSQL_INNODB_LOG_FILE_SIZE` | `64M` | Taille du journal InnoDB |
+| `MYSQL_SLOW_QUERY_TIME` | `2` | Seuil requete lente (secondes) |
+| `MYSQL_MAX_ALLOWED_PACKET` | `64M` | Taille max d'un paquet |
+| `MYSQL_THREAD_CACHE_SIZE` | `16` | Threads en cache |
+| `MYSQL_TABLE_OPEN_CACHE` | `2000` | Tables ouvertes en cache |
+| `MYSQL_WAIT_TIMEOUT` | `28800` | Timeout connexion inactive (sec) |
+
+**Exemple `.env` :**
+
+```env
+MYSQL_MAX_CONNECTIONS=500
+MYSQL_INNODB_BUFFER_POOL_SIZE=4G
+MYSQL_INNODB_LOG_FILE_SIZE=256M
+```
+
+**Verifier apres deploiement :**
+
+```bash
+docker exec csweb-mysql-metadata mysql -u root -p -e "SHOW VARIABLES LIKE 'max_connections';"
+docker exec csweb-mysql-metadata mysql -u root -p -e "SHOW VARIABLES LIKE 'innodb_buffer_pool_size';"
+```
+
+ </div>
+ <div>
+
+### PostgreSQL Breakout
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PG_MAX_CONNECTIONS` | `200` | Connexions simultanees max |
+| `PG_SHARED_BUFFERS` | `256MB` | Cache partage (25% RAM dispo ideal) |
+| `PG_EFFECTIVE_CACHE_SIZE` | `1GB` | Estimation cache OS (50-75% RAM) |
+| `PG_WORK_MEM` | `4MB` | Memoire par operation de tri |
+| `PG_MAINTENANCE_WORK_MEM` | `64MB` | Memoire pour VACUUM, CREATE INDEX |
+
+**Exemple `.env` :**
+
+```env
+PG_MAX_CONNECTIONS=500
+PG_SHARED_BUFFERS=4GB
+PG_EFFECTIVE_CACHE_SIZE=12GB
+PG_WORK_MEM=16MB
+```
+
+**Verifier apres deploiement :**
+
+```bash
+docker exec csweb-postgres-breakout psql -U csweb_analytics -c "SHOW max_connections;"
+docker exec csweb-postgres-breakout psql -U csweb_analytics -c "SHOW shared_buffers;"
+```
+
+ </div>
+ <div>
+
+### Apache MPM Prefork
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `APACHE_MAX_REQUEST_WORKERS` | `150` | Processus Apache max (= users simultanes) |
+| `APACHE_SERVER_LIMIT` | `150` | Limite serveur (>= MaxRequestWorkers) |
+| `APACHE_KEEP_ALIVE_TIMEOUT` | `5` | Timeout keep-alive (secondes) |
+| `APACHE_MAX_KEEP_ALIVE_REQUESTS` | `100` | Requetes max par connexion keep-alive |
+| `APACHE_TIMEOUT` | `300` | Timeout requete (secondes) |
+
+<Callout type="warning">
+`APACHE_SERVER_LIMIT` doit toujours etre **superieur ou egal** a `APACHE_MAX_REQUEST_WORKERS`.
+</Callout>
+
+**Exemple `.env` :**
+
+```env
+APACHE_MAX_REQUEST_WORKERS=400
+APACHE_SERVER_LIMIT=400
+APACHE_KEEP_ALIVE_TIMEOUT=3
+```
+
+ </div>
+</Tabs>
+
+---
+
+## Profils de dimensionnement
+
+<Tabs items={['Dev (laptop)', 'Production (50 users)', 'Haute Charge (200+ users)']}>
+ <div>
+
+### Profil Dev — 1 a 5 utilisateurs, laptop
+
+```env
+# PHP
+PHP_MEMORY_LIMIT=256M
+PHP_MAX_EXECUTION_TIME=120
+PHP_OPCACHE_MEMORY=64
+PHP_OPCACHE_MAX_FILES=4000
+
+# MySQL
+MYSQL_MAX_CONNECTIONS=50
+MYSQL_INNODB_BUFFER_POOL_SIZE=128M
+
+# PostgreSQL
+PG_MAX_CONNECTIONS=50
+PG_SHARED_BUFFERS=128MB
+PG_EFFECTIVE_CACHE_SIZE=512MB
+
+# Apache
+APACHE_MAX_REQUEST_WORKERS=25
+APACHE_SERVER_LIMIT=25
+```
+
+**RAM recommandee :** 4 GB
+
+ </div>
+ <div>
+
+### Profil Production Standard — 20 a 50 utilisateurs, serveur 4-8 GB RAM
+
+```env
+# PHP
+PHP_MEMORY_LIMIT=512M
+PHP_MAX_EXECUTION_TIME=300
+PHP_OPCACHE_MEMORY=128
+PHP_OPCACHE_MAX_FILES=10000
+
+# MySQL
+MYSQL_MAX_CONNECTIONS=200
+MYSQL_INNODB_BUFFER_POOL_SIZE=512M
+
+# PostgreSQL
+PG_MAX_CONNECTIONS=200
+PG_SHARED_BUFFERS=512MB
+PG_EFFECTIVE_CACHE_SIZE=2GB
+PG_WORK_MEM=8MB
+
+# Apache
+APACHE_MAX_REQUEST_WORKERS=150
+APACHE_SERVER_LIMIT=150
+```
+
+**RAM recommandee :** 8 GB
+
+ </div>
+ <div>
+
+### Profil Haute Charge — 200+ utilisateurs, serveur 16+ GB RAM
+
+```env
+# PHP
+PHP_MEMORY_LIMIT=1G
+PHP_MAX_EXECUTION_TIME=600
+PHP_OPCACHE_MEMORY=256
+PHP_OPCACHE_MAX_FILES=20000
+
+# MySQL
+MYSQL_MAX_CONNECTIONS=500
+MYSQL_INNODB_BUFFER_POOL_SIZE=4G
+MYSQL_INNODB_LOG_FILE_SIZE=256M
+MYSQL_THREAD_CACHE_SIZE=64
+MYSQL_TABLE_OPEN_CACHE=4000
+
+# PostgreSQL
+PG_MAX_CONNECTIONS=500
+PG_SHARED_BUFFERS=4GB
+PG_EFFECTIVE_CACHE_SIZE=12GB
+PG_WORK_MEM=16MB
+PG_MAINTENANCE_WORK_MEM=512MB
+
+# Apache
+APACHE_MAX_REQUEST_WORKERS=400
+APACHE_SERVER_LIMIT=400
+APACHE_KEEP_ALIVE_TIMEOUT=3
+APACHE_MAX_KEEP_ALIVE_REQUESTS=200
+```
+
+**RAM recommandee :** 16 GB+
+
+ </div>
+</Tabs>
+
+---
+
+## Formules de dimensionnement
+
+### Memoire totale requise
+
+```
+RAM_TOTALE >= (APACHE_MAX_REQUEST_WORKERS x PHP_MEMORY_LIMIT moyen)
+           + MYSQL_INNODB_BUFFER_POOL_SIZE
+           + PG_SHARED_BUFFERS
+           + 1 GB (OS + overhead)
+```
+
+En pratique, les processus PHP utilisent ~50-100 MB en moyenne (rarement le max).
+
+**Exemple** pour 150 workers :
+```
+150 x 100MB + 512MB + 512MB + 1GB = ~17 GB (estimation realiste)
+```
+
+### Connexions base de donnees
+
+```
+MYSQL_MAX_CONNECTIONS >= APACHE_MAX_REQUEST_WORKERS + 20 (marge admin/cron)
+PG_MAX_CONNECTIONS    >= APACHE_MAX_REQUEST_WORKERS + 20
+```
+
+### Apache ServerLimit
+
+```
+APACHE_SERVER_LIMIT >= APACHE_MAX_REQUEST_WORKERS (obligatoire)
+```
+
+---
+
+## Commande de verification
+
+La commande `csweb:check-config` affiche toute la configuration et detecte les incoherences :
+
+```bash
+# Afficher la configuration complete
+docker exec csweb-app php bin/console csweb:check-config
+
+# Avec test des connexions MySQL et PostgreSQL
+docker exec csweb-app php bin/console csweb:check-config --test-connections
+
+# Sortie JSON (pour monitoring automatise)
+docker exec csweb-app php bin/console csweb:check-config --json
+```
+
+**Recommandations automatiques :**
+- Apache MaxRequestWorkers > MySQL max_connections
+- ServerLimit < MaxRequestWorkers
+- post_max_size < upload_max_filesize
+- memory_limit trop bas
+
+---
+
+## Workflow de modification
+
+```bash
+# 1. Modifier les variables dans .env
+nano .env
+
+# 2. Recreer les containers
+docker compose up -d
+
+# 3. Verifier la configuration
+docker exec csweb-app php bin/console csweb:check-config
+
+# 4. Verifier PHP specifiquement
+docker exec csweb-app php -i | grep memory_limit
+```
+
+<Callout type="info">
+Les changements sont appliques au **redemarrage des containers** (`docker compose up -d`). Pas besoin de rebuild (`--build`).
+</Callout>
+
+---
+
+## Voir aussi
+
+- [Modes de Deploiement](/guides/deployment/modes) - Local et Remote pour chaque base
+- [Docker Production](/guides/deployment/docker-prod) - Deploiement production securise
+- [Variables d'Environnement](/reference/config/environment) - Reference complete `.env`
+- [check-config](/reference/cli/check-config) - Reference de la commande CLI

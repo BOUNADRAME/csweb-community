@@ -1,0 +1,491 @@
+---
+title: Modes de Déploiement
+description: Tous les modes de déploiement CSWeb - Local et Remote pour PostgreSQL, MySQL et SQL Server
+---
+
+import { Tabs, Callout } from "nextra/components";
+
+# Modes de Déploiement
+
+CSWeb supporte **6 configurations** selon le type de base breakout et le mode de déploiement.
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Mode LOCAL (Docker)                       │
+│                                                             │
+│  ┌──────────┐  ┌──────────┐  ┌────────────────────┐       │
+│  │  CSWeb   │  │  MySQL   │  │  PostgreSQL / MySQL │       │
+│  │ (Apache) │  │(Metadata)│  │  / SQL Server       │       │
+│  │  :8080   │  │  :3306   │  │  (Breakout local)   │       │
+│  └──────────┘  └──────────┘  └────────────────────┘       │
+│                                                             │
+│            csweb-network (bridge)                           │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────┐      ┌────────────────────────┐
+│       Mode REMOTE          │      │   Serveur Distant      │
+│                            │      │                        │
+│  ┌──────────┐ ┌──────────┐│      │  ┌──────────────────┐  │
+│  │  CSWeb   │ │  MySQL   ││ ───► │  │ PostgreSQL/MySQL  │  │
+│  │ (Apache) │ │(Metadata)││      │  │ /SQL Server       │  │
+│  │  :8080   │ │  :3306   ││      │  │ (Breakout)        │  │
+│  └──────────┘ └──────────┘│      │  └──────────────────┘  │
+│                            │      │                        │
+│   Docker (local)           │      │   Serveur production   │
+└────────────────────────────┘      └────────────────────────┘
+```
+
+---
+
+## Choisir votre configuration
+
+| Critere | Local | Remote |
+|---------|-------|--------|
+| **Usage** | Developpement, test, petite equipe | Production, RGPH, haute charge |
+| **Prerequis** | Docker uniquement | Docker + serveur DB distant |
+| **Performance** | Limitee par la machine locale | Scalable independamment |
+| **Maintenance** | Tout-en-un, simple | Deux serveurs a maintenir |
+
+---
+
+## Setup par type de base
+
+Choisissez votre type de base breakout :
+
+<Tabs items={['PostgreSQL (recommande)', 'MySQL', 'SQL Server']}>
+ <div>
+
+### PostgreSQL - Breakout
+
+PostgreSQL est **recommande** pour le breakout analytique grace a ses performances sur les gros volumes et ses fonctions avancees (JSONB, window functions).
+
+#### Mode Local (Docker)
+
+**1. Configuration `.env` :**
+
+```env
+# Mode
+BREAKOUT_MODE=local
+BREAKOUT_DB_TYPE=postgresql
+
+# MySQL Metadata (toujours local)
+MYSQL_HOST=mysql
+MYSQL_PORT=3306
+MYSQL_DATABASE=csweb_metadata
+MYSQL_USER=csweb_user
+MYSQL_PASSWORD=CHANGEZ_MOT_DE_PASSE
+MYSQL_ROOT_PASSWORD=CHANGEZ_ROOT_PASSWORD
+
+# PostgreSQL Breakout (container Docker)
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=csweb_analytics
+POSTGRES_USER=csweb_analytics
+POSTGRES_PASSWORD=CHANGEZ_PG_PASSWORD
+```
+
+**2. Lancer :**
+
+```bash
+docker compose --profile local-postgres up -d
+```
+
+**3. Services disponibles :**
+
+| Service | Port | URL |
+|---------|------|-----|
+| CSWeb | 8080 | http://localhost:8080 |
+| MySQL (metadata) | 3306 | - |
+| PostgreSQL (breakout) | 5432 | - |
+
+**4. Verifier :**
+
+```bash
+# Conteneurs
+docker compose ps
+
+# Connexion PostgreSQL
+docker compose exec postgres psql -U csweb_analytics -d csweb_analytics
+
+# Drivers
+docker compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+```
+
+---
+
+#### Mode Remote (serveur distant)
+
+**1. Configuration `.env` :**
+
+```env
+# Mode
+BREAKOUT_MODE=remote
+BREAKOUT_DB_TYPE=postgresql
+
+# MySQL Metadata (toujours en container local)
+MYSQL_HOST=mysql
+MYSQL_PORT=3306
+MYSQL_DATABASE=csweb_metadata
+MYSQL_USER=csweb_user
+MYSQL_PASSWORD=CHANGEZ_MOT_DE_PASSE
+MYSQL_ROOT_PASSWORD=CHANGEZ_ROOT_PASSWORD
+
+# PostgreSQL Breakout (serveur distant)
+POSTGRES_HOST=192.168.1.100
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=csweb_analytics
+POSTGRES_USER=csweb_analytics
+POSTGRES_PASSWORD=MOT_DE_PASSE_DISTANT
+```
+
+**2. Lancer (pas de profil breakout) :**
+
+```bash
+docker compose up -d
+```
+
+**3. Services disponibles :**
+
+| Service | Port | Description |
+|---------|------|-------------|
+| CSWeb | 8080 | http://localhost:8080 |
+| MySQL (metadata) | 3306 | Container local |
+| PostgreSQL (breakout) | - | Serveur distant 192.168.1.100:5432 |
+
+**4. Prerequis serveur distant :**
+
+```ini
+# postgresql.conf
+listen_addresses = '*'
+
+# pg_hba.conf
+host    all    all    0.0.0.0/0    md5
+```
+
+```bash
+# Firewall
+sudo ufw allow from [IP_CSWEB] to any port 5432
+```
+
+ </div>
+ <div>
+
+### MySQL - Breakout
+
+MySQL est une option performante et compatible, surtout si votre equipe maitrise deja MySQL.
+
+<Callout type="info">
+Le breakout MySQL utilise un **container separe** (`mysql-breakout` sur le port 3307) pour eviter tout conflit avec le MySQL metadata (port 3306).
+</Callout>
+
+#### Mode Local (Docker)
+
+**1. Configuration `.env` :**
+
+```env
+# Mode
+BREAKOUT_MODE=local
+BREAKOUT_DB_TYPE=mysql
+
+# MySQL Metadata (toujours local, port 3306)
+MYSQL_HOST=mysql
+MYSQL_PORT=3306
+MYSQL_DATABASE=csweb_metadata
+MYSQL_USER=csweb_user
+MYSQL_PASSWORD=CHANGEZ_MOT_DE_PASSE
+MYSQL_ROOT_PASSWORD=CHANGEZ_ROOT_PASSWORD
+
+# MySQL Breakout (container separe, port 3307)
+MYSQL_BREAKOUT_HOST=mysql-breakout
+MYSQL_BREAKOUT_PORT=3307
+MYSQL_BREAKOUT_DATABASE=csweb_breakout
+MYSQL_BREAKOUT_USER=breakout_user
+MYSQL_BREAKOUT_PASSWORD=CHANGEZ_BREAKOUT_PASSWORD
+```
+
+**2. Lancer :**
+
+```bash
+docker compose --profile local-mysql up -d
+```
+
+**3. Services disponibles :**
+
+| Service | Port | URL |
+|---------|------|-----|
+| CSWeb | 8080 | http://localhost:8080 |
+| MySQL (metadata) | 3306 | - |
+| MySQL (breakout) | 3307 | - |
+
+**4. Verifier :**
+
+```bash
+# Conteneurs
+docker compose ps
+
+# Connexion MySQL breakout
+docker compose exec mysql-breakout mysql -u breakout_user -p
+
+# Drivers
+docker compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+```
+
+---
+
+#### Mode Remote (serveur distant)
+
+**1. Configuration `.env` :**
+
+```env
+# Mode
+BREAKOUT_MODE=remote
+BREAKOUT_DB_TYPE=mysql
+
+# MySQL Metadata (toujours en container local)
+MYSQL_HOST=mysql
+MYSQL_PORT=3306
+MYSQL_DATABASE=csweb_metadata
+MYSQL_USER=csweb_user
+MYSQL_PASSWORD=CHANGEZ_MOT_DE_PASSE
+MYSQL_ROOT_PASSWORD=CHANGEZ_ROOT_PASSWORD
+
+# MySQL Breakout (serveur distant)
+MYSQL_BREAKOUT_HOST=votre-serveur-mysql.example.com
+MYSQL_BREAKOUT_PORT=3306
+MYSQL_BREAKOUT_DATABASE=csweb_breakout
+MYSQL_BREAKOUT_USER=breakout_user
+MYSQL_BREAKOUT_PASSWORD=MOT_DE_PASSE_DISTANT
+```
+
+**2. Lancer (pas de profil breakout) :**
+
+```bash
+docker compose up -d
+```
+
+**3. Services disponibles :**
+
+| Service | Port | Description |
+|---------|------|-------------|
+| CSWeb | 8080 | http://localhost:8080 |
+| MySQL (metadata) | 3306 | Container local |
+| MySQL (breakout) | - | Serveur distant |
+
+**4. Prerequis serveur distant :**
+
+```ini
+# my.cnf sur le serveur distant
+bind-address = 0.0.0.0
+```
+
+```bash
+# Firewall
+sudo ufw allow from [IP_CSWEB] to any port 3306
+```
+
+ </div>
+ <div>
+
+### SQL Server - Breakout
+
+SQL Server est utilise en production enterprise, notamment pour le **RGPH5 au Senegal** (ANSD).
+
+<Callout type="warning">
+SQL Server necessite **2 GB de RAM minimum** et l'acceptation du EULA Microsoft (`ACCEPT_EULA=Y`).
+</Callout>
+
+#### Mode Local (Docker)
+
+**1. Configuration `.env` :**
+
+```env
+# Mode
+BREAKOUT_MODE=local
+BREAKOUT_DB_TYPE=sqlserver
+
+# MySQL Metadata (toujours local)
+MYSQL_HOST=mysql
+MYSQL_PORT=3306
+MYSQL_DATABASE=csweb_metadata
+MYSQL_USER=csweb_user
+MYSQL_PASSWORD=CHANGEZ_MOT_DE_PASSE
+MYSQL_ROOT_PASSWORD=CHANGEZ_ROOT_PASSWORD
+
+# SQL Server Breakout (container Docker)
+SQLSERVER_HOST=sqlserver
+SQLSERVER_PORT=1433
+SQLSERVER_DATABASE=CSWeb_Analytics
+SQLSERVER_USER=sa
+SQLSERVER_PASSWORD=VotreMotDePasse!Fort1
+```
+
+<Callout type="info">
+Le mot de passe SQL Server doit contenir au minimum 8 caracteres avec majuscule + minuscule + chiffre + symbole.
+</Callout>
+
+**2. Lancer :**
+
+```bash
+docker compose --profile local-sqlserver up -d
+```
+
+**3. Services disponibles :**
+
+| Service | Port | URL |
+|---------|------|-----|
+| CSWeb | 8080 | http://localhost:8080 |
+| MySQL (metadata) | 3306 | - |
+| SQL Server (breakout) | 1433 | - |
+
+**4. Verifier :**
+
+```bash
+# Conteneurs
+docker compose ps
+
+# Drivers
+docker compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+```
+
+---
+
+#### Mode Remote (serveur distant)
+
+**1. Configuration `.env` :**
+
+```env
+# Mode
+BREAKOUT_MODE=remote
+BREAKOUT_DB_TYPE=sqlserver
+
+# MySQL Metadata (toujours en container local)
+MYSQL_HOST=mysql
+MYSQL_PORT=3306
+MYSQL_DATABASE=csweb_metadata
+MYSQL_USER=csweb_user
+MYSQL_PASSWORD=CHANGEZ_MOT_DE_PASSE
+MYSQL_ROOT_PASSWORD=CHANGEZ_ROOT_PASSWORD
+
+# SQL Server Breakout (serveur distant - ex: ANSD)
+SQLSERVER_HOST=172.16.0.50
+SQLSERVER_PORT=1433
+SQLSERVER_DATABASE=RGPH5_Analytics
+SQLSERVER_USER=sa
+SQLSERVER_PASSWORD=RGPH5SecurePass!2026
+```
+
+**2. Lancer (pas de profil breakout) :**
+
+```bash
+docker compose up -d
+```
+
+**3. Services disponibles :**
+
+| Service | Port | Description |
+|---------|------|-------------|
+| CSWeb | 8080 | http://localhost:8080 |
+| MySQL (metadata) | 3306 | Container local |
+| SQL Server (breakout) | - | Serveur distant 172.16.0.50:1433 |
+
+**4. Prerequis serveur distant :**
+
+- TCP/IP active dans SQL Server Configuration Manager
+- Port 1433 ouvert dans le firewall
+- Authentification SQL Server (pas Windows Auth uniquement)
+
+```bash
+# Firewall
+sudo ufw allow from [IP_CSWEB] to any port 1433
+```
+
+ </div>
+</Tabs>
+
+---
+
+## Resume des commandes
+
+| Breakout | Mode Local | Mode Remote |
+|----------|------------|-------------|
+| **PostgreSQL** | `docker compose --profile local-postgres up -d` | `docker compose up -d` |
+| **MySQL** | `docker compose --profile local-mysql up -d` | `docker compose up -d` |
+| **SQL Server** | `docker compose --profile local-sqlserver up -d` | `docker compose up -d` |
+
+<Callout type="info">
+En mode **remote**, configurez `BREAKOUT_MODE=remote` + les variables de connexion dans `.env`, puis lancez `docker compose up -d` (sans profil). Seuls CSWeb + MySQL metadata demarrent en Docker.
+</Callout>
+
+---
+
+## Ajouter les outils de developpement
+
+Combinez `--profile dev` avec n'importe quel mode local pour ajouter phpMyAdmin et pgAdmin :
+
+```bash
+# PostgreSQL local + outils dev
+docker compose --profile local-postgres --profile dev up -d
+
+# MySQL local + outils dev
+docker compose --profile local-mysql --profile dev up -d
+```
+
+| Outil | Port | URL |
+|-------|------|-----|
+| phpMyAdmin | 8081 | http://localhost:8081 |
+| pgAdmin | 8082 | http://localhost:8082 |
+
+---
+
+## Basculer entre modes
+
+```bash
+# De local a remote :
+# 1. Modifier .env : BREAKOUT_MODE=remote + variables serveur distant
+# 2. Redemarrer sans profil breakout
+docker compose down
+docker compose up -d
+
+# De remote a local :
+# 1. Modifier .env : BREAKOUT_MODE=local
+# 2. Redemarrer avec le profil
+docker compose down
+docker compose --profile local-postgres up -d
+```
+
+---
+
+## Commandes utiles
+
+```bash
+# Voir les conteneurs actifs
+docker compose ps
+
+# Logs d'un service
+docker compose logs -f csweb
+
+# Verifier la configuration
+docker compose exec csweb php bin/console csweb:check-config
+
+# Tester les connexions
+docker compose exec csweb php bin/console csweb:check-database-drivers --test-connections
+
+# Rebuild apres modification
+docker compose --profile local-postgres up -d --build
+
+# Arreter tout
+docker compose down
+```
+
+---
+
+## Voir aussi
+
+- [Performance Tuning](/guides/deployment/performance) - Optimiser PHP, MySQL, PostgreSQL, Apache
+- [Docker Production](/guides/deployment/docker-prod) - Deploiement production securise
+- [Variables d'Environnement](/reference/config/environment) - Reference complete `.env`
+- [Backup & Restore](/guides/deployment/backup) - Sauvegardes automatiques

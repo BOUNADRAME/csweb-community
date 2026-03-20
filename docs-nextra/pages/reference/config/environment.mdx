@@ -675,6 +675,64 @@ MAX_EXECUTION_TIME=0 # Illimité (déconseillé)
 
 ---
 
+## Performance Tuning
+
+Variables pour optimiser PHP, MySQL, PostgreSQL et Apache. Voir le [guide complet Performance Tuning](/guides/deployment/performance) pour les profils et formules.
+
+### PHP
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PHP_MEMORY_LIMIT` | `512M` | Memoire max par processus PHP |
+| `PHP_MAX_EXECUTION_TIME` | `300` | Temps max d'execution (secondes) |
+| `PHP_MAX_INPUT_TIME` | `300` | Temps max de parsing input |
+| `PHP_UPLOAD_MAX_FILESIZE` | `100M` | Taille max d'un fichier uploade |
+| `PHP_POST_MAX_SIZE` | `100M` | Taille max d'une requete POST |
+| `PHP_SESSION_GC_MAXLIFETIME` | `7200` | Duree de session (secondes) |
+| `PHP_OPCACHE_MEMORY` | `128` | Memoire OPcache (MB) |
+| `PHP_OPCACHE_MAX_FILES` | `10000` | Fichiers max en cache OPcache |
+
+### MySQL Performance
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MYSQL_MAX_CONNECTIONS` | `200` | Connexions simultanees max |
+| `MYSQL_INNODB_BUFFER_POOL_SIZE` | `256M` | Cache InnoDB |
+| `MYSQL_INNODB_LOG_FILE_SIZE` | `64M` | Journal InnoDB |
+| `MYSQL_SLOW_QUERY_TIME` | `2` | Seuil requete lente (sec) |
+| `MYSQL_MAX_ALLOWED_PACKET` | `64M` | Taille max paquet |
+| `MYSQL_THREAD_CACHE_SIZE` | `16` | Threads en cache |
+| `MYSQL_TABLE_OPEN_CACHE` | `2000` | Tables ouvertes en cache |
+| `MYSQL_WAIT_TIMEOUT` | `28800` | Timeout connexion inactive |
+
+### PostgreSQL Performance
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PG_MAX_CONNECTIONS` | `200` | Connexions simultanees max |
+| `PG_SHARED_BUFFERS` | `256MB` | Cache partage |
+| `PG_EFFECTIVE_CACHE_SIZE` | `1GB` | Estimation cache OS |
+| `PG_WORK_MEM` | `4MB` | Memoire par tri |
+| `PG_MAINTENANCE_WORK_MEM` | `64MB` | Memoire VACUUM/INDEX |
+
+### Apache MPM Prefork
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `APACHE_MAX_REQUEST_WORKERS` | `150` | Processus Apache max |
+| `APACHE_SERVER_LIMIT` | `150` | Limite serveur (>= MaxRequestWorkers) |
+| `APACHE_KEEP_ALIVE_TIMEOUT` | `5` | Timeout keep-alive (sec) |
+| `APACHE_MAX_KEEP_ALIVE_REQUESTS` | `100` | Requetes max keep-alive |
+| `APACHE_TIMEOUT` | `300` | Timeout requete (sec) |
+
+**Verification :**
+
+```bash
+docker exec csweb-app php bin/console csweb:check-config
+```
+
+---
+
 ## Exemples Complets
 
 ### Configuration Local (PostgreSQL)

@@ -1,6 +1,8 @@
 {
+  "modes": "Modes de Déploiement",
   "docker-dev": "Docker Développement",
   "docker-prod": "Docker Production",
+  "performance": "Performance Tuning",
   "remote": "Déploiement Remote",
   "backup": "Backup & Restore",
   "vanilla-migration": "Migration depuis Vanilla"
