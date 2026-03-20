@@ -2,6 +2,7 @@
   "users": "Gestion des Utilisateurs",
   "dictionaries": "Gestion des Dictionnaires",
   "scheduler": "Web Scheduler",
+  "backup": "Backup Automatique",
   "webhooks": "Webhooks",
   "monitoring": "Monitoring"
 }

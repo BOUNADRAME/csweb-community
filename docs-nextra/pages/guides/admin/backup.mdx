@@ -1,0 +1,124 @@
+---
+title: Backup Automatique - Sauvegarde MySQL Intégrée
+description: Configurer et gérer les backups automatiques de la base MySQL metadata CSWeb via l'interface Web.
+---
+
+# Backup Automatique
+
+Configurer et gérer les sauvegardes automatiques de la base de données MySQL (metadata) directement depuis l'interface Web CSWeb.
+
+import { Callout } from 'nextra/components'
+
+<Callout type="info">
+**Nouveauté v2.2** : Le module Backup Automatique permet de planifier des sauvegardes MySQL sans configuration manuelle. Les backups sont stockés au format `.sql.gz` compressé.
+</Callout>
+
+## Vue d'ensemble
+
+### Principe
+
+Le module Backup introduit une table `cspro_backup_config` qui stocke la configuration de sauvegarde. Un crontab système appelle la commande `csweb:backup-run` chaque minute, qui vérifie si un backup est dû et l'exécute le cas échéant.
+
+### Ce qui est sauvegardé
+
+- **Base MySQL metadata** (`csweb_metadata`) : dictionnaires, configurations, utilisateurs, rôles
+- Format : dump SQL compressé (`.sql.gz`)
+- Stockage : `var/backups/`
+
+<Callout type="warning">
+Ce module ne sauvegarde **pas** les bases PostgreSQL breakout ni les fichiers uploadés. Pour un backup complet, consultez le [Guide Backup & Restore](/guides/deployment/backup).
+</Callout>
+
+## Accès
+
+La page Backup est accessible via **Settings > Backup** dans la sidebar. Elle nécessite le rôle `ROLE_SETTINGS_ALL`.
+
+## Configuration (Onglet 1)
+
+### Paramètres
+
+| Paramètre | Description | Défaut |
+|-----------|-------------|--------|
+| **Enabled** | Active/désactive le backup automatique | Désactivé |
+| **Cron Expression** | Planning d'exécution (format cron standard) | `0 2 * * *` (2h00 quotidien) |
+| **Retention (days)** | Nombre de jours de conservation des backups | 30 |
+
+### Expressions cron courantes
+
+| Expression | Description |
+|-----------|-------------|
+| `0 2 * * *` | Tous les jours à 2h00 |
+| `0 2 * * 0` | Chaque dimanche à 2h00 |
+| `0 */6 * * *` | Toutes les 6 heures |
+| `0 2 1 * *` | Le 1er de chaque mois à 2h00 |
+
+### Actions
+
+- **Save Configuration** : Enregistre les paramètres et recalcule la prochaine exécution
+- **Run Now** : Lance un backup immédiat (asynchrone)
+- **Cleanup Now** : Purge les backups plus anciens que la période de rétention
+
+## Backup Files (Onglet 2)
+
+Liste tous les fichiers `.sql.gz` présents dans `var/backups/`.
+
+### Actions disponibles
+
+- **Download** : Télécharge le fichier de backup
+- **Delete** : Supprime un fichier individuel
+- **Delete Selected** : Suppression en masse via les cases à cocher
+
+## Backup Logs (Onglet 3)
+
+Liste les fichiers de log générés lors de chaque exécution de backup, stockés dans `var/logs/backup/`.
+
+Chaque log contient :
+- La commande exécutée
+- Le code de sortie
+- Les sorties stdout et stderr
+
+## Commandes CLI
+
+### `csweb:backup-run`
+
+Commande principale, conçue pour être appelée chaque minute via crontab.
+
+```bash
+php bin/console csweb:backup-run --env=prod
+```
+
+Workflow :
+1. Vérifie si un backup est dû (enabled + next_run <= NOW)
+2. Exécute `mysqldump` avec compression gzip
+3. Écrit un fichier log
+4. Met à jour `last_run`, `next_run`, `last_exit_code`
+5. Purge les backups dépassant la période de rétention
+
+### `csweb:backup-cleanup`
+
+Purge manuelle des anciens backups.
+
+```bash
+# Utilise la rétention configurée
+php bin/console csweb:backup-cleanup --env=prod
+
+# Override : supprimer les backups de plus de 7 jours
+php bin/console csweb:backup-cleanup --days=7 --env=prod
+```
+
+## Installation Crontab
+
+Ajouter cette ligne au crontab du serveur :
+
+```bash
+* * * * * php /chemin/vers/csweb/bin/console csweb:backup-run --env=prod >> /dev/null 2>&1
+```
+
+<Callout type="info">
+Si vous utilisez déjà le crontab pour `csweb:scheduler-run`, ajoutez simplement cette seconde ligne. Les deux commandes peuvent coexister.
+</Callout>
+
+## Ressources
+
+- **Backup complet (MySQL + PostgreSQL + fichiers)** : [Backup & Restore](/guides/deployment/backup)
+- **Web Scheduler (Breakout)** : [Web Scheduler](/guides/admin/scheduler)

@@ -281,9 +281,37 @@ EOT;
                 }
             }
 
+            function schema8To9($pdo) {
+                try {
+                    $sql = <<<'EOT'
+			CREATE TABLE IF NOT EXISTS `cspro_backup_config` (
+			  `id` int unsigned NOT NULL AUTO_INCREMENT,
+			  `enabled` tinyint(1) NOT NULL DEFAULT 0,
+			  `cron_expression` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '0 2 * * *',
+			  `retention_days` int unsigned NOT NULL DEFAULT 30,
+			  `last_run` timestamp NULL DEFAULT NULL,
+			  `next_run` timestamp NULL DEFAULT NULL,
+			  `last_exit_code` int DEFAULT NULL,
+			  `last_log_file` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+			  `modified_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			  `created_time` timestamp DEFAULT '1971-01-01 00:00:00',
+			  PRIMARY KEY (`id`)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+			CREATE TRIGGER tr_cspro_backup_config BEFORE INSERT ON `cspro_backup_config` FOR EACH ROW SET NEW.`created_time` = CURRENT_TIMESTAMP;
+EOT;
+                    $pdo->exec($sql);
+                    $pdo->exec("INSERT INTO `cspro_backup_config` (`enabled`, `cron_expression`, `retention_days`) VALUES (0, '0 2 * * *', 30)");
+                    $sql = "UPDATE `cspro_config` SET `value`=9 where `name` = 'schema_version'";
+                    $pdo->exec($sql);
+                } catch (\Exception $e) {
+                    throw $e;
+                }
+            }
+
             $migrateFuncs = array(
                 5 => 'schema5To6',
-                7 => 'schema7To8'
+                7 => 'schema7To8',
+                8 => 'schema8To9'
             );
 
             // Check if app was already configured
