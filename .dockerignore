@@ -1,0 +1,24 @@
+# Documentation (Nextra)
+docs-nextra/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.claude/
+.settings/
+.buildpath
+.project
+nbproject/
+
+# Tests
+tests/
+test-results/
+.phpunit.result.cache
+.php-cs-fixer.cache
+
+# Dev tools
+CLAUDE.md
+cleanup.sh
+cleanup.bat
