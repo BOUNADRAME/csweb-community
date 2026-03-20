@@ -345,15 +345,18 @@ docker compose exec csweb php bin/console csweb:check-database-drivers
 
 ### Étape 4 : Configurer le breakout dans CSWeb
 
-La connexion au serveur distant se configure **dans l'interface CSWeb** au moment du breakout :
+La connexion au serveur distant se configure **dans l'interface CSWeb** :
 
 1. Se connecter à `http://localhost:8080`
-2. Aller dans **Data** et sélectionner un dictionnaire
-3. Configurer le schéma breakout avec les informations du serveur distant :
-   - **Host** : IP ou hostname du serveur distant
+2. Aller dans **Settings > Data**, onglet **Data Configuration**
+3. Cliquer **Add Configuration** et sélectionner un dictionnaire
+4. Renseigner les informations du serveur distant :
+   - **Database name** : Nom de la base breakout (doit être différente de la base métadonnées)
+   - **Hostname** : IP ou hostname du serveur distant
    - **Port** : Port du SGBD (5432, 3306, 1433)
-   - **Database** : Nom de la base analytics
-   - **User / Password** : Credentials du serveur distant
+   - **Username / Password** : Credentials du serveur distant
+
+Chaque dictionnaire peut pointer vers un serveur et un driver différent.
 
 ### Prérequis Serveur Distant
 
@@ -487,12 +490,16 @@ docker compose --profile local-postgres up -d --build
 # Entrer dans le conteneur CSWeb
 docker compose exec csweb bash
 
-# Vider le cache Symfony (automatique au démarrage)
+# Vider le cache Symfony (automatique au démarrage via docker-entrypoint.sh)
 docker compose exec csweb php bin/console cache:clear
 
 # Vérifier l'utilisation des ressources
 docker stats
 ```
+
+> **Note :** Le `docker-entrypoint.sh` gère automatiquement au démarrage :
+> le vidage du cache Symfony, l'installation du cron scheduler (breakout automatique),
+> et la suppression de la contrainte `schema_name` si nécessaire.
 
 ---
 
@@ -513,8 +520,7 @@ CSWEB_PORT=8888
 
 ### HTTP 500 après configuration
 
-Le cache Symfony est automatiquement vidé au démarrage du conteneur via `docker-entrypoint.sh`.
-Si le problème persiste :
+Le cache Symfony est automatiquement vidé au démarrage du conteneur via `docker-entrypoint.sh`. Si le problème persiste :
 
 ```bash
 docker compose exec csweb php bin/console cache:clear

@@ -34,10 +34,10 @@ php bin/console csweb:scheduler-run [--env=ENV]
 ```bash
 # Test manuel
 docker compose exec csweb php bin/console csweb:scheduler-run --env=prod -vvv
-
-# Crontab (production)
-* * * * * docker compose exec -T csweb php bin/console csweb:scheduler-run --env=prod
 ```
+
+> **Note :** Le cron est installé automatiquement dans le conteneur Docker via `docker-entrypoint.sh`.
+> Il exécute `csweb:scheduler-run` toutes les minutes. Aucune crontab externe n'est nécessaire.
 
 ---
 
@@ -232,7 +232,7 @@ php bin/console csweb:process-cases-by-dict \
  --overwrite \
  -vvv
 
-# Exécuter schedules planifiés (Web Scheduler)
+# Exécuter schedules planifiés (automatique via Docker cron intégré)
 php bin/console csweb:scheduler-run --env=prod
 ```
 

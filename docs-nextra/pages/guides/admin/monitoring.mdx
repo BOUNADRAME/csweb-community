@@ -125,17 +125,24 @@ WHERE state = 'active';
 
 ## Logs Application
 
-### Fichiers Logs
+### Via l'Interface Web
+
+La page **Settings > Data** dispose de deux onglets dédiés aux logs :
+
+- **Breakout Logs** : logs des breakouts par dictionnaire avec filtrage, recherche, viewer modal, téléchargement et suppression
+- **Application Log** : consultation du fichier `ui.log` avec nombre de lignes, taille, word wrap, copie et suppression
+
+### Via CLI
 
 ```bash
 # Logs CSWeb
 tail -f /var/www/html/var/logs/prod.log
 
-# Logs breakout
-tail -f /var/www/html/var/logs/breakout.log
+# Logs breakout individuels
+ls -la /var/www/html/var/logs/breakout/
 
-# Logs webhooks
-tail -f /var/www/html/var/logs/webhook.log
+# Logs scheduler cron
+tail -f /var/www/html/var/logs/scheduler-cron.log
 ```
 
 ### Rotation Logs

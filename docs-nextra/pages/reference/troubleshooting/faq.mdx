@@ -265,17 +265,9 @@ Exemples:
 
 **Benchmarks :**
 
-| Cas | Dictionnaires | Threads | Temps |
-|-----|---------------|---------|-------|
-| **Test** | 100 | 1 | < 1 min |
-| **Dev** | 1,000 | 3 | ~5 min |
-| **Petit INS** | 50,000 | 5 | ~1h |
-| **RGPH5** | 3,200,000 | 10 | **6h** |
+Le temps de breakout dépend du volume de données, du matériel et du driver SGBD. Le breakout sélectif (par dictionnaire) est significativement plus rapide que le breakout global car il traite un seul dictionnaire à la fois.
 
-**Formule approximative :**
-```
-Temps (min) (Nb_cas × 0.005) / Nb_threads
-```
+**Facteurs principaux** : nombre de cas, complexité du dictionnaire (niveaux, items), performances disque et réseau.
 
 ---
 
@@ -453,18 +445,12 @@ FOR VALUES FROM ('2025-01-01') TO ('2026-01-01');
 
 **Estimation :**
 
-| Volume | RAM Utilisée |
-|--------|--------------|
-| 1,000 cas | ~100 MB |
-| 10,000 cas | ~500 MB |
-| 100,000 cas | ~2 GB |
-| 1,000,000 cas | ~8 GB |
-| 3,200,000 cas (RGPH5) | ~16 GB |
+La consommation RAM dépend du volume de données traité. Plus le nombre de cas est élevé, plus la RAM nécessaire augmente.
 
 **Recommandations serveur :**
-- < 100k cas : 4 GB RAM
-- 100k-1M cas : 8 GB RAM
-- > 1M cas : 16+ GB RAM
+- Petit volume : 4 GB RAM minimum
+- Volume moyen : 8 GB RAM recommandé
+- Gros volume : 16+ GB RAM
 
 ---
 

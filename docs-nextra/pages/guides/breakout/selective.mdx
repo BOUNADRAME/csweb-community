@@ -38,11 +38,11 @@ Le breakout sélectif a permis de réduire considérablement le temps de traitem
 ## Problème Résolu
 
 Imaginons 5 dictionnaires :
-- RECENSEMENT (3M questionnaires)
-- ENQUETE_MENAGES (150k)
-- EVALUATION_AGRICOLE (80k)
-- SONDAGE_SANTE (50k)
-- TEST_PILOTE (500)
+- RECENSEMENT (dictionnaire principal, très volumineux)
+- ENQUETE_MENAGES (volume moyen)
+- EVALUATION_AGRICOLE (volume moyen)
+- SONDAGE_SANTE (volume modéré)
+- TEST_PILOTE (petit volume de test)
 
 **Avec CSWeb Vanilla** (Traitement Global en Cascade) :
 ```bash
@@ -57,7 +57,7 @@ php bin/console csweb:process-cases
 # 6. SONDAGE_SANTE → jamais traité
 # 7. TEST_PILOTE → jamais traité
 
-# Résultat : 38h perdues, 0 dictionnaire breaké
+# Résultat : temps perdu, 0 dictionnaire breaké
 # Il faut corriger RECENSEMENT et TOUT relancer
 ```
 
@@ -219,8 +219,8 @@ rgph5_menages_individus
 ### RGPH5 Sénégal (ANSD)
 
 **Contexte**
-- 3.2 millions de questionnaires
-- SQL Server 2022 (128GB RAM)
+- Plusieurs milliers de questionnaires
+- SQL Server 2022
 
 **Configuration**
 ```bash
@@ -229,25 +229,21 @@ BREAKOUT_DB_TYPE=sqlserver
 ```
 
 **Résultat**
-- 3.2M questionnaires breakés en **6h** (vs 48h avant)
-- 850GB de données
+- Breakout significativement plus rapide qu'en mode natif
 - Analyses Power BI temps réel
 
 ### Institut National de Statistique
 
 **Workflow**
 ```bash
-# 1. Test pilote (500 cases)
+# 1. Test pilote (petit volume)
 php bin/console csweb:process-cases-by-dict PILOTE_2026
-# 30 secondes
 
-# 2. Enquête (150k)
+# 2. Enquête (volume moyen)
 php bin/console csweb:process-cases-by-dict ENQUETE_MENAGES
-# 45 minutes
 
-# 3. Recensement (3M)
+# 3. Recensement (gros volume)
 php bin/console csweb:process-cases-by-dict RECENSEMENT_POP
-# 6 heures
 ```
 
 **Avantages**
@@ -259,17 +255,14 @@ php bin/console csweb:process-cases-by-dict RECENSEMENT_POP
 
 ## Performance
 
-### Benchmarks
+### Gains attendus
 
-Hardware : 8 cores, 16GB RAM, SSD
-Database : PostgreSQL 16
+Le breakout sélectif est plus rapide que le breakout global car il traite un seul dictionnaire à la fois, réduisant la charge mémoire et les opérations I/O. Les gains varient selon le nombre de dictionnaires, le volume de données et le matériel.
 
-| Opération | Global | Sélectif | Gain |
-|-----------|--------|----------|------|
-| Cleanup | 15.2s | 2.3s | 6.6x |
-| Extraction | 45.1s | 8.7s | 5.2x |
-| Insertion | 120.5s | 18.7s | 6.4x |
-| **Total** | **180s** | **30s** | **6x** |
+**Avantages principaux** :
+- Temps de traitement proportionnel au dictionnaire ciblé (pas au total)
+- Isolation des échecs (pas d'effet domino)
+- Possibilité de paralléliser sur plusieurs dictionnaires
 
 ### Optimisations
 

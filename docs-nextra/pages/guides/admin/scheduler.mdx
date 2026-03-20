@@ -26,7 +26,7 @@ Le Web Scheduler introduit une table dédiée `cspro_breakout_scheduler` qui sto
 │  ┌──────────────────────────────────────────┐    │
 │  │  Page Data Settings                      │    │
 │  │  ┌────────────────────────────────────┐  │    │
-│  │  │  Card "Breakout Scheduler"         │  │    │
+│  │  │  Onglet "Breakout Scheduler"       │  │    │
 │  │  │  - Add / Edit / Toggle / Delete    │  │    │
 │  │  │  - Cron expression par dict        │  │    │
 │  │  │  - Status, Last Run, Next Run      │  │    │
@@ -75,7 +75,7 @@ Le Web Scheduler introduit une table dédiée `cspro_breakout_scheduler` qui sto
 | Granularité | Par commande | Par dictionnaire |
 | Logs | Un seul fichier | Un log par dict + timestamp |
 | Monitoring | Aucun | Last Run, Next Run, Exit Code |
-| Toggle on/off | Commenter/décommenter | Bouton play/pause |
+| Toggle on/off | Commenter/décommenter | Bouton toggle on/off |
 | Historique | Non | Oui (table MySQL) |
 
 ---
@@ -94,10 +94,16 @@ crontab -e
 * * * * * php /var/www/html/bin/console csweb:scheduler-run --env=prod >> /var/log/scheduler.log 2>&1
 ```
 
-### Avec Docker
+### Avec Docker (Intégré)
+
+Le Dockerfile CSWeb inclut déjà un cron intégré qui est démarré automatiquement par le `docker-entrypoint.sh`. **Aucune configuration supplémentaire n'est nécessaire** si vous utilisez l'image Docker officielle.
+
+Le cron intégré exécute `csweb:scheduler-run` chaque minute via `/etc/cron.d/csweb-scheduler`.
+
+Si vous préférez configurer le cron depuis l'hôte :
 
 ```bash
-# Crontab sur l'hôte
+# Alternative : crontab sur l'hôte
 * * * * * docker compose exec -T csweb php bin/console csweb:scheduler-run --env=prod >> /var/log/scheduler.log 2>&1
 ```
 
@@ -120,7 +126,7 @@ Pour une nouvelle installation, la table est créée automatiquement lors du set
 
 1. Se connecter à CSWeb avec un compte **Administrateur**
 2. Naviguer vers **Settings > Data**
-3. Le card **Breakout Scheduler** apparaît sous le card Data Configuration
+3. Cliquer sur l'onglet **Breakout Scheduler**
 
 ### Ajouter un Schedule
 
@@ -154,14 +160,14 @@ La table affiche en temps réel :
 | **Status** | Badge Active (vert) ou Inactive (gris) |
 | **Last Run** | Date/heure de la dernière exécution |
 | **Next Run** | Prochaine exécution prévue |
-| **Last Result** | Badge OK (vert) ou Error avec code (rouge) |
-| **Actions** | Toggle, Edit, Delete |
+| **Actions** | Toggle, Edit, Run Now, Delete |
 
 ### Actions disponibles
 
-- **Toggle** (play/pause) : Active ou désactive le schedule sans le supprimer
+- **Toggle** (on/off) : Active ou désactive le schedule sans le supprimer
 - **Edit** (crayon) : Modifier l'expression cron ou le statut enabled
-- **Delete** (corbeille) : Supprimer le schedule (avec confirmation)
+- **Run Now** (play) : Lancer un breakout manuel immédiat pour ce dictionnaire
+- **Delete** (corbeille) : Supprimer le schedule (avec confirmation via modal Bootstrap)
 
 ---
 
@@ -194,7 +200,16 @@ creating a new blob breakout thread
 
 ```
 
-### Consulter les logs
+### Consulter les logs via l'interface Web
+
+L'onglet **Breakout Logs** dans la page Data Settings offre un viewer complet :
+
+- **Sidebar dictionnaires** : filtrer les logs par dictionnaire avec recherche
+- **Table DataTable** : tri par date, taille, type (manual/scheduled), pagination
+- **Modal viewer** : visualisation du contenu du log (thème sombre, numéros de ligne, word wrap, scroll)
+- **Actions** : télécharger ou supprimer chaque fichier log
+
+### Consulter les logs en CLI
 
 ```bash
 # Derniers logs d'un dictionnaire
@@ -327,7 +342,7 @@ ps aux | grep scheduler-run
 1. **Un seul crontab** : Ne pas créer de crons manuels pour les dictionnaires gérés par le scheduler
 2. **Expressions prudentes** : Éviter `*/1 * * * *` pour des breakouts lourds - préférer des intervalles de 30 min minimum
 3. **Nettoyage logs** : Configurer un cron de cleanup pour `var/logs/breakout/`
-4. **Monitoring** : Consulter régulièrement la colonne "Last Result" pour détecter les erreurs
+4. **Monitoring** : Consulter régulièrement l'onglet Breakout Logs pour détecter les erreurs
 
 ---
 

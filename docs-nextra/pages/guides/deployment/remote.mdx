@@ -11,28 +11,30 @@ Guide de déploiement avec **serveurs de bases de données distants**.
 
 ## Concept
 
-Mode **Remote** = Container CSWeb local + Base de données breakout sur un **serveur distant**.
+Mode **Remote** = Container CSWeb (avec MySQL métadonnées) + Bases de données breakout sur des **serveurs distants existants**.
+
+En mode remote, CSWeb ne crée aucune base de données breakout localement. Il se connecte simplement aux bases **déjà existantes** sur le réseau. Les seuls prérequis sont les **drivers PHP** installés (pdo_mysql, pdo_pgsql, pdo_sqlsrv) — tous sont pré-installés dans l'image Docker.
 
 ```
 ┌───────────────────┐          ┌─────────────────────┐
-│   Serveur CSWeb   │          │   Serveur Distant    │
+│   Serveur CSWeb   │          │  Serveur(s) Distant  │
 │   (Docker)        │          │                      │
 │                   │          │  ┌────────────────┐  │
 │  ┌─────────────┐  │  réseau  │  │  PostgreSQL    │  │
 │  │   CSWeb     │──┼──────────┼──│  OU MySQL      │  │
 │  │  (Apache)   │  │          │  │  OU SQL Server │  │
-│  └─────────────┘  │          │  │  (Analytics)   │  │
-│                   │          │  └────────────────┘  │
-│  ┌─────────────┐  │          │                      │
-│  │   MySQL     │  │          └─────────────────────┘
-│  │ (Metadata)  │  │
-│  └─────────────┘  │
+│  └─────────────┘  │          │  └────────────────┘  │
+│                   │          │                      │
+│  ┌─────────────┐  │          └─────────────────────┘
+│  │   MySQL     │  │
+│  │ (Metadata)  │  │   Chaque dictionnaire peut pointer
+│  └─────────────┘  │   vers un serveur/driver différent
 └───────────────────┘
 ```
 
 **Cas d'usage :**
-- RGPH5 Sénégal (SQL Server distant)
-- Production INS (PostgreSQL dédié)
+- Production avec base analytics sur un serveur dédié
+- Mix de drivers (PostgreSQL pour un dict, SQL Server pour un autre)
 - Séparation metadata/analytics pour la performance
 
 ---
@@ -103,14 +105,21 @@ Les 3 drivers (PostgreSQL, MySQL, SQL Server) sont installés par défaut dans l
 ### Étape 4 : Configurer le breakout dans CSWeb
 
 1. Se connecter à `http://localhost:8080`
-2. Aller dans **Data** et sélectionner un dictionnaire
-3. Configurer le schéma breakout avec les informations du serveur distant :
-   - **Host** : IP ou hostname du serveur distant
+2. Aller dans **Settings > Data**, onglet **Data Configuration**
+3. Cliquer **Add Configuration** et sélectionner un dictionnaire
+4. Renseigner les informations du serveur distant :
+   - **Database name** : Nom de la base breakout (doit être différente de la base métadonnées)
+   - **Hostname** : IP ou hostname du serveur distant
    - **Port** : Port du SGBD (5432, 3306, 1433)
-   - **Database** : Nom de la base analytics
-   - **User / Password** : Credentials du serveur distant
+   - **Username / Password** : Credentials du serveur distant
+
+Chaque dictionnaire peut pointer vers un serveur et un driver différent.
 
 ### Étape 5 : Lancer le breakout
+
+Depuis l'onglet **Breakout Scheduler** : ajouter un schedule ou utiliser **Run Now** pour un breakout immédiat.
+
+Ou en CLI :
 
 ```bash
 # Breakout sélectif vers le serveur distant

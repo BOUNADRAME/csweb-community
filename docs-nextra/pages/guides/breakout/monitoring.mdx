@@ -2,7 +2,26 @@
 
 Surveiller et diagnostiquer les jobs de breakout en temps réel.
 
-## Logs en Temps Réel
+## Monitoring via l'Interface Web
+
+### Onglet Breakout Logs
+
+La page **Settings > Data**, onglet **Breakout Logs** offre un monitoring complet :
+
+- **Sidebar dictionnaires** : voir les logs par dictionnaire avec badge compteur, recherche instantanée
+- **Table paginée** : tri par dictionnaire, date, taille, type (manual/scheduled)
+- **Modal viewer** : visualisation du contenu (thème sombre VS Code, numéros de ligne, word wrap toggle, scroll to top/bottom)
+- **Actions** : télécharger ou supprimer chaque fichier log avec confirmation
+
+### Onglet Application Log
+
+L'onglet **Application Log** permet de consulter le fichier `ui.log` de Symfony :
+
+- Nombre de lignes, taille, date de modification
+- Visualisation complète avec word wrap et copie vers le presse-papiers
+- Suppression avec modal de confirmation
+
+## Logs en Temps Réel (CLI)
 
 ### Tail Logs
 
@@ -10,8 +29,8 @@ Surveiller et diagnostiquer les jobs de breakout en temps réel.
 # Logs Docker
 docker compose logs -f csweb
 
-# Logs fichier
-tail -f /var/www/html/var/logs/breakout.log
+# Logs breakout individuels
+tail -f /var/www/html/var/logs/breakout/*.log
 ```
 
 ### Filtrer par Dictionnaire
@@ -36,11 +55,10 @@ Output exemple :
 
 ```
 [INFO] Processing dictionary: EVAL_DICT
-[INFO] Found 50,000 cases
-[INFO] Progress: 10,000 / 50,000 (20%)
-[INFO] Progress: 25,000 / 50,000 (50%)
-[INFO] Progress: 50,000 / 50,000 (100%)
-[INFO] Completed in 00:45:12
+[INFO] Running blob breakout process.
+[INFO] Processing dictionary: EVAL_DICT- Running threads 0
+[INFO] creating a new blob breakout thread
+...
 ```
 
 ### Watch Progress
@@ -72,9 +90,7 @@ sys     2m15s
 
 Calculer débit :
 
-```bash
-# 50,000 cases en 45 min = ~18 cases/sec
-```
+Le débit dépend du volume de données, du matériel et du driver SGBD utilisé.
 
 ### Ressources Système
 

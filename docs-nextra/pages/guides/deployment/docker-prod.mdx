@@ -124,6 +124,12 @@ docker compose ps
 docker compose logs
 ```
 
+Le conteneur CSWeb démarre automatiquement avec :
+- **Permissions** corrigées sur `var/` et `files/`
+- **Cache Symfony** pré-chauffé
+- **Cron scheduler** actif (exécute `csweb:scheduler-run` chaque minute)
+- **Contrainte schema_name** supprimée automatiquement (multi-dictionnaire)
+
 ---
 
 ## Reverse Proxy (Nginx + SSL)

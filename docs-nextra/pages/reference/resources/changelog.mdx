@@ -4,6 +4,33 @@ Historique des modifications de CSWeb Community Platform.
 
 ## Version Actuelle
 
+### [1.1.0] - 2026-03-19
+
+**Data Settings Overhaul & Automated Scheduler**
+
+#### Interface Data Settings
+
+- **Tabs UI** : Remplacement des 3 cards empilées par un système d'onglets Bootstrap 4 (Data Configuration, Breakout Scheduler, Breakout Logs, Application Log)
+- **Breakout Logs Viewer** : Master-detail avec sidebar dictionnaires, recherche, DataTable paginée, modal viewer (thème sombre, numéros de ligne, word wrap), téléchargement et suppression
+- **Application Log Viewer** : Consultation du fichier `ui.log` avec word wrap, copie presse-papiers, suppression avec confirmation
+- **Modals agrandis** : Add/Edit Schedule en `modal-lg`
+- **Confirmations Bootstrap** : Modals au lieu de `confirm()` natif
+
+#### Scheduler Automatique Docker
+
+- **Cron intégré** dans le conteneur Docker (`/etc/cron.d/csweb-scheduler`)
+- **Entrypoint** : Démarrage automatique du daemon cron + clear cache Symfony
+- **Auto-drop** : Suppression automatique de la contrainte UNIQUE sur `schema_name` au démarrage
+
+#### Corrections
+
+- Chemin PHP dans cron (`/usr/local/bin/php`)
+- Spinner global ne bloque plus l'onglet Application Log
+- Recherche sidebar Breakout Logs fonctionne correctement
+- Colonne "Last Result" retirée du tableau scheduler
+
+---
+
 ### [2.0.0] - 2026-03-15
 
 **Release Majeure** : Documentation Nextra complète + Architecture flexible multi-SGBD.

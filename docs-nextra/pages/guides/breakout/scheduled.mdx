@@ -22,7 +22,7 @@ Le Web Scheduler permet de configurer la planification de breakout par dictionna
 ### Configuration rapide
 
 1. Naviguer vers **Settings > Data** dans l'interface CSWeb
-2. Repérer le card **Breakout Scheduler** sous le card Data Configuration
+2. Cliquer sur l'onglet **Breakout Scheduler**
 3. Cliquer **Add Schedule** et sélectionner un dictionnaire
 4. Saisir l'expression cron (ex: `0 2 * * *` pour tous les jours à 2h)
 5. Activer le schedule et sauvegarder
@@ -36,7 +36,9 @@ Le Web Scheduler nécessite un seul cron système qui pilote tous les schedules 
 * * * * * php /var/www/html/bin/console csweb:scheduler-run --env=prod >> /var/log/scheduler.log 2>&1
 ```
 
-Avec Docker :
+Avec Docker, le cron est **déjà intégré** dans le conteneur et démarre automatiquement. Aucune configuration supplémentaire nécessaire.
+
+Alternative depuis l'hôte :
 
 ```bash
 * * * * * docker compose exec -T csweb php bin/console csweb:scheduler-run --env=prod >> /var/log/scheduler.log 2>&1
@@ -47,7 +49,8 @@ Avec Docker :
 - **Un schedule par dictionnaire** avec expression cron indépendante
 - **Toggle on/off** sans supprimer la configuration
 - **Logs individuels** : `var/logs/breakout/{DICT_NAME}_{datetime}.log`
-- **Monitoring** : Last Run, Next Run, Last Result visibles dans le tableau
+- **Monitoring** : Last Run, Next Run visibles dans le tableau
+- **Breakout Logs** : Onglet dédié avec viewer, filtrage par dictionnaire, téléchargement et suppression
 - **Protection concurrence** : verrou automatique via `LockableTrait`
 
 > Pour une documentation complète du Web Scheduler : [Administration - Web Scheduler](/guides/admin/scheduler)
@@ -115,29 +118,11 @@ crontab -e
 0 * * * * docker compose exec -T csweb php bin/console csweb:process-cases-by-dict EVAL_DICT >> /var/log/breakout.log 2>&1
 ```
 
-### Container Cron Dédié
+### Cron Intégré au Conteneur
 
-Créer `Dockerfile.cron` :
+Le Dockerfile CSWeb inclut déjà un cron intégré pour le scheduler. Au démarrage du conteneur, le `docker-entrypoint.sh` lance automatiquement le daemon cron qui exécute `csweb:scheduler-run` chaque minute.
 
-```dockerfile
-FROM php:8.1-cli
-
-# Installer cron
-RUN apt-get update && apt-get install -y cron
-
-# Copier crontab
-COPY crontab /etc/cron.d/csweb-breakout
-RUN chmod 0644 /etc/cron.d/csweb-breakout
-RUN crontab /etc/cron.d/csweb-breakout
-
-CMD ["cron", "-f"]
-```
-
-Fichier `crontab` :
-
-```
-0 * * * * cd /var/www/html && php bin/console csweb:process-cases-by-dict EVAL_DICT >> /var/log/breakout.log 2>&1
-```
+Les logs du cron sont dans `var/logs/scheduler-cron.log` à l'intérieur du conteneur.
 
 ---
 
