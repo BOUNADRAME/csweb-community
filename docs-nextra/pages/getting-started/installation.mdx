@@ -26,7 +26,8 @@ Ce guide vous permettra d'installer et de démarrer CSWeb Community Platform en 
 ### Installation Docker
 
 <Tabs items={['Ubuntu/Debian', 'macOS', 'Windows']}>
- <div>
+<div>
+
 ```bash
 # Installation Docker sur Ubuntu/Debian
 curl -fsSL https://get.docker.com -o get-docker.sh
@@ -38,8 +39,10 @@ newgrp docker
 docker --version
 docker compose version
 ```
- </div>
- <div>
+
+</div>
+<div>
+
 ```bash
 # Installation Docker sur macOS avec Homebrew
 brew install --cask docker
@@ -52,8 +55,10 @@ brew install --cask docker
 docker --version
 docker compose version
 ```
- </div>
- <div>
+
+</div>
+<div>
+
 ```powershell
 # Windows - Télécharger Docker Desktop
 # https://www.docker.com/products/docker-desktop/
@@ -64,7 +69,8 @@ docker compose version
 docker --version
 docker compose version
 ```
- </div>
+
+</div>
 </Tabs>
 
 ---
@@ -118,8 +124,9 @@ Choisissez votre **base de données breakout** puis le **mode** (local ou remote
 > Si vous n'êtes pas sûr, restez sur le premier onglet.
 
 <Tabs items={['PostgreSQL (recommandé)', 'MySQL', 'SQL Server']}>
- <div>
-#### Local (développement)
+<div>
+
+**Local (développement)**
 
 La base breakout tourne dans un container Docker sur la même machine.
 
@@ -150,7 +157,7 @@ csweb-postgres-breakout   Up (healthy)        0.0.0.0:5432->5432/tcp
 
 ---
 
-#### Remote (production)
+**Remote (production)**
 
 La base breakout est sur un serveur PostgreSQL distant. Seuls CSWeb + MySQL metadata tournent en Docker.
 
@@ -179,9 +186,11 @@ csweb-mysql-metadata      Up (healthy)        0.0.0.0:3306->3306/tcp
 ```
 
 > PostgreSQL est sur le serveur distant — pas de container breakout local.
- </div>
- <div>
-#### Local (développement)
+
+</div>
+<div>
+
+**Local (développement)**
 
 La base breakout MySQL tourne dans un container Docker séparé (port 3307).
 
@@ -212,7 +221,7 @@ csweb-mysql-breakout      Up (healthy)        0.0.0.0:3307->3306/tcp
 
 ---
 
-#### Remote (production)
+**Remote (production)**
 
 La base breakout est sur un serveur MySQL distant.
 
@@ -241,9 +250,11 @@ csweb-mysql-metadata      Up (healthy)        0.0.0.0:3306->3306/tcp
 ```
 
 > MySQL breakout est sur le serveur distant — pas de container breakout local.
- </div>
- <div>
-#### Local (développement)
+
+</div>
+<div>
+
+**Local (développement)**
 
 SQL Server tourne dans un container Docker (nécessite 2 GB RAM minimum).
 
@@ -274,7 +285,7 @@ csweb-sqlserver-breakout  Up (healthy)        0.0.0.0:1433->1433/tcp
 
 ---
 
-#### Remote (production)
+**Remote (production)**
 
 La base breakout est sur un serveur SQL Server distant.
 
@@ -303,7 +314,8 @@ csweb-mysql-metadata      Up (healthy)        0.0.0.0:3306->3306/tcp
 ```
 
 > SQL Server est sur le serveur distant — pas de container breakout local.
- </div>
+
+</div>
 </Tabs>
 
 ```bash
@@ -393,7 +405,8 @@ docker compose exec csweb php bin/console csweb:check-database-drivers --test-co
 ### Tester manuellement
 
 <Tabs items={['PostgreSQL', 'MySQL', 'SQL Server']}>
- <div>
+<div>
+
 ```bash
 # Depuis votre machine hôte (mode local uniquement)
 docker compose exec postgres psql -U csweb_analytics -d csweb_analytics
@@ -401,8 +414,10 @@ docker compose exec postgres psql -U csweb_analytics -d csweb_analytics
 # Ou depuis pgAdmin (si profil dev activé)
 # Host: postgres | Port: 5432 | Username: csweb_analytics
 ```
- </div>
- <div>
+
+</div>
+<div>
+
 ```bash
 # Depuis votre machine hôte
 docker compose exec mysql mysql -u root -p
@@ -410,14 +425,17 @@ docker compose exec mysql mysql -u root -p
 # Ou depuis phpMyAdmin (si profil dev activé)
 # Server: mysql | Username: root
 ```
- </div>
- <div>
+
+</div>
+<div>
+
 ```bash
 # Depuis votre machine hôte (mode local uniquement)
 docker compose exec sqlserver /opt/mssql-tools/bin/sqlcmd \
   -S localhost -U sa -P 'VotreStrong!Passw0rd'
 ```
- </div>
+
+</div>
 </Tabs>
 
 ---
@@ -443,7 +461,8 @@ docker compose --profile local-postgres --profile dev up -d
 En mode **remote**, le serveur distant doit être accessible depuis le conteneur CSWeb.
 
 <Tabs items={['PostgreSQL', 'MySQL', 'SQL Server']}>
- <div>
+<div>
+
 ```ini
 # postgresql.conf
 listen_addresses = '*'
@@ -458,8 +477,10 @@ host    all    all    0.0.0.0/0    md5
 # Firewall
 sudo ufw allow from [IP_SERVEUR_CSWEB] to any port 5432
 ```
- </div>
- <div>
+
+</div>
+<div>
+
 ```ini
 # my.cnf
 bind-address = 0.0.0.0
@@ -469,8 +490,10 @@ bind-address = 0.0.0.0
 # Firewall
 sudo ufw allow from [IP_SERVEUR_CSWEB] to any port 3306
 ```
- </div>
- <div>
+
+</div>
+<div>
+
 - TCP/IP activé dans SQL Server Configuration Manager
 - Port 1433 ouvert dans le firewall
 
@@ -478,7 +501,8 @@ sudo ufw allow from [IP_SERVEUR_CSWEB] to any port 3306
 # Firewall
 sudo ufw allow from [IP_SERVEUR_CSWEB] to any port 1433
 ```
- </div>
+
+</div>
 </Tabs>
 
 ---
