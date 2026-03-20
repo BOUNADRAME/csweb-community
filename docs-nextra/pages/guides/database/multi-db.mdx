@@ -299,7 +299,7 @@ Raison: Politique IT, licences déjà achetées, support Microsoft
 ### Variables .env par SGBD
 
 <Tabs items={['PostgreSQL', 'MySQL', 'SQL Server']}>
-<div>
+<Tabs.Tab>
 
 ```bash
 #####################################
@@ -329,8 +329,8 @@ docker compose --profile local-postgres up -d
 docker compose up -d csweb mysql
 ```
 
-</div>
-<div>
+</Tabs.Tab>
+<Tabs.Tab>
 
 ```bash
 #####################################
@@ -359,8 +359,8 @@ docker compose --profile local-mysql up -d
 docker compose up -d csweb mysql
 ```
 
-</div>
-<div>
+</Tabs.Tab>
+<Tabs.Tab>
 
 ```bash
 #####################################
@@ -390,7 +390,7 @@ docker compose --profile local-sqlserver up -d
 docker compose up -d csweb mysql
 ```
 
-</div>
+</Tabs.Tab>
 </Tabs>
 
 ---
@@ -495,7 +495,7 @@ docker compose exec csweb php -m | grep pdo
 ### Installation Drivers (si manquants)
 
 <Tabs items={['Ubuntu/Debian', 'CentOS/RHEL', 'Docker']}>
-<div>
+<Tabs.Tab>
 
 ```bash
 # PostgreSQL
@@ -518,8 +518,8 @@ sudo phpenmod sqlsrv pdo_sqlsrv
 sudo systemctl restart apache2
 ```
 
-</div>
-<div>
+</Tabs.Tab>
+<Tabs.Tab>
 
 ```bash
 # PostgreSQL
@@ -540,8 +540,8 @@ echo "extension=pdo_sqlsrv.so" > /etc/php.d/20-pdo_sqlsrv.ini
 sudo systemctl restart httpd
 ```
 
-</div>
-<div>
+</Tabs.Tab>
+<Tabs.Tab>
 
 **Dockerfile (déjà inclus dans CSWeb Community) :**
 
@@ -567,7 +567,7 @@ RUN apt-get install -y gnupg unixodbc-dev \\
 
 **Note :** CSWeb Community Platform inclut déjà tous les drivers.
 
-</div>
+</Tabs.Tab>
 </Tabs>
 
 ---

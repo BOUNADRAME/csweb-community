@@ -145,7 +145,7 @@ php -r "echo @fsockopen('192.168.1.100', 5432, \$e, \$m, 5) ? 'OK' : 'FAIL: '.\$
 ### Configuration SGBD
 
 <Tabs items={['PostgreSQL', 'SQL Server', 'MySQL']}>
-<div>
+<Tabs.Tab>
 
 **`postgresql.conf` :**
 ```ini
@@ -167,8 +167,8 @@ sudo ufw allow from [IP_SERVEUR_CSWEB] to any port 5432
 sudo systemctl restart postgresql
 ```
 
-</div>
-<div>
+</Tabs.Tab>
+<Tabs.Tab>
 
 **SQL Server Configuration Manager :**
 1. Activer TCP/IP dans les protocoles réseau
@@ -186,8 +186,8 @@ ALTER LOGIN sa ENABLE;
 ALTER LOGIN sa WITH PASSWORD = 'VotreMotDePasseFort!';
 ```
 
-</div>
-<div>
+</Tabs.Tab>
+<Tabs.Tab>
 
 **`my.cnf` :**
 ```ini
@@ -208,7 +208,7 @@ sudo ufw allow from [IP_SERVEUR_CSWEB] to any port 3306
 sudo systemctl restart mysql
 ```
 
-</div>
+</Tabs.Tab>
 </Tabs>
 
 ---
