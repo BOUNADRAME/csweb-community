@@ -95,9 +95,10 @@ Documentation complete : **https://bounadrame.github.io/csweb-community/**
 
 ## Production Validee
 
-- **RGPH5 Senegal** (ANSD) - Recensement complet
-- **Gambie** - Recensement et enquetes
+- **ANSD** (Senegal) - Recensement (RGPH5) et enquetes
+- **Gambie** - Recensement
 - **Guinee** - Recensement
+- **Statinfo** - Enquetes
 
 ---
 
@@ -111,7 +112,7 @@ Documentation complete : **https://bounadrame.github.io/csweb-community/**
 
 - [Documentation](https://bounadrame.github.io/csweb-community/)
 - [Signaler un bug](https://github.com/BOUNADRAME/csweb-community/issues/new)
-- Email : bdrame@statinfo.sn
+- Email : bounafode@gmail.com | bdrame@statinfo.sn
 
 ---
 
