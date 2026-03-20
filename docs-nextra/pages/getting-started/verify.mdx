@@ -195,11 +195,11 @@ docker volume ls | grep csweb
 **Résultat attendu :**
 
 ```
-local pg_csweb8_latest_2026_csweb_files
-local pg_csweb8_latest_2026_csweb_logs
-local pg_csweb8_latest_2026_mysql_data
-local pg_csweb8_latest_2026_postgres_data
-local pg_csweb8_latest_2026_pgadmin_data
+local csweb-community_csweb_files
+local csweb-community_csweb_logs
+local csweb-community_mysql_data
+local csweb-community_postgres_data
+local csweb-community_pgadmin_data
 ```
 
  5 volumes présents
@@ -208,10 +208,10 @@ local pg_csweb8_latest_2026_pgadmin_data
 
 ```bash
 # Inspecter le volume PostgreSQL
-docker volume inspect pg_csweb8_latest_2026_postgres_data
+docker volume inspect csweb-community_postgres_data
 
 # Vérifier l'emplacement
-# Mountpoint: /var/lib/docker/volumes/pg_csweb8_latest_2026_postgres_data/_data
+# Mountpoint: /var/lib/docker/volumes/csweb-community_postgres_data/_data
 ```
 
  Chaque volume a un "Mountpoint" valide

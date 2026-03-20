@@ -101,8 +101,8 @@ su - csweb
 
 ```bash
 # Clone repository
-git clone https://github.com/BOUNADRAME/pg_csweb8_latest_2026.git
-cd pg_csweb8_latest_2026
+git clone https://github.com/BOUNADRAME/csweb-community.git
+cd csweb-community
 
 # Copier .env
 cp .env.example .env
@@ -219,7 +219,7 @@ sudo systemctl restart nginx
 #!/bin/bash
 # Backup quotidien CSWeb DATE=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR="/backups/csweb/$DATE"
-PROJECT_DIR="/home/csweb/pg_csweb8_latest_2026"
+PROJECT_DIR="/home/csweb/csweb-community"
 
 mkdir -p $BACKUP_DIR cd $PROJECT_DIR echo "[$DATE] Starting backup..."
 
@@ -337,7 +337,7 @@ FLUSH PRIVILEGES;
 ### Procédure de Mise à Jour
 
 ```bash
-cd /home/csweb/pg_csweb8_latest_2026
+cd /home/csweb/csweb-community
 
 # 1. Backup avant mise à jour
 ./backup.sh

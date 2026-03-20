@@ -77,11 +77,11 @@ Logs pertinents
 ```bash
 # Fork sur GitHub
 # Puis clone
-git clone https://github.com/VOTRE_USERNAME/pg_csweb8_latest_2026.git
-cd pg_csweb8_latest_2026
+git clone https://github.com/VOTRE_USERNAME/csweb-community.git
+cd csweb-community
 
 # Ajouter upstream
-git remote add upstream https://github.com/BOUNADRAME/pg_csweb8_latest_2026.git
+git remote add upstream https://github.com/BOUNADRAME/csweb-community.git
 ```
 
 ### 2. Créer une Branche
@@ -147,14 +147,23 @@ vendor/bin/phpunit --testsuite unit
 # Tests unitaires avec couverture
 composer test:coverage
 
+# Analyse statique (PHPStan niveau 1)
+composer phpstan
+# ou directement
+vendor/bin/phpstan analyse --no-progress
+
+# Vérifier le formatage (PHP-CS-Fixer, dry-run)
+composer cs-check
+# ou directement
+vendor/bin/php-cs-fixer fix --dry-run --diff
+
+# Corriger automatiquement le formatage
+composer cs-fix
+
 # Via Docker
 docker compose exec csweb composer test
-
-# Vérifier code style
-docker compose exec csweb vendor/bin/php-cs-fixer fix --dry-run
-
-# Analyser code (PHPStan)
-docker compose exec csweb vendor/bin/phpstan analyse
+docker compose exec csweb composer phpstan
+docker compose exec csweb composer cs-check
 ```
 
 **Structure des tests :**
@@ -164,11 +173,15 @@ tests/
   Unit/                  # Tests unitaires (sans dépendance BDD)
     CSPro/
       VectorClockTest.php
+      CSProResponseTest.php
+      CSProMySQLFormatterTest.php
+      FileManagerTest.php
       Data/
         BreakoutSchedulerTest.php
     Service/
       DatabaseDriverDetectorTest.php
       BreakoutDatabaseConfigTest.php
+      HttpHelperErrorResponseTest.php
   Integration/           # Tests d'intégration (avec BDD)
 ```
 
@@ -317,13 +330,13 @@ class BreakoutDatabaseConfigTest extends TestCase
 ### Documentation
 
 - **[Documentation Nextra](/)** : Docs complètes
-- **[CONTRIBUTING.md](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/blob/master/CONTRIBUTING.md)** : Guide complet
+- **[CONTRIBUTING.md](https://github.com/BOUNADRAME/csweb-community/blob/master/CONTRIBUTING.md)** : Guide complet
 
 ### Outils
 
-- **PHP CS Fixer** : Formatage code automatique
-- **PHPStan** : Analyse statique
-- **PHPUnit** : Tests unitaires
+- **PHPUnit** : Tests unitaires — config `phpunit.xml.dist`, suites `unit` et `integration`
+- **PHPStan** : Analyse statique niveau 1 — config `phpstan.neon.dist`
+- **PHP-CS-Fixer** : Formatage code automatique (PSR-12) — config `.php-cs-fixer.dist.php`
 - **Docker** : Environnement développement
 
 ### Communication

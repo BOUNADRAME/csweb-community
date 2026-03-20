@@ -153,7 +153,7 @@ import { CodeBlock } from '../components/CodeBlock'
 1. **Connecter le repo à Vercel**
    - Aller sur https://vercel.com
    - Import Git Repository
-   - Sélectionner `BOUNADRAME/pg_csweb8_latest_2026`
+   - Sélectionner `BOUNADRAME/csweb-community`
 
 2. **Configuration Build**
    - Framework Preset: `Next.js`
@@ -412,7 +412,7 @@ export default {
 
 ## 📞 Support
 
-- **GitHub Issues** : https://github.com/BOUNADRAME/pg_csweb8_latest_2026/issues
+- **GitHub Issues** : https://github.com/BOUNADRAME/csweb-community/issues
 - **Discord** : https://discord.gg/csweb-community
 - **Email** : docs@csweb-community.org
 
