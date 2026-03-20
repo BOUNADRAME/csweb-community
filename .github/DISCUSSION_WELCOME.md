@@ -33,9 +33,9 @@ Je suis **Bouna DRAME** (Bouna DRAME) et je suis ravi d'annoncer le lancement of
 
 ## 📖 Liens Importants
 
-- 📚 **Documentation** : https://bounadrame.github.io/pg_csweb8_latest_2026/
+- 📚 **Documentation** : https://bounadrame.github.io/csweb-community/
 - 🚀 **Quick Start** : [GETTING-STARTED.md](../blob/master/GETTING-STARTED.md)
-- 🎉 **Release v1.0.0-beta** : https://github.com/BOUNADRAME/pg_csweb8_latest_2026/releases/tag/v1.0.0-beta
+- 🎉 **Release v1.0.0-beta** : https://github.com/BOUNADRAME/csweb-community/releases/tag/v1.0.0-beta
 - 📋 **Roadmap** : [CHANGELOG.md](../blob/master/CHANGELOG.md)
 
 ---

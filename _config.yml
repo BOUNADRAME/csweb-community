@@ -3,7 +3,7 @@
 # Site settings
 title: CSWeb Community Platform
 description: Transformez CSWeb 8 Vanilla en plateforme communautaire avec breakout sélectif par dictionnaire
-baseurl: "/pg_csweb8_latest_2026"
+baseurl: "/csweb-community"
 url: "https://bounadrame.github.io"
 
 # Author
@@ -13,7 +13,7 @@ author:
   github: BOUNADRAME
 
 # Repository
-repository: BOUNADRAME/pg_csweb8_latest_2026
+repository: BOUNADRAME/csweb-community
 
 # Theme
 theme: jekyll-theme-cayman

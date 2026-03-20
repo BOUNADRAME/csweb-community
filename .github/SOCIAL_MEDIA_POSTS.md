@@ -10,7 +10,7 @@
 🐳 Docker + PostgreSQL
 🌍 100% open-source pour l'Afrique
 
-👉 https://github.com/BOUNADRAME/pg_csweb8_latest_2026
+👉 https://github.com/BOUNADRAME/csweb-community
 
 #OpenSource #CSPro #Statistics #Africa #DataScience
 ```
@@ -40,8 +40,8 @@ Setup en 5 minutes avec Docker
 🔧 Configuration avancée simplifiée
 
 📖 DOCUMENTATION
-Documentation complète : https://bounadrame.github.io/pg_csweb8_latest_2026/
-Code source : https://github.com/BOUNADRAME/pg_csweb8_latest_2026
+Documentation complète : https://bounadrame.github.io/csweb-community/
+Code source : https://github.com/BOUNADRAME/csweb-community
 
 🤝 APPEL À CONTRIBUTION
 Nous recherchons :
@@ -79,10 +79,10 @@ Je suis ravi de partager le lancement de CSWeb Community Platform, un projet ope
 ✅ 100% gratuit et open-source
 
 📖 DOCUMENTATION COMPLÈTE :
-👉 https://bounadrame.github.io/pg_csweb8_latest_2026/
+👉 https://bounadrame.github.io/csweb-community/
 
 💻 CODE SOURCE :
-👉 https://github.com/BOUNADRAME/pg_csweb8_latest_2026
+👉 https://github.com/BOUNADRAME/csweb-community
 
 🤝 CONTRIBUEZ :
 Le projet est ouvert aux contributions ! Développeurs, traducteurs, testeurs... tous les profils sont bienvenus !
@@ -117,9 +117,9 @@ La configuration de CSWeb prend actuellement 2-3 jours et nécessite une experti
 
 ## 📖 Ressources
 
-- **Documentation** : https://bounadrame.github.io/pg_csweb8_latest_2026/
-- **Repository** : https://github.com/BOUNADRAME/pg_csweb8_latest_2026
-- **Quick Start** : https://github.com/BOUNADRAME/pg_csweb8_latest_2026/blob/master/GETTING-STARTED.md
+- **Documentation** : https://bounadrame.github.io/csweb-community/
+- **Repository** : https://github.com/BOUNADRAME/csweb-community
+- **Quick Start** : https://github.com/BOUNADRAME/csweb-community/blob/master/GETTING-STARTED.md
 
 ## 🧪 Ce que je recherche
 
@@ -179,13 +179,13 @@ P.S. : Le projet est né d'une collaboration avec l'ANSD (Sénégal). Notre obje
 09:00 - Appel à contribution
 
 📖 LIENS :
-- Documentation : https://bounadrame.github.io/pg_csweb8_latest_2026/
-- GitHub : https://github.com/BOUNADRAME/pg_csweb8_latest_2026
-- Quick Start : https://github.com/BOUNADRAME/pg_csweb8_latest_2026/blob/master/GETTING-STARTED.md
+- Documentation : https://bounadrame.github.io/csweb-community/
+- GitHub : https://github.com/BOUNADRAME/csweb-community
+- Quick Start : https://github.com/BOUNADRAME/csweb-community/blob/master/GETTING-STARTED.md
 
 💬 REJOIGNEZ-NOUS :
 - Discord : (lien à venir)
-- GitHub Discussions : https://github.com/BOUNADRAME/pg_csweb8_latest_2026/discussions
+- GitHub Discussions : https://github.com/BOUNADRAME/csweb-community/discussions
 
 #CSPro #CSWeb #OpenSource #Statistics #Africa #Docker
 ```

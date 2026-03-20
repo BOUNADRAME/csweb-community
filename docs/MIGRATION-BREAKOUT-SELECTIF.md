@@ -1334,8 +1334,8 @@ Cette migration transforme CSWeb 8 d'un système **monolithique** (1 dictionnair
 **Questions sur cette migration ?**
 
 - 📧 bounafode@gmail.com
-- 💬 GitHub Discussions : https://github.com/BOUNADRAME/pg_csweb8_latest_2026/discussions
-- 🐛 GitHub Issues : https://github.com/BOUNADRAME/pg_csweb8_latest_2026/issues
+- 💬 GitHub Discussions : https://github.com/BOUNADRAME/csweb-community/discussions
+- 🐛 GitHub Issues : https://github.com/BOUNADRAME/csweb-community/issues
 
 ---
 

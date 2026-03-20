@@ -25,7 +25,7 @@ jobs:
 
             Un mainteneur va la reviewer prochainement. En attendant :
             - ✅ Assurez-vous d'avoir fourni tous les détails nécessaires
-            - 📖 Consultez notre [documentation](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/tree/master/docs)
+            - 📖 Consultez notre [documentation](https://github.com/BOUNADRAME/csweb-community/tree/master/docs)
             - 💬 Rejoignez notre Discord (lien à venir)
 
             Nous apprécions votre contribution ! 🙏
@@ -38,7 +38,7 @@ jobs:
             **Prochaines étapes :**
             - ⏳ Un mainteneur va reviewer votre code
             - ✅ Assurez-vous que tous les checks passent
-            - 📖 Vérifiez le [guide de contribution](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/blob/master/CONTRIBUTING.md)
+            - 📖 Vérifiez le [guide de contribution](https://github.com/BOUNADRAME/csweb-community/blob/master/CONTRIBUTING.md)
 
             **Tips pour accélérer la review :**
             - Ajoutez des tests si applicable

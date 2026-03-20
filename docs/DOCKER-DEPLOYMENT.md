@@ -116,8 +116,8 @@ brew install --cask docker
 ### Méthode 1 : Script Automatique (Recommandé)
 
 ```bash
-git clone https://github.com/BOUNADRAME/pg_csweb8_latest_2026.git
-cd pg_csweb8_latest_2026
+git clone https://github.com/BOUNADRAME/csweb-community.git
+cd csweb-community
 chmod +x install.sh
 ./install.sh
 ```
@@ -126,8 +126,8 @@ chmod +x install.sh
 
 ```bash
 # 1. Cloner
-git clone https://github.com/BOUNADRAME/pg_csweb8_latest_2026.git
-cd pg_csweb8_latest_2026
+git clone https://github.com/BOUNADRAME/csweb-community.git
+cd csweb-community
 
 # 2. Copier .env
 cp .env.example .env
@@ -631,8 +631,8 @@ docker system prune -a --volumes
 ## Support
 
 - 📧 Email : bounafode@gmail.com
-- 💬 GitHub Discussions : https://github.com/BOUNADRAME/pg_csweb8_latest_2026/discussions
-- 🐛 Issues : https://github.com/BOUNADRAME/pg_csweb8_latest_2026/issues
+- 💬 GitHub Discussions : https://github.com/BOUNADRAME/csweb-community/discussions
+- 🐛 Issues : https://github.com/BOUNADRAME/csweb-community/issues
 
 ---
 
