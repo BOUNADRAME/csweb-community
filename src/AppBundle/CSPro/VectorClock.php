@@ -117,7 +117,7 @@ class VectorClock
 		if($this->IsEqual($rhsVectorClock)){
 			return 0;
 		}
-		else if(IsLessThan($rhsVectorClock)){
+		else if($this->IsLessThan($rhsVectorClock)){
 			return -1;
 		}
 		return 1; //if not lhs > rhs

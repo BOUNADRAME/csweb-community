@@ -171,12 +171,7 @@ class VectorClockTest extends TestCase
         $this->assertContains('dev3', $devices);
     }
 
-    /**
-     * Documents bug on line 120 of VectorClock.php:
-     * compare() calls IsLessThan() without $this-> prefix,
-     * which results in a fatal error at runtime.
-     */
-    public function testCompareHasBug(): void
+    public function testCompare(): void
     {
         $vc1 = new VectorClock(null);
         $vc1->setVersion('dev1', 1);
@@ -184,11 +179,8 @@ class VectorClockTest extends TestCase
         $vc2 = new VectorClock(null);
         $vc2->setVersion('dev1', 2);
 
-        // Equal case works (returns before hitting the bug)
         $this->assertSame(0, $vc1->compare($vc1));
-
-        // Non-equal case triggers the bug: IsLessThan() called without $this->
-        $this->expectError();
-        $vc1->compare($vc2);
+        $this->assertSame(-1, $vc1->compare($vc2));
+        $this->assertSame(1, $vc2->compare($vc1));
     }
 }
