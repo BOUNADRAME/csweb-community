@@ -99,11 +99,21 @@
                 {% block navSettings %}
                 {% if is_granted('ROLE_SETTINGS_ALL') == true %}
                     <li id="settings-nav-item" class="nav-item">
-                        <a class="nav-link collapsed" href="{{ path('dataSettings') }}" 
-                           data-toggle="collapse" onclick={window.location.href="{{ path('dataSettings') }}";}>
+                        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseSettings"
+                           aria-expanded="false" aria-controls="collapseSettings">
                             <i class="fas fa-fw fa-cog"></i>
-                        <span>Settings</span>
+                            <span>Settings</span>
                         </a>
+                        <div id="collapseSettings" class="collapse" aria-labelledby="headingSettings" data-parent="#side-menu">
+                            <div class="bg-white collapse-inner rounded">
+                                <a class="collapse-item" href="{{ path('dataSettings') }}">
+                                    <i class="fas fa-fw fa-database"></i>
+                                    Data</a>
+                                <a class="collapse-item" href="{{ path('backup') }}">
+                                    <i class="fas fa-fw fa-hdd"></i>
+                                    Backup</a>
+                            </div>
+                        </div>
                     </li>
                 {% endif %}
                 {% endblock %}

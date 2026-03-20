@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     unixodbc-dev \
     gnupg2 \
+    default-mysql-client \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -76,9 +77,11 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/files \
     && chmod -R 777 /var/www/html/var
 
-# Configure cron for breakout scheduler (runs every minute)
+# Configure cron for breakout scheduler + backup (runs every minute)
 RUN echo "* * * * * www-data /usr/local/bin/php /var/www/html/bin/console csweb:scheduler-run >> /var/www/html/var/logs/scheduler-cron.log 2>&1" \
     > /etc/cron.d/csweb-scheduler \
+    && echo "* * * * * www-data /usr/local/bin/php /var/www/html/bin/console csweb:backup-run >> /var/www/html/var/logs/backup-cron.log 2>&1" \
+    >> /etc/cron.d/csweb-scheduler \
     && chmod 0644 /etc/cron.d/csweb-scheduler \
     && crontab -u www-data /etc/cron.d/csweb-scheduler || true
 

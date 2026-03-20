@@ -1,0 +1,703 @@
+{% extends "base.twig" %}
+{% block resources %}
+    <style>
+        .backup-status-badge { font-size: 0.85em; }
+        .backup-config-group { margin-bottom: 1rem; }
+        .backup-config-group label { font-weight: 600; }
+        .backup-info-row { display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 1rem; }
+        .backup-info-item { flex: 1; min-width: 200px; }
+        .backup-info-item .label { color: #6c757d; font-size: 0.85em; }
+        .backup-info-item .value { font-size: 1.05em; font-weight: 500; }
+    </style>
+{% endblock %}
+{% block navSettings %}
+    {% if is_granted('ROLE_SETTINGS_ALL') == true %}
+        <li id="settings-nav-item" class="nav-item active">
+            <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseSettings"
+               aria-expanded="true" aria-controls="collapseSettings">
+                <i class="fas fa-fw fa-cog"></i>
+                <span>Settings</span>
+            </a>
+            <div id="collapseSettings" class="collapse show" aria-labelledby="headingSettings" data-parent="#side-menu">
+                <div class="bg-white collapse-inner rounded">
+                    <a class="collapse-item" href="{{ path('dataSettings') }}">
+                        <i class="fas fa-fw fa-database"></i>
+                        Data</a>
+                    <a class="collapse-item active" href="{{ path('backup') }}">
+                        <i class="fas fa-fw fa-hdd"></i>
+                        Backup</a>
+                </div>
+            </div>
+        </li>
+    {% endif %}
+{% endblock %}
+{% block content %}
+    <div class="row">
+        <div class="col-12">
+            <div id="alert" class="alert-placeholder-cspro alert-margin-cspro">
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header p-0">
+                    <ul class="nav nav-tabs card-header-tabs cspro-tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="tab-link-backup-config" data-toggle="tab" href="#tab-backup-config" role="tab" aria-controls="tab-backup-config" aria-selected="true">
+                                <i class="fas fa-cog"></i> Configuration
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="tab-link-backup-files" data-toggle="tab" href="#tab-backup-files" role="tab" aria-controls="tab-backup-files" aria-selected="false">
+                                <i class="fas fa-archive"></i> Backup Files
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="tab-link-backup-logs" data-toggle="tab" href="#tab-backup-logs" role="tab" aria-controls="tab-backup-logs" aria-selected="false">
+                                <i class="fas fa-file-alt"></i> Backup Logs
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body p-0">
+                    <div class="tab-content">
+                        {# ── Tab 1 : Configuration ── #}
+                        <div class="tab-pane fade show active" id="tab-backup-config" role="tabpanel" aria-labelledby="tab-link-backup-config">
+                            <div class="p-4">
+                                <div class="backup-info-row" id="backup-status-row">
+                                    <div class="backup-info-item">
+                                        <div class="label">Status</div>
+                                        <div class="value" id="backup-status">
+                                            <i class="fas fa-spinner fa-spin"></i> Loading...
+                                        </div>
+                                    </div>
+                                    <div class="backup-info-item">
+                                        <div class="label">Last Run</div>
+                                        <div class="value" id="backup-last-run">-</div>
+                                    </div>
+                                    <div class="backup-info-item">
+                                        <div class="label">Next Run</div>
+                                        <div class="value" id="backup-next-run">-</div>
+                                    </div>
+                                    <div class="backup-info-item">
+                                        <div class="label">Last Exit Code</div>
+                                        <div class="value" id="backup-last-exit">-</div>
+                                    </div>
+                                </div>
+                                <hr>
+                                <form id="backup-config-form">
+                                    <div class="form-group row">
+                                        <label class="col-sm-3 col-form-label" for="backup-enabled">Enabled</label>
+                                        <div class="col-sm-9">
+                                            <div class="custom-control custom-switch mt-2">
+                                                <input type="checkbox" class="custom-control-input" id="backup-enabled">
+                                                <label class="custom-control-label" for="backup-enabled" id="backup-enabled-label">Disabled</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label class="col-sm-3 col-form-label" for="backup-cron">Cron Expression</label>
+                                        <div class="col-sm-6">
+                                            <input type="text" class="form-control" id="backup-cron" placeholder="0 2 * * *">
+                                            <small class="form-text text-muted">
+                                                Format : <code>minute heure jour mois jour_semaine</code><br>
+                                                Exemples :
+                                                <code>0 2 * * *</code> tous les jours à 2h00 |
+                                                <code>0 2 * * 0</code> chaque dimanche à 2h00 |
+                                                <code>0 */6 * * *</code> toutes les 6 heures |
+                                                <code>0 2 1 * *</code> le 1er du mois à 2h00 |
+                                                <code>30 3 * * 1-5</code> lun-ven à 3h30
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label class="col-sm-3 col-form-label" for="backup-retention">Retention (days)</label>
+                                        <div class="col-sm-3">
+                                            <input type="number" class="form-control" id="backup-retention" min="1" max="365" value="30">
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <div class="col-sm-9 offset-sm-3">
+                                            <button type="button" class="btn btn-primary btn-sm" id="save-backup-config-btn">
+                                                <i class="fas fa-save"></i> Save Configuration
+                                            </button>
+                                            <button type="button" class="btn btn-success btn-sm ml-2" id="run-backup-now-btn">
+                                                <i class="fas fa-play"></i> Run Now
+                                            </button>
+                                            <button type="button" class="btn btn-warning btn-sm ml-2" id="cleanup-now-btn">
+                                                <i class="fas fa-broom"></i> Cleanup Now
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        {# ── Tab 2 : Backup Files ── #}
+                        <div class="tab-pane fade" id="tab-backup-files" role="tabpanel" aria-labelledby="tab-link-backup-files">
+                            <div class="cspro-tab-toolbar">
+                                <button type="button" class="btn btn-secondary btn-xs mr-2" id="refresh-backup-files-btn"><i class="fas fa-sync-alt"></i> Refresh</button>
+                                <button type="button" class="btn btn-danger btn-xs" id="delete-selected-backups-btn" disabled><i class="fas fa-trash-alt"></i> Delete Selected</button>
+                            </div>
+                            <div class="p-3 pt-0">
+                                <div class="table-responsive">
+                                    <table id="backup-files-table" class="table table-sm table-striped table-bordered table-hover" style="width:100%">
+                                        <thead>
+                                            <tr>
+                                                <th><input type="checkbox" id="selectAllBackupsCheckbox" title="Select all"></th>
+                                                <th>Filename</th>
+                                                <th>Date</th>
+                                                <th>Size</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="backup-files-body">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {# ── Tab 3 : Backup Logs ── #}
+                        <div class="tab-pane fade" id="tab-backup-logs" role="tabpanel" aria-labelledby="tab-link-backup-logs">
+                            <div class="cspro-tab-toolbar">
+                                <button type="button" class="btn btn-secondary btn-xs" id="refresh-backup-logs-btn"><i class="fas fa-sync-alt"></i> Refresh</button>
+                            </div>
+                            <div class="p-3 pt-0">
+                                <div class="table-responsive">
+                                    <table id="backup-logs-table" class="table table-sm table-striped table-bordered table-hover" style="width:100%">
+                                        <thead>
+                                            <tr>
+                                                <th>Filename</th>
+                                                <th>Date</th>
+                                                <th>Size</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="backup-logs-body">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block modal %}
+    <!-- Run Now Confirmation Modal -->
+    <div id="run-backup-confirm-modal" class="modal fade" role="dialog" aria-labelledby="run-backup-confirm-label">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="run-backup-confirm-label"><i class="fas fa-play-circle"></i> Lancer un backup maintenant</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning mb-3">
+                        <i class="fas fa-exclamation-triangle"></i> <strong>Recommandations importantes</strong>
+                    </div>
+                    <ul class="mb-3" style="line-height:1.8">
+                        <li><i class="fas fa-clock text-danger"></i> <strong>Ne pas lancer pendant les heures de travail</strong> (collecte ou saisie de donn&eacute;es en cours)</li>
+                        <li><i class="fas fa-database text-warning"></i> Le backup verrouille temporairement la base MySQL et peut <strong>ralentir les performances</strong></li>
+                        <li><i class="fas fa-moon text-info"></i> Privil&eacute;giez les <strong>cr&eacute;neaux hors production</strong> (nuit, week-end, pause d&eacute;jeuner)</li>
+                        <li><i class="fas fa-hdd text-secondary"></i> V&eacute;rifiez que l'espace disque est suffisant sur le serveur</li>
+                    </ul>
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle"></i> Pour les backups r&eacute;guliers, configurez plut&ocirc;t le <strong>planning automatique</strong> (Cron Expression) sur un cr&eacute;neau de nuit (ex: <code>0 2 * * *</code>).
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Annuler</button>
+                    <button type="button" class="btn btn-primary" id="confirm-run-backup-btn"><i class="fas fa-play"></i> Lancer le backup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cleanup Confirmation Modal -->
+    <div id="cleanup-confirm-modal" class="modal fade" role="dialog" aria-labelledby="cleanup-confirm-label">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title" id="cleanup-confirm-label"><i class="fas fa-broom"></i> Purger les anciens backups</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Cette action va <strong>supprimer d&eacute;finitivement</strong> tous les fichiers de backup plus anciens que la p&eacute;riode de r&eacute;tention configur&eacute;e.</p>
+                    <div class="alert alert-danger mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> <strong>Action irr&eacute;versible</strong> &mdash; les fichiers supprim&eacute;s ne pourront pas &ecirc;tre r&eacute;cup&eacute;r&eacute;s.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Annuler</button>
+                    <button type="button" class="btn btn-warning" id="confirm-cleanup-btn"><i class="fas fa-broom"></i> Confirmer la purge</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete File Confirmation Modal -->
+    <div id="delete-file-confirm-modal" class="modal fade" role="dialog" aria-labelledby="delete-file-confirm-label">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="delete-file-confirm-label"><i class="fas fa-trash-alt"></i> Supprimer un fichier de backup</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Voulez-vous supprimer d&eacute;finitivement le fichier :</p>
+                    <p class="text-center"><strong><code id="delete-file-name"></code></strong></p>
+                    <div class="alert alert-danger mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Cette action est <strong>irr&eacute;versible</strong>.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Annuler</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-file-btn"><i class="fas fa-trash-alt"></i> Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Confirmation Modal -->
+    <div id="bulk-delete-confirm-modal" class="modal fade" role="dialog" aria-labelledby="bulk-delete-confirm-label">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="bulk-delete-confirm-label"><i class="fas fa-trash-alt"></i> Suppression multiple</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Voulez-vous supprimer d&eacute;finitivement <strong><span id="bulk-delete-count"></span> fichier(s)</strong> de backup s&eacute;lectionn&eacute;(s) ?</p>
+                    <div class="alert alert-danger mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Cette action est <strong>irr&eacute;versible</strong>.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Annuler</button>
+                    <button type="button" class="btn btn-danger" id="confirm-bulk-delete-btn"><i class="fas fa-trash-alt"></i> Supprimer tout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Log Modal -->
+    <div id="view-backup-log-modal" class="modal fade" role="dialog" aria-labelledby="view-backup-log-label">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="view-backup-log-label"><i class="fas fa-file-alt"></i> <span id="view-backup-log-filename"></span></h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <pre id="view-backup-log-content" style="max-height:400px; overflow:auto; background:#f8f9fa; padding:1rem; border-radius:4px; font-size:0.85em;"></pre>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block scripts %}
+    <script>
+        "use strict";
+
+        function showAlert(message, alertStyle) {
+            $("#alert").replaceWith("<div id='alert' class='" + alertStyle + " alert-margin-cspro'>" + message + "</div>");
+            $("#alert").show();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return "";
+            return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+
+        function formatSize(bytes) {
+            if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + " GB";
+            if (bytes >= 1048576) return (bytes / 1048576).toFixed(2) + " MB";
+            if (bytes >= 1024) return (bytes / 1024).toFixed(2) + " KB";
+            return bytes + " B";
+        }
+
+        $(document).ready(function () {
+            var $body = $("body");
+            $(document).ajaxStart(function () { $body.addClass("loading"); });
+            $(document).ajaxComplete(function () { $body.removeClass("loading"); });
+
+            // ═══════════════════════════════════════════
+            // TAB 1 : Configuration
+            // ═══════════════════════════════════════════
+
+            function loadConfig() {
+                $.ajax({
+                    type: "GET",
+                    url: "{{ path('backupConfig') }}",
+                    dataType: "json",
+                    success: function (data) {
+                        if (!data) return;
+                        $("#backup-enabled").prop("checked", data.enabled == 1);
+                        $("#backup-enabled-label").text(data.enabled == 1 ? "Enabled" : "Disabled");
+                        $("#backup-cron").val(data.cron_expression);
+                        $("#backup-retention").val(data.retention_days);
+
+                        // Status display
+                        if (data.enabled == 1) {
+                            $("#backup-status").html('<span class="badge badge-success backup-status-badge">Active</span>');
+                        } else {
+                            $("#backup-status").html('<span class="badge badge-secondary backup-status-badge">Disabled</span>');
+                        }
+                        $("#backup-last-run").text(data.last_run || "Never");
+                        $("#backup-next-run").text(data.next_run || "-");
+
+                        if (data.last_exit_code === null || data.last_exit_code === undefined) {
+                            $("#backup-last-exit").text("-");
+                        } else if (data.last_exit_code == 0) {
+                            $("#backup-last-exit").html('<span class="badge badge-success">0 (OK)</span>');
+                        } else if (data.last_exit_code == -1) {
+                            $("#backup-last-exit").html('<span class="badge badge-warning">In Progress</span>');
+                        } else {
+                            $("#backup-last-exit").html('<span class="badge badge-danger">' + data.last_exit_code + ' (Error)</span>');
+                        }
+                    },
+                    error: function (response) {
+                        // Clear loading spinner on error
+                        $("#backup-status").html('<span class="badge badge-danger backup-status-badge">Error</span>');
+                        if (response.status === 401 || response.status === 405) {
+                            window.location.href = "{{ path('logout') }}";
+                        } else {
+                            showAlert("Failed to load backup configuration. Please run the database upgrade (upgrade/upgrade.php) first.", "alert alert-danger");
+                        }
+                    }
+                });
+            }
+
+            loadConfig();
+
+            // Toggle enabled label
+            $("#backup-enabled").on("change", function () {
+                $("#backup-enabled-label").text($(this).is(":checked") ? "Enabled" : "Disabled");
+            });
+
+            // Save config
+            $("#save-backup-config-btn").on("click", function () {
+                var cronExpr = $.trim($("#backup-cron").val());
+                var retDays = parseInt($("#backup-retention").val(), 10);
+                var enabled = $("#backup-enabled").is(":checked");
+
+                if (!cronExpr) {
+                    showAlert("Cron expression is required.", "alert alert-danger");
+                    return;
+                }
+                if (isNaN(retDays) || retDays < 1) {
+                    showAlert("Retention days must be at least 1.", "alert alert-danger");
+                    return;
+                }
+
+                $.ajax({
+                    type: "PUT",
+                    url: "{{ path('backupConfigUpdate') }}",
+                    contentType: "application/json",
+                    data: JSON.stringify({ cronExpression: cronExpr, retentionDays: retDays, enabled: enabled }),
+                    dataType: "json",
+                    success: function (data) {
+                        showAlert(data.description, "alert alert-success");
+                        loadConfig();
+                    },
+                    error: function (response) {
+                        if (response.status === 401 || response.status === 405) {
+                            window.location.href = "{{ path('logout') }}";
+                        } else {
+                            var msg = "Failed to save configuration.";
+                            try { msg = JSON.parse(response.responseText).description; } catch (e) {}
+                            showAlert(msg, "alert alert-danger");
+                        }
+                    }
+                });
+            });
+
+            // Run now — open confirmation modal
+            $("#run-backup-now-btn").on("click", function () {
+                $("#run-backup-confirm-modal").modal("show");
+            });
+
+            // Run now — confirmed
+            $("#confirm-run-backup-btn").on("click", function () {
+                $("#run-backup-confirm-modal").modal("hide");
+                $.ajax({
+                    type: "POST",
+                    url: "{{ path('backupRunNow') }}",
+                    dataType: "json",
+                    success: function (data) {
+                        showAlert(data.description, "alert alert-success");
+                        loadConfig();
+                    },
+                    error: function (response) {
+                        if (response.status === 401 || response.status === 405) {
+                            window.location.href = "{{ path('logout') }}";
+                        } else {
+                            showAlert("Failed to start backup.", "alert alert-danger");
+                        }
+                    }
+                });
+            });
+
+            // Cleanup now — open confirmation modal
+            $("#cleanup-now-btn").on("click", function () {
+                $("#cleanup-confirm-modal").modal("show");
+            });
+
+            // Cleanup now — confirmed
+            $("#confirm-cleanup-btn").on("click", function () {
+                $("#cleanup-confirm-modal").modal("hide");
+                $.ajax({
+                    type: "POST",
+                    url: "{{ path('backupCleanupNow') }}",
+                    dataType: "json",
+                    success: function (data) {
+                        showAlert(data.description, "alert alert-success");
+                        loadBackupFiles();
+                    },
+                    error: function (response) {
+                        if (response.status === 401 || response.status === 405) {
+                            window.location.href = "{{ path('logout') }}";
+                        } else {
+                            showAlert("Cleanup failed.", "alert alert-danger");
+                        }
+                    }
+                });
+            });
+
+            // ═══════════════════════════════════════════
+            // TAB 2 : Backup Files
+            // ═══════════════════════════════════════════
+
+            var filesTable = null;
+
+            function loadBackupFiles() {
+                $.ajax({
+                    type: "GET",
+                    url: "{{ path('backupFilesList') }}",
+                    dataType: "json",
+                    success: function (data) {
+                        var files = data.files || [];
+                        if (filesTable) {
+                            filesTable.destroy();
+                            filesTable = null;
+                        }
+                        var tbody = $("#backup-files-body");
+                        tbody.empty();
+                        var rows = "";
+                        for (var i = 0; i < files.length; i++) {
+                            var f = files[i];
+                            rows += '<tr>' +
+                                '<td><input type="checkbox" class="backup-file-select" value="' + escapeHtml(f.filename) + '"></td>' +
+                                '<td><small>' + escapeHtml(f.filename) + '</small></td>' +
+                                '<td>' + escapeHtml(f.date) + '</td>' +
+                                '<td>' + escapeHtml(f.sizeFormatted) + '</td>' +
+                                '<td>' +
+                                    '<a class="btn btn-xs btn-success mr-1" href="{{ path('backupFileDownload') }}?file=' + encodeURIComponent(f.filename) + '" title="Download"><i class="fas fa-download"></i></a>' +
+                                    '<button class="btn btn-xs btn-danger delete-backup-file-btn" data-file="' + escapeHtml(f.filename) + '" title="Delete"><i class="fas fa-trash-alt"></i></button>' +
+                                '</td>' +
+                                '</tr>';
+                        }
+                        tbody.html(rows);
+                        filesTable = $("#backup-files-table").DataTable({
+                            order: [[2, "desc"]],
+                            pageLength: 15,
+                            lengthMenu: [15, 25, 50],
+                            columnDefs: [{ orderable: false, targets: [0, 4] }],
+                            language: { emptyTable: "No backup files found." }
+                        });
+                        $("#selectAllBackupsCheckbox").prop("checked", false).prop("indeterminate", false);
+                        updateBulkDeleteBackupsBtn();
+                    },
+                    error: function (response) {
+                        if (response.status === 401 || response.status === 405) {
+                            window.location.href = "{{ path('logout') }}";
+                        } else {
+                            showAlert("Failed to load backup files.", "alert alert-danger");
+                        }
+                    }
+                });
+            }
+
+            // Load files on tab show
+            $('a[data-toggle="tab"]').on("shown.bs.tab", function (e) {
+                if ($(e.target).attr("href") === "#tab-backup-files") {
+                    loadBackupFiles();
+                } else if ($(e.target).attr("href") === "#tab-backup-logs") {
+                    loadBackupLogs();
+                }
+            });
+
+            // Select all checkbox
+            $(document).on("change", "#selectAllBackupsCheckbox", function () {
+                var checked = $(this).is(":checked");
+                $(".backup-file-select").prop("checked", checked);
+                updateBulkDeleteBackupsBtn();
+            });
+
+            $(document).on("change", ".backup-file-select", function () {
+                var total = $(".backup-file-select").length;
+                var checked = $(".backup-file-select:checked").length;
+                $("#selectAllBackupsCheckbox").prop("checked", checked === total).prop("indeterminate", checked > 0 && checked < total);
+                updateBulkDeleteBackupsBtn();
+            });
+
+            function updateBulkDeleteBackupsBtn() {
+                var checked = $(".backup-file-select:checked").length;
+                $("#delete-selected-backups-btn").prop("disabled", checked === 0)
+                    .text(checked > 0 ? "Delete Selected (" + checked + ")" : "Delete Selected")
+                    .html(checked > 0 ? '<i class="fas fa-trash-alt"></i> Delete Selected (' + checked + ')' : '<i class="fas fa-trash-alt"></i> Delete Selected');
+            }
+
+            // Delete single file — open confirmation modal
+            var pendingDeleteFile = "";
+            $(document).on("click", ".delete-backup-file-btn", function () {
+                pendingDeleteFile = $(this).data("file");
+                $("#delete-file-name").text(pendingDeleteFile);
+                $("#delete-file-confirm-modal").modal("show");
+            });
+
+            // Delete single file — confirmed
+            $("#confirm-delete-file-btn").on("click", function () {
+                $("#delete-file-confirm-modal").modal("hide");
+                $.ajax({
+                    type: "DELETE",
+                    url: "{{ path('backupFileDelete') }}",
+                    contentType: "application/json",
+                    data: JSON.stringify({ file: pendingDeleteFile }),
+                    dataType: "json",
+                    success: function (data) {
+                        showAlert(data.description, "alert alert-success");
+                        loadBackupFiles();
+                    },
+                    error: function (response) {
+                        if (response.status === 401 || response.status === 405) {
+                            window.location.href = "{{ path('logout') }}";
+                        } else {
+                            showAlert("Failed to delete file.", "alert alert-danger");
+                        }
+                    }
+                });
+            });
+
+            // Bulk delete — open confirmation modal
+            var pendingBulkFiles = [];
+            $("#delete-selected-backups-btn").on("click", function () {
+                pendingBulkFiles = [];
+                $(".backup-file-select:checked").each(function () { pendingBulkFiles.push($(this).val()); });
+                if (pendingBulkFiles.length === 0) return;
+                $("#bulk-delete-count").text(pendingBulkFiles.length);
+                $("#bulk-delete-confirm-modal").modal("show");
+            });
+
+            // Bulk delete — confirmed
+            $("#confirm-bulk-delete-btn").on("click", function () {
+                $("#bulk-delete-confirm-modal").modal("hide");
+                $.ajax({
+                    type: "POST",
+                    url: "{{ path('backupFileDeleteBulk') }}",
+                    contentType: "application/json",
+                    data: JSON.stringify({ files: pendingBulkFiles }),
+                    dataType: "json",
+                    success: function (data) {
+                        showAlert(data.description, "alert alert-success");
+                        loadBackupFiles();
+                    },
+                    error: function (response) {
+                        if (response.status === 401 || response.status === 405) {
+                            window.location.href = "{{ path('logout') }}";
+                        } else {
+                            showAlert("Bulk delete failed.", "alert alert-danger");
+                        }
+                    }
+                });
+            });
+
+            // Refresh
+            $("#refresh-backup-files-btn").on("click", function () {
+                loadBackupFiles();
+            });
+
+            // ═══════════════════════════════════════════
+            // TAB 3 : Backup Logs
+            // ═══════════════════════════════════════════
+
+            var logsTable = null;
+
+            function loadBackupLogs() {
+                $.ajax({
+                    type: "GET",
+                    url: "{{ path('backupLogsList') }}",
+                    dataType: "json",
+                    success: function (data) {
+                        var logs = data.logs || [];
+                        if (logsTable) {
+                            logsTable.destroy();
+                            logsTable = null;
+                        }
+                        var tbody = $("#backup-logs-body");
+                        tbody.empty();
+                        var rows = "";
+                        for (var i = 0; i < logs.length; i++) {
+                            var log = logs[i];
+                            rows += '<tr>' +
+                                '<td><small>' + escapeHtml(log.filename) + '</small></td>' +
+                                '<td>' + escapeHtml(log.date) + '</td>' +
+                                '<td>' + escapeHtml(log.sizeFormatted) + '</td>' +
+                                '<td>' +
+                                    '<button class="btn btn-xs btn-info view-backup-log-btn mr-1" data-file="' + escapeHtml(log.filename) + '" title="View"><i class="fas fa-eye"></i></button>' +
+                                    '<a class="btn btn-xs btn-success" href="{{ path('backupLogContent') }}?file=' + encodeURIComponent(log.filename) + '" target="_blank" title="Download"><i class="fas fa-download"></i></a>' +
+                                '</td>' +
+                                '</tr>';
+                        }
+                        tbody.html(rows);
+                        logsTable = $("#backup-logs-table").DataTable({
+                            order: [[1, "desc"]],
+                            pageLength: 15,
+                            lengthMenu: [15, 25, 50],
+                            columnDefs: [{ orderable: false, targets: [3] }],
+                            language: { emptyTable: "No backup log files found." }
+                        });
+                    },
+                    error: function (response) {
+                        if (response.status === 401 || response.status === 405) {
+                            window.location.href = "{{ path('logout') }}";
+                        } else {
+                            showAlert("Failed to load backup logs.", "alert alert-danger");
+                        }
+                    }
+                });
+            }
+
+            // View log modal
+            $(document).on("click", ".view-backup-log-btn", function () {
+                var filename = $(this).data("file");
+                $("#view-backup-log-filename").text(filename);
+                $("#view-backup-log-content").text("Loading...");
+                $("#view-backup-log-modal").modal("show");
+
+                $.ajax({
+                    type: "GET",
+                    url: "{{ path('backupLogContent') }}?file=" + encodeURIComponent(filename),
+                    dataType: "text",
+                    success: function (content) {
+                        $("#view-backup-log-content").text(content);
+                    },
+                    error: function () {
+                        $("#view-backup-log-content").text("Failed to load log content.");
+                    }
+                });
+            });
+
+            // Refresh
+            $("#refresh-backup-logs-btn").on("click", function () {
+                loadBackupLogs();
+            });
+        });
+    </script>
+{% endblock %}

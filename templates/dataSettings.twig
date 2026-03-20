@@ -44,11 +44,14 @@
                 <i class="fas fa-fw fa-cog"></i>
                 <span>Settings</span>
             </a>
-            <div id="collapseSettings" class="collapse show" aria-labelledby="headingTwo" data-parent="#side-menu">
+            <div id="collapseSettings" class="collapse show" aria-labelledby="headingSettings" data-parent="#side-menu">
                 <div class="bg-white collapse-inner rounded">
                     <a class="collapse-item active" href="{{ path('dataSettings') }}">
-                        <i class="fas fa-fw fa-user"></i>
+                        <i class="fas fa-fw fa-database"></i>
                         Data</a>
+                    <a class="collapse-item" href="{{ path('backup') }}">
+                        <i class="fas fa-fw fa-hdd"></i>
+                        Backup</a>
                 </div>
             </div>
         </li>
@@ -666,6 +669,24 @@
             </div>
         </div>
     </div>
+    <!-- Bulk Delete Logs Confirmation Modal -->
+    <div id="delete-logs-bulk-modal" class="modal fade" role="dialog" aria-labelledby="delete-logs-bulk-modal-label">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="delete-logs-bulk-modal-label"><i class="fas fa-trash-alt text-danger"></i> Delete Selected Log Files</h4>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to permanently delete <strong id="bulk-delete-count"></strong> selected log file(s)?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="confirm-delete-logs-bulk"><i class="fas fa-trash-alt"></i> Delete All Selected</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- Delete Application Log Confirmation Modal -->
     <div id="delete-applog-modal" class="modal fade" role="dialog" aria-labelledby="delete-applog-modal-label">
         <div class="modal-dialog">
@@ -802,6 +823,7 @@
                         <div class="tab-pane fade" id="tab-logs" role="tabpanel" aria-labelledby="tab-link-logs">
                             <div class="cspro-tab-toolbar">
                                 <button type="button" class="btn btn-secondary btn-xs" id="refresh-logs-btn"><i class="fas fa-sync-alt"></i> Refresh</button>
+                                <button type="button" class="btn btn-danger btn-xs ml-2" id="delete-selected-logs-btn" disabled><i class="fas fa-trash-alt"></i> Delete Selected</button>
                             </div>
                             <div class="row no-gutters cspro-logs-container">
                                 <!-- Sidebar: Dictionaries -->
@@ -824,6 +846,7 @@
                                             <table id="breakout-logs-table" class="table table-sm table-striped table-bordered table-hover" style="width:100%">
                                                 <thead>
                                                     <tr>
+                                                        <th><input type="checkbox" id="selectAllLogsCheckbox" title="Select all"></th>
                                                         <th>Dictionary</th>
                                                         <th>Filename</th>
                                                         <th>Type</th>
@@ -2290,6 +2313,7 @@
                             ? '<span class="badge badge-warning">Manual</span>'
                             : '<span class="badge badge-primary">Scheduled</span>';
                         rows += '<tr>' +
+                            '<td><input type="checkbox" class="log-select" value="' + escapeHtml(log.filename) + '"></td>' +
                             '<td>' + escapeHtml(log.dictName) + '</td>' +
                             '<td><small>' + escapeHtml(log.filename) + '</small></td>' +
                             '<td>' + badge + '</td>' +
@@ -2305,12 +2329,16 @@
                     tbody.html(rows);
 
                     logsTable = $("#breakout-logs-table").DataTable({
-                        order: [[3, "desc"]],
+                        order: [[4, "desc"]],
                         pageLength: 15,
                         lengthMenu: [15, 25, 50],
-                        columnDefs: [{ orderable: false, targets: 5 }],
+                        columnDefs: [{ orderable: false, targets: [0, 6] }],
                         language: { emptyTable: "No breakout log files found." }
                     });
+
+                    // Reset selection state after table rebuild
+                    $("#selectAllLogsCheckbox").prop("checked", false).prop("indeterminate", false);
+                    updateBulkDeleteBtn();
                 }
 
                 // --- Load all logs (single API call) ---
@@ -2528,6 +2556,90 @@
                         },
                         complete: function () {
                             $btn.prop("disabled", false).html('<i class="fas fa-trash-alt"></i> Delete');
+                        }
+                    });
+                });
+
+                // --- Bulk selection & delete ---
+
+                function updateBulkDeleteBtn() {
+                    var selCount = $(".log-select:checked").length;
+                    var $btn = $("#delete-selected-logs-btn");
+                    if (selCount > 0) {
+                        $btn.prop("disabled", false).html('<i class="fas fa-trash-alt"></i> Delete Selected (' + selCount + ')');
+                    } else {
+                        $btn.prop("disabled", true).html('<i class="fas fa-trash-alt"></i> Delete Selected');
+                    }
+                }
+
+                function updateSelectAllCheckbox() {
+                    var total = $(".log-select").length;
+                    var checked = $(".log-select:checked").length;
+                    var cb = $("#selectAllLogsCheckbox")[0];
+                    if (total === 0) {
+                        cb.checked = false;
+                        cb.indeterminate = false;
+                    } else if (checked === total) {
+                        cb.checked = true;
+                        cb.indeterminate = false;
+                    } else if (checked > 0) {
+                        cb.checked = false;
+                        cb.indeterminate = true;
+                    } else {
+                        cb.checked = false;
+                        cb.indeterminate = false;
+                    }
+                }
+
+                $(document).on("change", ".log-select", function () {
+                    updateSelectAllCheckbox();
+                    updateBulkDeleteBtn();
+                });
+
+                $("#selectAllLogsCheckbox").on("click", function () {
+                    var isChecked = $(this).is(":checked");
+                    $(".log-select").prop("checked", isChecked);
+                    updateBulkDeleteBtn();
+                });
+
+                $("#delete-selected-logs-btn").on("click", function () {
+                    var selected = $(".log-select:checked");
+                    if (selected.length === 0) return;
+                    $("#bulk-delete-count").text(selected.length);
+                    $("#delete-logs-bulk-modal").modal("show");
+                });
+
+                $("#confirm-delete-logs-bulk").on("click", function () {
+                    var files = [];
+                    $(".log-select:checked").each(function () {
+                        files.push($(this).val());
+                    });
+                    if (files.length === 0) return;
+                    var $btn = $(this);
+                    $btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Deleting…');
+                    $.ajax({
+                        type: "POST",
+                        url: "{{ path('breakoutLogDeleteBulk') }}",
+                        contentType: "application/json",
+                        data: JSON.stringify({ files: files }),
+                        dataType: "json",
+                        success: function (data) {
+                            $("#delete-logs-bulk-modal").modal("hide");
+                            showAlert(data.description || "Logs deleted.", "alert alert-success");
+                            loadAllLogs();
+                        },
+                        error: function (response) {
+                            $("#delete-logs-bulk-modal").modal("hide");
+                            if (response.status === 401 || response.status === 405) {
+                                window.location.href = "{{ path('logout') }}";
+                            } else {
+                                var msg = "Bulk delete failed.";
+                                try { msg = JSON.parse(response.responseText).description || msg; } catch (e) {}
+                                showAlert(msg, "alert alert-danger");
+                            }
+                        },
+                        complete: function () {
+                            $btn.prop("disabled", false).html('<i class="fas fa-trash-alt"></i> Delete All Selected');
                         }
                     });
                 });

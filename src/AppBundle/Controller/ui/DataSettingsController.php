@@ -458,6 +458,43 @@ class DataSettingsController extends AbstractController implements TokenAuthenti
         }
     }
 
+    #[Route('/breakout/logs/delete-bulk', name: 'breakoutLogDeleteBulk', methods: ['POST'])]
+    public function breakoutLogDeleteBulk(Request $request): Response {
+        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        try {
+            $body = json_decode($request->getContent(), true);
+            $files = $body['files'] ?? [];
+            $logDir = $this->kernel->getProjectDir() . '/var/logs/breakout';
+            $deleted = 0;
+            $failed = 0;
+
+            foreach ($files as $file) {
+                $safe = basename($file);
+                $filePath = $logDir . '/' . $safe;
+                if ($safe !== '' && file_exists($filePath)) {
+                    if (unlink($filePath)) {
+                        $deleted++;
+                    } else {
+                        $failed++;
+                    }
+                } else {
+                    $failed++;
+                }
+            }
+
+            $result = [
+                'deleted' => $deleted,
+                'failed' => $failed,
+                'description' => $deleted . ' log file(s) deleted.' . ($failed > 0 ? ' ' . $failed . ' failed.' : ''),
+                'code' => 200,
+            ];
+            return new Response(json_encode($result, JSON_THROW_ON_ERROR), Response::HTTP_OK);
+        } catch (\Exception $e) {
+            $result = ['description' => 'Bulk delete failed. ' . $e->getMessage(), 'code' => 500];
+            return new Response(json_encode($result, JSON_THROW_ON_ERROR), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     #[Route('/breakout/logs/content', name: 'breakoutLogContent', methods: ['GET'])]
     public function breakoutLogContent(Request $request): Response {
         $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
