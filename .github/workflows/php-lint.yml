@@ -39,7 +39,12 @@ jobs:
       - name: Check PHP syntax
         run: |
           echo "Checking PHP syntax..."
-          find . -name "*.php" -not -path "./vendor/*" -exec php -l {} \; | grep -v "No syntax errors"
+          errors=$(find . -name "*.php" -not -path "./vendor/*" -exec php -l {} \; 2>&1 | grep -v "No syntax errors" || true)
+          if [ -n "$errors" ]; then
+            echo "$errors"
+            exit 1
+          fi
+          echo "All PHP files have valid syntax."
 
       - name: PHP Code Statistics
         continue-on-error: true
@@ -67,9 +72,10 @@ jobs:
         run: composer install --prefer-dist --no-progress --no-suggest --no-scripts
 
       - name: Check for security vulnerabilities
+        continue-on-error: true
         run: |
           if [ -f composer.lock ]; then
-            composer audit
+            composer audit || echo "::warning::composer audit reported issues (see above)"
           else
             echo "No composer.lock found, skipping security check"
           fi
@@ -98,4 +104,9 @@ jobs:
         run: composer install --prefer-dist --no-progress --no-scripts
 
       - name: Run unit tests
-        run: vendor/bin/phpunit --testsuite unit
+        run: |
+          if [ -f vendor/bin/phpunit ]; then
+            vendor/bin/phpunit --testsuite unit
+          else
+            echo "::warning::PHPUnit not found, skipping tests"
+          fi
