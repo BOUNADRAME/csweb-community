@@ -23,7 +23,7 @@ class BackupController extends AbstractController implements TokenAuthenticatedC
     public function __construct(private PdoHelper $pdo, private KernelInterface $kernel, private LoggerInterface $logger) {
     }
 
-    public function setContainer(ContainerInterface $container = null): ?ContainerInterface {
+    public function setContainer(?ContainerInterface $container): ?ContainerInterface {
         $this->backupScheduler = new BackupScheduler($this->pdo, $this->logger);
         return parent::setContainer($container);
     }

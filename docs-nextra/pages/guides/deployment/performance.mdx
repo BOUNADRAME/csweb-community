@@ -25,7 +25,7 @@ CSWeb utilise un mecanisme de **templates envsubst** :
 ## Variables par composant
 
 <Tabs items={['PHP', 'MySQL', 'PostgreSQL', 'Apache']}>
- <div>
+ <Tabs.Tab>
 
 ### PHP
 
@@ -55,8 +55,8 @@ docker exec csweb-app php -i | grep memory_limit
 docker exec csweb-app php -i | grep max_execution_time
 ```
 
- </div>
- <div>
+ </Tabs.Tab>
+ <Tabs.Tab>
 
 ### MySQL Metadata
 
@@ -86,8 +86,8 @@ docker exec csweb-mysql-metadata mysql -u root -p -e "SHOW VARIABLES LIKE 'max_c
 docker exec csweb-mysql-metadata mysql -u root -p -e "SHOW VARIABLES LIKE 'innodb_buffer_pool_size';"
 ```
 
- </div>
- <div>
+ </Tabs.Tab>
+ <Tabs.Tab>
 
 ### PostgreSQL Breakout
 
@@ -115,8 +115,8 @@ docker exec csweb-postgres-breakout psql -U csweb_analytics -c "SHOW max_connect
 docker exec csweb-postgres-breakout psql -U csweb_analytics -c "SHOW shared_buffers;"
 ```
 
- </div>
- <div>
+ </Tabs.Tab>
+ <Tabs.Tab>
 
 ### Apache MPM Prefork
 
@@ -140,7 +140,7 @@ APACHE_SERVER_LIMIT=400
 APACHE_KEEP_ALIVE_TIMEOUT=3
 ```
 
- </div>
+ </Tabs.Tab>
 </Tabs>
 
 ---
@@ -148,7 +148,7 @@ APACHE_KEEP_ALIVE_TIMEOUT=3
 ## Profils de dimensionnement
 
 <Tabs items={['Dev (laptop)', 'Production (50 users)', 'Haute Charge (200+ users)']}>
- <div>
+ <Tabs.Tab>
 
 ### Profil Dev — 1 a 5 utilisateurs, laptop
 
@@ -175,8 +175,8 @@ APACHE_SERVER_LIMIT=25
 
 **RAM recommandee :** 4 GB
 
- </div>
- <div>
+ </Tabs.Tab>
+ <Tabs.Tab>
 
 ### Profil Production Standard — 20 a 50 utilisateurs, serveur 4-8 GB RAM
 
@@ -204,8 +204,8 @@ APACHE_SERVER_LIMIT=150
 
 **RAM recommandee :** 8 GB
 
- </div>
- <div>
+ </Tabs.Tab>
+ <Tabs.Tab>
 
 ### Profil Haute Charge — 200+ utilisateurs, serveur 16+ GB RAM
 
@@ -239,7 +239,7 @@ APACHE_MAX_KEEP_ALIVE_REQUESTS=200
 
 **RAM recommandee :** 16 GB+
 
- </div>
+ </Tabs.Tab>
 </Tabs>
 
 ---

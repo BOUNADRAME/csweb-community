@@ -22,7 +22,7 @@ class UserController extends AbstractController implements TokenAuthenticatedCon
     }
 
     //overrider the setcontainer to get access to container parameters and initiailize the roles repository
-    public function setContainer(ContainerInterface $container = null): ?ContainerInterface {
+    public function setContainer(?ContainerInterface $container): ?ContainerInterface {
         $this->rolesRepository = new RolesRepository($this->pdo, $this->logger);
         return parent::setContainer($container);
     }

@@ -36,7 +36,7 @@ class DataSettingsController extends AbstractController implements TokenAuthenti
     }
 
 //override the setcontainer to get access to container parameters and initiailize the roles repository
-    public function setContainer(ContainerInterface $container = null): ?ContainerInterface {
+    public function setContainer(?ContainerInterface $container): ?ContainerInterface {
         $this->dataSettings = new DataSettings($this->pdo, $this->logger);
         $this->breakoutScheduler = new BreakoutScheduler($this->pdo, $this->logger);
         return parent::setContainer($container);

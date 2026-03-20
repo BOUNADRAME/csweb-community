@@ -27,7 +27,7 @@ class MapReportController extends AbstractController implements TokenAuthenticat
     }
 
     //override the setcontainer to get access to container parameters and initiailize the roles repository
-    public function setContainer(ContainerInterface $container = null): ?ContainerInterface {
+    public function setContainer(?ContainerInterface $container): ?ContainerInterface {
         $this->mapDataRepository = new MapDataRepository($this->pdo, $this->logger);
         return parent::setContainer($container);
     }

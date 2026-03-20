@@ -15,7 +15,7 @@ class ApplicationLogsController extends AbstractController implements TokenAuthe
     public function __construct(private PdoHelper $pdo, private LoggerInterface $logger) {
     }
 
-    public function setContainer(ContainerInterface $container = null): ?ContainerInterface {
+    public function setContainer(?ContainerInterface $container): ?ContainerInterface {
         return parent::setContainer($container);
     }
 

@@ -1062,9 +1062,67 @@ CREATE DATABASE csweb_metadata;
 
 ---
 
+## Erreur 500 & Cache
+
+### 31. Erreur 500 Internal Server Error
+
+**Symptome :**
+
+```
+Oops! An Error Occurred
+The server returned a "500 Internal Server Error".
+```
+
+**Causes les plus frequentes :**
+- Cache Symfony corrompu apres modification de fichiers
+- Permissions incorrectes sur `var/cache/` ou `var/logs/`
+- Fichier `config.php` absent (setup pas effectue)
+
+**Solutions :**
+
+**1. Vider le cache Symfony + corriger permissions (commande universelle) :**
+
+```bash
+docker compose exec csweb bash -c "rm -rf var/cache/* && chmod -R 755 var/ && php bin/console cache:clear --env=prod"
+```
+
+**2. Si vous modifiez des fichiers PHP directement :**
+
+```bash
+# Apres chaque modification de code
+docker compose exec csweb bash -c "chmod 755 <fichier_modifie> && rm -rf var/cache/*"
+
+# Exemple concret
+docker compose exec csweb bash -c "chmod 755 src/AppBundle/Controller/ui/UserController.php && rm -rf var/cache/*"
+```
+
+**3. Si config.php absent (page blanche apres installation) :**
+
+```bash
+# Acceder au setup
+http://localhost:8080/setup/
+
+# Verifier que config.php existe
+docker compose exec csweb ls -la src/AppBundle/config.php
+```
+
+**4. Reset complet permissions :**
+
+```bash
+docker compose exec csweb bash -c "chown -R www-data:www-data /var/www/html/var && chmod -R 755 /var/www/html/var"
+```
+
+**Bonne pratique :** Apres toute modification de code, toujours executer :
+
+```bash
+docker compose exec csweb bash -c "rm -rf var/cache/* && chmod -R 755 var/"
+```
+
+---
+
 ## Logs & Debug
 
-### Comment Accéder aux Logs
+### Comment Acceder aux Logs
 
 <Tabs items={['Docker', 'Application', 'Base de Données']}>
  <Tabs.Tab>

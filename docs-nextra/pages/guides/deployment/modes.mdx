@@ -57,7 +57,7 @@ CSWeb supporte **6 configurations** selon le type de base breakout et le mode de
 Choisissez votre type de base breakout :
 
 <Tabs items={['PostgreSQL (recommande)', 'MySQL', 'SQL Server']}>
- <div>
+ <Tabs.Tab>
 
 ### PostgreSQL - Breakout
 
@@ -171,8 +171,8 @@ host    all    all    0.0.0.0/0    md5
 sudo ufw allow from [IP_CSWEB] to any port 5432
 ```
 
- </div>
- <div>
+ </Tabs.Tab>
+ <Tabs.Tab>
 
 ### MySQL - Breakout
 
@@ -287,8 +287,8 @@ bind-address = 0.0.0.0
 sudo ufw allow from [IP_CSWEB] to any port 3306
 ```
 
- </div>
- <div>
+ </Tabs.Tab>
+ <Tabs.Tab>
 
 ### SQL Server - Breakout
 
@@ -403,7 +403,7 @@ docker compose up -d
 sudo ufw allow from [IP_CSWEB] to any port 1433
 ```
 
- </div>
+ </Tabs.Tab>
 </Tabs>
 
 ---

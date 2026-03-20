@@ -35,7 +35,7 @@ class DictionaryController extends AbstractController implements ApiTokenAuthent
     }
 
     //overrider the setcontainer to get access to container parameters and initiailize the dictionary helper
-    public function setContainer(ContainerInterface $container = null): ?ContainerInterface {
+    public function setContainer(?ContainerInterface $container): ?ContainerInterface {
         $dbConfigSettings = new DBConfigSettings($this->pdo, $this->logger);
         $this->serverDeviceId = $dbConfigSettings->getServerDeviceId(); //server name
         $this->dictHelper = new DictionaryHelper($this->pdo, $this->logger, $this->serverDeviceId);

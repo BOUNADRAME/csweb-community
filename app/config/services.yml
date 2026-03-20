@@ -72,7 +72,12 @@ services:
         public: true
         arguments:
             $level: "%csweb_db_log_level%"
-    #ApiKeyUserProvider 
+    #RateLimiter Subscriber
+    AppBundle\EventSubscriber\RateLimiterSubscriber:
+        arguments:
+            $cacheDir: '%kernel.cache_dir%'
+
+    #ApiKeyUserProvider
     api_key_user_provider:
         class: AppBundle\Security\ApiKeyUserProvider
         public: true
