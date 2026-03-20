@@ -1,0 +1,12 @@
+includes:
+    - phpstan-baseline.neon
+
+parameters:
+    level: 1
+    paths:
+        - src/AppBundle
+    excludePaths:
+        - src/AppBundle/CSPro/swagger.json
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        - '#Cannot make static method PDO::connect#'

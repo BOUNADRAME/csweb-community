@@ -28,7 +28,7 @@ class ExtendedPdo extends AbstractExtendedPdo
      * @var array
      *
      */
-    protected $args = [];
+    protected array $args = [];
 
     /**
      *
@@ -89,6 +89,8 @@ class ExtendedPdo extends AbstractExtendedPdo
      *
      * Connects to the database.
      *
+     * @deprecated use lazyConnect() as future versions will be using lazyConnect()
+     *
      * @return void
      */
     public function connect(): void
@@ -107,6 +109,17 @@ class ExtendedPdo extends AbstractExtendedPdo
         foreach ($queries as $query) {
             $this->exec($query);
         }
+    }
+
+    /**
+     *
+     * alias of connect() for interoperability with future versions Aura.Sql
+     *
+     * @return void
+     */
+    public function lazyConnect(): void
+    {
+        $this->connect();
     }
 
     /**

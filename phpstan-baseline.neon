@@ -1,0 +1,206 @@
+parameters:
+	ignoreErrors:
+		-
+			message: "#^Unsafe usage of new static\\(\\)\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/CSProResponse.php
+
+		-
+			message: "#^Access to an undefined property AppBundle\\\\CSPro\\\\CSProSchemaValidator\\:\\:\\$logger\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/CSProSchemaValidator.php
+
+		-
+			message: "#^Function getSchemaVersion not found\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/CSProSchemaValidator.php
+
+		-
+			message: "#^Instantiated class AppBundle\\\\CSPro\\\\Data\\\\Exception not found\\.$#"
+			count: 3
+			path: src/AppBundle/CSPro/Data/BinaryJSONConverter.php
+
+		-
+			message: "#^Variable \\$conn in isset\\(\\) always exists and is not nullable\\.$#"
+			count: 2
+			path: src/AppBundle/CSPro/Data/DataSettings.php
+
+		-
+			message: "#^Variable \\$dataSetting in isset\\(\\) always exists and is not nullable\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/Data/DataSettings.php
+
+		-
+			message: "#^Variable \\$parentItem might not be defined\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/Data/MySQLQuestionnaireSerializer.php
+
+		-
+			message: "#^Variable \\$occLabel in isset\\(\\) always exists and is not nullable\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/Dictionary/Item.php
+
+		-
+			message: "#^Access to an undefined property AppBundle\\\\CSPro\\\\Dictionary\\\\JsonDictionaryParser\\:\\:\\$languageKeyIndexMap\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/Dictionary/JsonDictionaryParser.php
+
+		-
+			message: "#^Caught class AppBundle\\\\CSPro\\\\Dictionary\\\\JsonException not found\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/Dictionary/JsonDictionaryParser.php
+
+		-
+			message: "#^Anonymous function has an unused use \\$enumType\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/Dictionary/Parser.php
+
+		-
+			message: "#^Caught class AppBundle\\\\CSPro\\\\Dictionary\\\\Exception not found\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/Dictionary/Parser.php
+
+		-
+			message: "#^Variable \\$occLabel in isset\\(\\) always exists and is not nullable\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/Dictionary/Record.php
+
+		-
+			message: "#^Access to private property \\$name of parent class AppBundle\\\\CSPro\\\\Dictionary\\\\DictBase\\.$#"
+			count: 2
+			path: src/AppBundle/CSPro/Dictionary/Relation.php
+
+		-
+			message: "#^Access to constant RFC3339 on an unknown class AppBundle\\\\CSPro\\\\DateTime\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/DictionaryHelper.php
+
+		-
+			message: "#^Call to static method createFromFormat\\(\\) on an unknown class AppBundle\\\\CSPro\\\\DateTime\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/DictionaryHelper.php
+
+		-
+			message: "#^Method AppBundle\\\\CSPro\\\\DictionaryHelper\\:\\:associateCaseBinaryItems\\(\\) should return AppBundle\\\\CSPro\\\\type but return statement is missing\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/DictionaryHelper.php
+
+		-
+			message: "#^Variable \\$parentItem might not be defined\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/DictionaryHelper.php
+
+		-
+			message: "#^Variable \\$rangeCount in isset\\(\\) always exists and is not nullable\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/DictionaryHelper.php
+
+		-
+			message: "#^Variable \\$includeOptions in isset\\(\\) always exists and is not nullable\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/DictionarySchemaHelper.php
+
+		-
+			message: "#^Access to an undefined property AppBundle\\\\CSPro\\\\FileManager\\\\FileManagerFlysystem\\:\\:\\$config\\.$#"
+			count: 3
+			path: src/AppBundle/CSPro/FileManager/FileManagerFlysystem.php
+
+		-
+			message: "#^Instantiated class League\\\\Flysystem\\\\Adapter\\\\Ftp not found\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/FileManager/FileManagerFlysystem.php
+
+		-
+			message: "#^Instantiated class League\\\\Flysystem\\\\AwsS3v3\\\\AwsS3Adapter not found\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/FileManager/FileManagerFlysystem.php
+
+		-
+			message: "#^Instantiated class League\\\\Flysystem\\\\AzureBlobStorage\\\\AzureBlobStorageAdapter not found\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/FileManager/FileManagerFlysystem.php
+
+		-
+			message: "#^Instantiated class League\\\\Flysystem\\\\Rackspace\\\\RackspaceAdapter not found\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/FileManager/FileManagerFlysystem.php
+
+		-
+			message: "#^Instantiated class League\\\\Flysystem\\\\Sftp\\\\SftpAdapter not found\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/FileManager/FileManagerFlysystem.php
+
+		-
+			message: "#^Instantiated class Superbalist\\\\Flysystem\\\\GoogleStorage\\\\GoogleStorageAdapter not found\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/FileManager/FileManagerFlysystem.php
+
+		-
+			message: "#^Variable \\$dictPermission in isset\\(\\) always exists and is not nullable\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/User/Role.php
+
+		-
+			message: "#^Function IsLessThan not found\\.$#"
+			count: 1
+			path: src/AppBundle/CSPro/VectorClock.php
+
+		-
+			message: "#^Variable \\$content might not be defined\\.$#"
+			count: 1
+			path: src/AppBundle/Controller/api/FilesController.php
+
+		-
+			message: "#^Anonymous function has an unused use \\$request\\.$#"
+			count: 1
+			path: src/AppBundle/Controller/api/UserController.php
+
+		-
+			message: "#^Anonymous function has an unused use \\$userController\\.$#"
+			count: 1
+			path: src/AppBundle/Controller/api/UserController.php
+
+		-
+			message: "#^Constant USERNAME not found\\.$#"
+			count: 2
+			path: src/AppBundle/Controller/api/UserController.php
+
+		-
+			message: "#^Access to an undefined property AppBundle\\\\Controller\\\\ui\\\\DataSettingsController\\:\\:\\$kernel\\.$#"
+			count: 14
+			path: src/AppBundle/Controller/ui/DataSettingsController.php
+
+		-
+			message: "#^Caught class AppBundle\\\\Controller\\\\ui\\\\Exception not found\\.$#"
+			count: 1
+			path: src/AppBundle/Controller/ui/DataSettingsController.php
+
+		-
+			message: "#^Instantiated class Server not found\\.$#"
+			count: 1
+			path: src/AppBundle/Controller/ui/DataSettingsController.php
+
+		-
+			message: "#^Anonymous function has an unused use \\$response\\.$#"
+			count: 1
+			path: src/AppBundle/EventSubscriber/TokenSubscriber.php
+
+		-
+			message: "#^Access to an undefined property AppBundle\\\\Security\\\\AppsVoter\\:\\:\\$security\\.$#"
+			count: 4
+			path: src/AppBundle/Security/AppsVoter.php
+
+		-
+			message: "#^Access to an undefined property AppBundle\\\\Security\\\\DictionaryVoter\\:\\:\\$security\\.$#"
+			count: 9
+			path: src/AppBundle/Security/DictionaryVoter.php
+
+		-
+			message: "#^Access to an undefined property AppBundle\\\\Security\\\\UserVoter\\:\\:\\$security\\.$#"
+			count: 3
+			path: src/AppBundle/Security/UserVoter.php
+
+		-
+			message: "#^Caught class AppBundle\\\\Service\\\\GuzzleHttp\\\\Exception\\\\RequestException not found\\.$#"
+			count: 1
+			path: src/AppBundle/Service/HttpHelper.php

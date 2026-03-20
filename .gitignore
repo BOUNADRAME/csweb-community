@@ -29,3 +29,6 @@ maps/*.mbtiles-wal
 /tests/AppBundle/CSPro/Dictionary/test_files/dictionaries-december-80-json/greg
 /tests/AppBundle/CSPro/Dictionary/test_files/dictionaries-december-80-json/alex
 /tests/AppBundle/CSPro/Dictionary/test_files/dictionaries-december-80-json/aaron
+.phpunit.result.cache
+phpunit.xml
+.php-cs-fixer.cache
