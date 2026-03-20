@@ -59,13 +59,13 @@ rsync -avz files/ user@backup-server:/backups/csweb/files/
 ```bash
 # Backup volume PostgreSQL
 docker run --rm \
- -v pg_csweb8_latest_2026_postgres_data:/data \
+ -v csweb-community_postgres_data:/data \
  -v $(pwd):/backup \
  ubuntu tar czf /backup/postgres_volume_$(date +%Y%m%d).tar.gz /data
 
 # Backup volume MySQL
 docker run --rm \
- -v pg_csweb8_latest_2026_mysql_data:/data \
+ -v csweb-community_mysql_data:/data \
  -v $(pwd):/backup \
  ubuntu tar czf /backup/mysql_volume_$(date +%Y%m%d).tar.gz /data
 ```
@@ -78,7 +78,7 @@ docker run --rm \
 #!/bin/bash
 # Backup automatisé CSWeb Community Platform DATE=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR="/backups/csweb"
-PROJECT_DIR="/home/csweb/pg_csweb8_latest_2026"
+PROJECT_DIR="/home/csweb/csweb-community"
 RETENTION_DAYS=30
 
 mkdir -p $BACKUP_DIR/$DATE cd $PROJECT_DIR echo "[$DATE] Starting backup..."

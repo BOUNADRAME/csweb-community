@@ -1,4 +1,5 @@
 import { useRouter } from 'next/router'
+import { VersionSwitcher } from './components'
 
 const logo = (
  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -11,13 +12,16 @@ const logo = (
 
 const config = {
  logo,
+ navbar: {
+  extraContent: <VersionSwitcher />
+ },
  project: {
- link: 'https://github.com/BOUNADRAME/pg_csweb8_latest_2026',
+ link: 'https://github.com/BOUNADRAME/csweb-community',
  },
  chat: {
  link: 'https://discord.gg/csweb-community', // À mettre à jour
  },
- docsRepositoryBase: 'https://github.com/BOUNADRAME/pg_csweb8_latest_2026/tree/master/docs-nextra',
+ docsRepositoryBase: 'https://github.com/BOUNADRAME/csweb-community/tree/master/docs-nextra',
  useNextSeoProps() {
  const { asPath } = useRouter()
  if (asPath !== '/') {

@@ -41,7 +41,7 @@ CSWeb Community Platform v2.0 est une **extension open-source** de CSWeb (Census
 **Oui, 100% gratuit et open-source.**
 
 - **Licence :** MIT License (permissive)
-- **Code source :** [GitHub - pg_csweb8_latest_2026](https://github.com/BOUNADRAME/pg_csweb8_latest_2026)
+- **Code source :** [GitHub - csweb-community](https://github.com/BOUNADRAME/csweb-community)
 - **Contributions :** Bienvenues (pull requests, issues)
 
 **Coûts éventuels :**
@@ -134,7 +134,7 @@ docker rmi $(docker images 'pg_csweb8*' -q)
 
 # Supprimer dossier projet
 cd ..
-rm -rf pg_csweb8_latest_2026
+rm -rf csweb-community
 
 # (Optionnel) Nettoyer Docker
 docker system prune -a
@@ -327,8 +327,8 @@ docker compose exec csweb php bin/console csweb:process-cases-by-dict \
 curl -fsSL https://get.docker.com | sh
 
 # Cloner repository
-git clone https://github.com/BOUNADRAME/pg_csweb8_latest_2026.git
-cd pg_csweb8_latest_2026
+git clone https://github.com/BOUNADRAME/csweb-community.git
+cd csweb-community
 
 # Lancer installation
 ./install.sh
@@ -511,7 +511,7 @@ WHERE username = 'admin';
 - [Troubleshooting](/reference/troubleshooting/common-issues)
 
 **2. GitHub Issues :**
-- [https://github.com/BOUNADRAME/pg_csweb8_latest_2026/issues](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/issues)
+- [https://github.com/BOUNADRAME/csweb-community/issues](https://github.com/BOUNADRAME/csweb-community/issues)
 - Créer issue avec :
  - Description problème
  - Logs (`docker compose logs > debug.log`)
@@ -724,7 +724,7 @@ cat docs-nextra/package.json | grep version
 ## Vous n'avez pas trouvé votre réponse ?
 
 1. **Troubleshooting** : [Common Issues](/reference/troubleshooting/common-issues)
-2. **GitHub Issues** : [Créer une issue](https://github.com/BOUNADRAME/pg_csweb8_latest_2026/issues/new)
+2. **GitHub Issues** : [Créer une issue](https://github.com/BOUNADRAME/csweb-community/issues/new)
 3. **Discord** : Lien dans README
 4. **Email** : Voir profil GitHub
 

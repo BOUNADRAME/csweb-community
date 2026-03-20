@@ -9,11 +9,11 @@ const withNextra = require('nextra')({
 })
 
 const isProduction = process.env.NODE_ENV === 'production'
-const assetPrefix = isProduction ? '/pg_csweb8_latest_2026' : ''
+const assetPrefix = isProduction ? '/csweb-community' : ''
 
 module.exports = withNextra({
   // GitHub Pages configuration
-  basePath: isProduction ? '/pg_csweb8_latest_2026' : '',
+  basePath: isProduction ? '/csweb-community' : '',
   assetPrefix: assetPrefix,
   output: 'export',
 
