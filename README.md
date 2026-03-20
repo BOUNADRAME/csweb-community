@@ -54,54 +54,30 @@ docker compose --profile local-postgres up -d
 
 CSWeb supporte **6 configurations** selon le type de base breakout et le mode (local Docker ou serveur distant).
 
-### Mode Local (Docker containers)
+### PostgreSQL (recommande)
 
-Les bases breakout tournent dans des containers Docker sur la meme machine.
-
-#### Local + PostgreSQL (recommande)
+<details>
+<summary><strong>Local</strong> — container Docker sur la meme machine</summary>
 
 ```bash
 # .env
 BREAKOUT_MODE=local
 BREAKOUT_DB_TYPE=postgresql
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=csweb_analytics
+POSTGRES_USER=csweb_analytics
+POSTGRES_PASSWORD=CHANGEZ_MOT_DE_PASSE
 
 # Lancer
 docker compose --profile local-postgres up -d
 ```
 
 **Services :** CSWeb (:8080) + MySQL metadata (:3306) + PostgreSQL breakout (:5432)
+</details>
 
-#### Local + MySQL
-
-```bash
-# .env
-BREAKOUT_MODE=local
-BREAKOUT_DB_TYPE=mysql
-
-# Lancer
-docker compose --profile local-mysql up -d
-```
-
-**Services :** CSWeb (:8080) + MySQL metadata (:3306) + MySQL breakout (:3307)
-
-#### Local + SQL Server
-
-```bash
-# .env
-BREAKOUT_MODE=local
-BREAKOUT_DB_TYPE=sqlserver
-
-# Lancer
-docker compose --profile local-sqlserver up -d
-```
-
-**Services :** CSWeb (:8080) + MySQL metadata (:3306) + SQL Server breakout (:1433)
-
-### Mode Remote (serveur distant)
-
-La base breakout est sur un serveur externe. Seuls CSWeb + MySQL metadata tournent en Docker.
-
-#### Remote + PostgreSQL
+<details>
+<summary><strong>Remote</strong> — serveur PostgreSQL distant</summary>
 
 ```bash
 # .env
@@ -113,13 +89,37 @@ POSTGRES_DATABASE=csweb_analytics
 POSTGRES_USER=csweb_analytics
 POSTGRES_PASSWORD=votre_mot_de_passe
 
-# Lancer (pas de profil - pas de container breakout)
-docker compose up -d
+# Lancer (pas de container breakout)
+docker compose up -d csweb mysql
 ```
 
 **Services :** CSWeb (:8080) + MySQL metadata (:3306). PostgreSQL est sur le serveur distant.
+</details>
 
-#### Remote + MySQL
+### MySQL
+
+<details>
+<summary><strong>Local</strong> — container Docker sur la meme machine (port 3307)</summary>
+
+```bash
+# .env
+BREAKOUT_MODE=local
+BREAKOUT_DB_TYPE=mysql
+MYSQL_BREAKOUT_HOST=mysql-breakout
+MYSQL_BREAKOUT_PORT=3307
+MYSQL_BREAKOUT_DATABASE=csweb_breakout
+MYSQL_BREAKOUT_USER=breakout_user
+MYSQL_BREAKOUT_PASSWORD=CHANGEZ_MOT_DE_PASSE
+
+# Lancer
+docker compose --profile local-mysql up -d
+```
+
+**Services :** CSWeb (:8080) + MySQL metadata (:3306) + MySQL breakout (:3307)
+</details>
+
+<details>
+<summary><strong>Remote</strong> — serveur MySQL distant</summary>
 
 ```bash
 # .env
@@ -132,12 +132,36 @@ MYSQL_BREAKOUT_USER=breakout_user
 MYSQL_BREAKOUT_PASSWORD=votre_mot_de_passe
 
 # Lancer
-docker compose up -d
+docker compose up -d csweb mysql
 ```
 
 **Services :** CSWeb (:8080) + MySQL metadata (:3306). MySQL breakout est sur le serveur distant.
+</details>
 
-#### Remote + SQL Server
+### SQL Server
+
+<details>
+<summary><strong>Local</strong> — container Docker sur la meme machine (2 GB RAM min.)</summary>
+
+```bash
+# .env
+BREAKOUT_MODE=local
+BREAKOUT_DB_TYPE=sqlserver
+SQLSERVER_HOST=sqlserver
+SQLSERVER_PORT=1433
+SQLSERVER_DATABASE=CSWeb_Analytics
+SQLSERVER_USER=sa
+SQLSERVER_PASSWORD=VotreStrong!Passw0rd
+
+# Lancer
+docker compose --profile local-sqlserver up -d
+```
+
+**Services :** CSWeb (:8080) + MySQL metadata (:3306) + SQL Server breakout (:1433)
+</details>
+
+<details>
+<summary><strong>Remote</strong> — serveur SQL Server distant</summary>
 
 ```bash
 # .env
@@ -150,31 +174,26 @@ SQLSERVER_USER=sa
 SQLSERVER_PASSWORD=VotreMotDePasse!
 
 # Lancer
-docker compose up -d
+docker compose up -d csweb mysql
 ```
 
 **Services :** CSWeb (:8080) + MySQL metadata (:3306). SQL Server est sur le serveur distant.
+</details>
 
 ### Outils de developpement (optionnel)
 
-Ajouter `--profile dev` pour phpMyAdmin et pgAdmin :
-
 ```bash
-# Exemple : Local PostgreSQL + outils dev
+# Ajouter --profile dev pour phpMyAdmin (:8081) et pgAdmin (:8082)
 docker compose --profile local-postgres --profile dev up -d
 ```
-
-**Services supplementaires :** phpMyAdmin (:8081) + pgAdmin (:8082)
 
 ### Resume des commandes
 
 | Breakout | Local | Remote |
 |----------|-------|--------|
-| **PostgreSQL** | `docker compose --profile local-postgres up -d` | `docker compose up -d` |
-| **MySQL** | `docker compose --profile local-mysql up -d` | `docker compose up -d` |
-| **SQL Server** | `docker compose --profile local-sqlserver up -d` | `docker compose up -d` |
-
-> En mode **remote**, configurer `BREAKOUT_MODE=remote` + les variables de connexion dans `.env`, puis `docker compose up -d` (sans profil).
+| **PostgreSQL** | `docker compose --profile local-postgres up -d` | `docker compose up -d csweb mysql` |
+| **MySQL** | `docker compose --profile local-mysql up -d` | `docker compose up -d csweb mysql` |
+| **SQL Server** | `docker compose --profile local-sqlserver up -d` | `docker compose up -d csweb mysql` |
 
 ---
 
