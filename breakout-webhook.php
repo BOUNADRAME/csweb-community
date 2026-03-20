@@ -21,7 +21,13 @@
 header('Content-Type: application/json; charset=utf-8');
 
 // ---- Configuration ----
-$expectedToken = getenv('BREAKOUT_WEBHOOK_TOKEN') ?: 'kairos_breakout_2024';
+$expectedToken = getenv('BREAKOUT_WEBHOOK_TOKEN');
+if (!$expectedToken) {
+    jsonResponse(500, [
+        'success' => false,
+        'error'   => 'Server misconfiguration: BREAKOUT_WEBHOOK_TOKEN environment variable is not set.',
+    ]);
+}
 $cswebRoot     = getenv('CSWEB_ROOT') ?: '/var/www/html/kairos';
 $maxExecTime   = 300; // seconds
 

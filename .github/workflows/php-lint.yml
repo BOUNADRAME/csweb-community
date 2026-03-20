@@ -20,7 +20,7 @@ jobs:
 
     strategy:
       matrix:
-        php-version: ['8.0', '8.1', '8.2']
+        php-version: ['8.1', '8.2', '8.3']
 
     steps:
       - name: Checkout code
@@ -34,18 +34,17 @@ jobs:
           tools: composer:v2
 
       - name: Validate composer.json
-        run: composer validate --strict || true
-        continue-on-error: true
+        run: composer validate --strict
 
       - name: Check PHP syntax
         run: |
-          echo "🔍 Checking PHP syntax..."
+          echo "Checking PHP syntax..."
           find . -name "*.php" -not -path "./vendor/*" -exec php -l {} \; | grep -v "No syntax errors"
-        continue-on-error: true
 
       - name: PHP Code Statistics
+        continue-on-error: true
         run: |
-          echo "📊 PHP Code Statistics:"
+          echo "PHP Code Statistics:"
           echo "Total PHP files: $(find . -name '*.php' -not -path './vendor/*' | wc -l)"
           echo "Total PHP lines: $(find . -name '*.php' -not -path './vendor/*' -exec wc -l {} + | tail -1 | awk '{print $1}')"
 
@@ -61,18 +60,42 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.0'
+          php-version: '8.1'
           tools: composer:v2
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-suggest || true
-        continue-on-error: true
+        run: composer install --prefer-dist --no-progress --no-suggest
 
       - name: Check for security vulnerabilities
         run: |
           if [ -f composer.lock ]; then
-            composer audit || echo "⚠️  Some security advisories found (non-blocking)"
+            composer audit
           else
             echo "No composer.lock found, skipping security check"
           fi
-        continue-on-error: true
+
+  tests:
+    name: PHPUnit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    strategy:
+      matrix:
+        php-version: ['8.1', '8.2', '8.3']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP ${{ matrix.php-version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: pdo, pdo_mysql, pdo_pgsql, mbstring, xml, intl, json
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Run unit tests
+        run: vendor/bin/phpunit --testsuite unit

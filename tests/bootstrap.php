@@ -6,7 +6,9 @@
  * Registers a custom autoloader BEFORE the Composer autoloader to intercept
  * AppBundle\Service\PdoHelper. On PHP 8.4+, the real PdoHelper (which extends
  * Aura\Sql\ExtendedPdo) cannot be loaded due to a PDO::connect() static method
- * conflict. This stub provides a mockable replacement for unit tests.
+ * conflict (present in both aura/sql 4.x and 5.x). This stub provides a
+ * mockable replacement for unit tests. It only activates if the class is not
+ * already loaded, so it is safe to keep for forward compatibility.
  */
 
 // Register stub autoloader before Composer

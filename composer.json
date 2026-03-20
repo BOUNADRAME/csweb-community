@@ -15,8 +15,8 @@
         "files": [ "vendor/symfony/var-dumper/Resources/functions/dump.php" ]
     },
     "require": {
-        "php": ">=8.0",
-        "aura/sql": "^4.0",
+        "php": ">=8.1",
+        "aura/sql": "^5.0",
         "bshaffer/oauth2-server-php": "^1.13",
         "doctrine/dbal": "^3.5",
         "dragonmantank/cron-expression": "^3.3",
@@ -51,6 +51,8 @@
         "vitexsoftware/phpunit-skeleton-generator": "*"
     },
     "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.0",
+        "phpstan/phpstan": "^1.10",
         "symfony/browser-kit": "^5.4",
         "symfony/css-selector": "^5.4",
         "symfony/phpunit-bridge": "^4",
@@ -69,11 +71,14 @@
             "@symfony-scripts"
         ],
         "test": "vendor/bin/phpunit --testsuite unit",
-        "test:coverage": "vendor/bin/phpunit --testsuite unit --coverage-text"
+        "test:coverage": "vendor/bin/phpunit --testsuite unit --coverage-text",
+        "phpstan": "vendor/bin/phpstan analyse --no-progress",
+        "cs-check": "vendor/bin/php-cs-fixer fix --dry-run --diff",
+        "cs-fix": "vendor/bin/php-cs-fixer fix"
     },
     "config": {
         "platform": {
-            "php": "8.0"
+            "php": "8.1"
         },
         "sort-packages": true
     },
