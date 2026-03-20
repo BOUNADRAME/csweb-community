@@ -1,9 +1,9 @@
 {
-  "current": "8.x",
+  "current": "8.0.1",
   "versions": [
     {
-      "version": "8.x",
-      "label": "CSWeb 8.x",
+      "version": "8.0.1",
+      "label": "CSWeb 8.0.1",
       "status": "current",
       "branch": "master",
       "php": ">=8.1",
