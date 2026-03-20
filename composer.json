@@ -67,7 +67,9 @@
         ],
         "post-update-cmd": [
             "@symfony-scripts"
-        ]
+        ],
+        "test": "vendor/bin/phpunit --testsuite unit",
+        "test:coverage": "vendor/bin/phpunit --testsuite unit --coverage-text"
     },
     "config": {
         "platform": {
