@@ -35,7 +35,7 @@ const config = {
  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
  <meta property="og:title" content="CSWeb Community Platform" />
  <meta property="og:description" content="Documentation officielle de CSWeb Community Platform - Architecture flexible, Multi-DB, Docker" />
- <link rel="icon" href="/favicon.ico" />
+ <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
  </>
  ),
  primaryHue: 212, // Blue
