@@ -32,3 +32,4 @@ maps/*.mbtiles-wal
 .phpunit.result.cache
 phpunit.xml
 .php-cs-fixer.cache
+.claude/

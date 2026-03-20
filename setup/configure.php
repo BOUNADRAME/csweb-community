@@ -139,12 +139,21 @@ EOT;
 			  `modified_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			  `created_time` timestamp DEFAULT '1971-01-01 00:00:00',
 			  PRIMARY KEY (`dictionary_id`),
-			  CONSTRAINT `schema_dict_id_constraint` FOREIGN KEY (`dictionary_id`) REFERENCES `cspro_dictionaries`(`id`) ON DELETE CASCADE,
-			  UNIQUE KEY `schema_name` (`schema_name`)
+			  CONSTRAINT `schema_dict_id_constraint` FOREIGN KEY (`dictionary_id`) REFERENCES `cspro_dictionaries`(`id`) ON DELETE CASCADE
 			) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 			CREATE TRIGGER tr_dictionaries_schema BEFORE INSERT ON `cspro_dictionaries_schema` FOR EACH ROW SET NEW.`created_time` = CURRENT_TIMESTAMP;
 EOT;
     $pdo->exec($sql);
+
+    // Remove UNIQUE constraint on schema_name if it exists (allows multi-dictionary breakout)
+    try {
+        $idx = $pdo->query("SHOW INDEX FROM `cspro_dictionaries_schema` WHERE Key_name = 'schema_name'")->rowCount();
+        if ($idx > 0) {
+            $pdo->exec("ALTER TABLE `cspro_dictionaries_schema` DROP KEY `schema_name`");
+        }
+    } catch (\Exception $e) {
+        // Ignore — constraint may not exist
+    }
 
     $sql = <<<'EOT'
 			CREATE TABLE IF NOT EXISTS `cspro_sync_history` (
