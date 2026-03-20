@@ -139,11 +139,16 @@ test(cli): Add tests for process-cases command
 ### 4. Tester
 
 ```bash
-# Tests unitaires PHP
-docker compose exec csweb vendor/bin/phpunit
+# Tests unitaires (local)
+composer test
+# ou directement
+vendor/bin/phpunit --testsuite unit
 
-# Tests d'intégration
-docker compose exec csweb php bin/console test:integration
+# Tests unitaires avec couverture
+composer test:coverage
+
+# Via Docker
+docker compose exec csweb composer test
 
 # Vérifier code style
 docker compose exec csweb vendor/bin/php-cs-fixer fix --dry-run
@@ -151,6 +156,25 @@ docker compose exec csweb vendor/bin/php-cs-fixer fix --dry-run
 # Analyser code (PHPStan)
 docker compose exec csweb vendor/bin/phpstan analyse
 ```
+
+**Structure des tests :**
+```
+tests/
+  bootstrap.php          # Bootstrap custom (stub PdoHelper pour PHP 8.4)
+  Unit/                  # Tests unitaires (sans dépendance BDD)
+    CSPro/
+      VectorClockTest.php
+      Data/
+        BreakoutSchedulerTest.php
+    Service/
+      DatabaseDriverDetectorTest.php
+      BreakoutDatabaseConfigTest.php
+  Integration/           # Tests d'intégration (avec BDD)
+```
+
+**Note PHP 8.4 :** Le fichier `tests/bootstrap.php` fournit un stub pour `PdoHelper`
+afin de contourner l'incompatibilité `aura/sql ^4.0` avec PHP 8.4 (`PDO::connect()` statique).
+Les tests unitaires fonctionnent sans base de données.
 
 ### 5. Push & Pull Request
 
@@ -254,24 +278,39 @@ Content...
 
 ### Tests PHPUnit
 
+**Configuration :** `phpunit.xml.dist` à la racine du projet (PHPUnit 9.6, 2 suites : `unit` et `integration`).
+
+**Namespace :** `Tests\Unit\` pour les tests unitaires, `Tests\Integration\` pour les tests d'intégration.
+
 **Exemple :**
 ```php
-<?php namespace App\Tests\Service;
+<?php
 
+namespace Tests\Unit\Service;
+
+use AppBundle\Service\BreakoutDatabaseConfig;
 use PHPUnit\Framework\TestCase;
-use App\Service\BreakoutService;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
-class BreakoutServiceTest extends TestCase
+class BreakoutDatabaseConfigTest extends TestCase
 {
- public function testProcessCases(): void
- {
- $service = new BreakoutService();
- $result = $service->processCases($dictionary);
+    public function testDefaultDatabaseTypeIsPostgresql(): void
+    {
+        $params = $this->createMock(ParameterBagInterface::class);
+        $logger = $this->createMock(LoggerInterface::class);
+        $config = new BreakoutDatabaseConfig($params, $logger);
 
- $this->assertTrue($result->isSuccess());
- }
+        $this->assertSame('postgresql', $config->getDefaultDatabaseType());
+    }
 }
 ```
+
+**Bonnes pratiques :**
+- Utiliser `createMock()` pour les dépendances (LoggerInterface, ParameterBagInterface)
+- Pour `PdoHelper` : utiliser `getMockBuilder()->disableOriginalConstructor()` (le bootstrap s'en charge)
+- Sauvegarder/restaurer `$_ENV` dans `setUp()/tearDown()` pour les tests de configuration
+- Nommer les tests : `test<MethodName><Scenario>` (ex: `testGetDriverForTypeUnknownThrows`)
 
 ## Ressources
 
