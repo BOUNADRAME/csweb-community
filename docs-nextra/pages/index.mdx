@@ -13,11 +13,19 @@ description: Architecture flexible, Multi-DB, Docker - Setup en 5 minutes
 
 <div className="text-center my-8">
   <h2 className="text-4xl font-bold">
-    CSPro + CSWeb = Collecte de Données Simplifiée
+    Déployez CSWeb en 5 Minutes avec Docker
   </h2>
   <p className="text-xl text-gray-600 dark:text-gray-400 mt-4">
-    Setup automatisé en 5 minutes avec Docker
+    Plateforme moderne pour la collecte de données CSPro avec support Multi-DB et breakout sélectif
   </p>
+  <div className="flex justify-center gap-4 mt-6">
+    <a href="/getting-started/installation" className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition">
+      Démarrer Maintenant
+    </a>
+    <a href="/getting-started/comparison" className="px-6 py-3 border-2 border-blue-600 text-blue-600 dark:text-blue-400 rounded-lg font-semibold hover:bg-blue-50 dark:hover:bg-blue-900/20 transition">
+      Comparer les Solutions
+    </a>
+  </div>
 </div>
 
 ---
@@ -28,29 +36,31 @@ description: Architecture flexible, Multi-DB, Docker - Setup en 5 minutes
 
 **CSWeb** est le serveur web officiel qui accompagne CSPro pour recevoir, stocker et synchroniser les questionnaires collectés sur tablettes Android.
 
-> **Note :** CSWeb vanilla (version officielle) est puissant mais complexe : installation manuelle MySQL, configuration Apache/PHP, aucune interface moderne.
+> **Note :** CSWeb vanilla (version officielle) nécessite une installation manuelle multi-composants (Apache, MySQL, PHP) et une expertise technique pour la configuration. CSWeb Community Platform automatise ce processus avec Docker.
 
 ---
 
-## CSWeb Community : Le Problème Résolu
+## Pourquoi CSWeb Community Platform ?
 
-**CSWeb Community Platform** transforme CSWeb en une plateforme **moderne, flexible et accessible**.
+**Le défi :** Déployer CSWeb vanilla nécessite plusieurs jours de configuration manuelle (Apache, MySQL, PHP, cron) et une expertise technique approfondie.
+
+**Notre solution :** CSWeb Community Platform simplifie ce processus avec **Docker (recommandé)** ou installation manuelle classique, tout en ajoutant des fonctionnalités enterprise-grade : multi-DB, breakout sélectif, scheduler automatique.
 
 <div className="grid md:grid-cols-2 gap-6 my-8">
   <div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-6 rounded-r-lg">
-    <h3 className="text-lg font-bold mb-3 text-blue-700 dark:text-blue-300">Setup Classique</h3>
+    <h3 className="text-lg font-bold mb-3 text-blue-700 dark:text-blue-300">CSWeb Vanilla</h3>
     <div className="space-y-2 text-sm">
-      <div>• Installation manuelle multi-étapes</div>
+      <div>• Installation manuelle uniquement</div>
       <div>• MySQL uniquement</div>
       <div>• Configuration cron manuelle</div>
-      <div>• Breakout global</div>
+      <div>• Breakout global (tous les dictionnaires)</div>
     </div>
   </div>
 
   <div className="border-l-4 border-green-500 bg-green-50 dark:bg-green-900/20 p-6 rounded-r-lg">
     <h3 className="text-lg font-bold mb-3 text-green-700 dark:text-green-300">CSWeb Community</h3>
     <div className="space-y-2 text-sm">
-      <div>✨ Setup automatisé en 5 minutes (Docker)</div>
+      <div>✨ Docker (5 min) OU installation manuelle</div>
       <div>✨ Multi-DB (PostgreSQL, MySQL, SQL Server)</div>
       <div>✨ Scheduler automatique intégré</div>
       <div>✨ Breakout sélectif par dictionnaire</div>
@@ -64,57 +74,103 @@ description: Architecture flexible, Multi-DB, Docker - Setup en 5 minutes
 
 ---
 
+## Deux Options d'Installation
+
+### 🐳 Docker (Recommandé)
+
+Setup automatisé en **5 minutes** avec tous les services pré-configurés.
+
+```bash
+git clone https://github.com/BOUNADRAME/csweb-community.git
+cd csweb-community
+docker compose --profile local-postgres up -d
+```
+
+[📖 Guide Installation Docker](/getting-started/installation)
+
+---
+
+### 🛠️ Installation Manuelle (Classique)
+
+Pour les environnements sans Docker ou avec infrastructure existante.
+
+Configuration Apache + PHP + MySQL/PostgreSQL/SQL Server à la main, avec les fonctionnalités CSWeb Community (multi-DB, breakout sélectif).
+
+[📖 Guide Installation Manuelle](/guides/deployment/vanilla-migration)
+
+---
+
 ## Démarrage Rapide
 
 - [Comparaison des Solutions](/getting-started/comparison) - Pourquoi choisir CSWeb Community Platform ?
-- [Installation](/getting-started/installation) - Déployez CSWeb en 5 minutes avec Docker
+- [Installation Docker](/getting-started/installation) - Setup en 5 minutes (recommandé)
+- [Installation Manuelle](/guides/deployment/vanilla-migration) - Setup classique Apache/PHP
 - [Premier Breakout](/getting-started/first-breakout) - Tutorial step-by-step complet
 
 ---
 
 ## Innovations Principales
 
-### Breakout Sélectif par Dictionnaire
+### 🎯 Breakout Sélectif par Dictionnaire
 
-Au lieu de "breaker" TOUS les dictionnaires (lent, risqué), vous pouvez maintenant cibler **un seul dictionnaire** à la fois.
+**Le problème :** Le breakout global traite TOUS les dictionnaires en même temps, ce qui est lent et risqué pour les gros volumes.
+
+**Notre solution :** Breakez UN dictionnaire à la fois, en parallèle si nécessaire.
 
 ```bash
 php bin/console csweb:process-cases-by-dict EVAL_PRODUCTEURS
 ```
 
-**RGPH5 Sénégal** : Le breakout sélectif a permis de traiter l'ensemble des questionnaires du recensement en une fraction du temps initialement prévu.
+**Impact réel - RGPH5 Sénégal :** Traitement de l'ensemble des questionnaires du recensement en une fraction du temps grâce au breakout ciblé.
 
-[Guide Complet](/guides/breakout/selective)
+[📖 Guide Complet](/guides/breakout/selective)
 
-### Architecture Flexible Multi-DB
+### 🗄️ Architecture Flexible Multi-DB
 
-Choisissez votre base de données pour le breakout analytics :
+**Le problème :** CSWeb vanilla est limité à MySQL, ce qui peut ne pas être optimal pour l'analytics de gros volumes.
 
-- **PostgreSQL** : Recommandé pour analytics et requêtes complexes
-- **MySQL** : Compatible avec CSWeb vanilla
-- **SQL Server** : Pour écosystème Microsoft
+**Notre solution :** Choisissez la base de données qui correspond à vos besoins :
 
-**2 modes de déploiement** :
-- **Local** : Tout sur une machine (dev/test)
-- **Remote** : Serveurs distants (production RGPH)
+- **PostgreSQL** : Performances supérieures pour analytics et requêtes complexes
+- **MySQL** : Compatibilité totale avec CSWeb vanilla existant
+- **SQL Server** : Intégration dans un écosystème Microsoft
 
-[Architecture détaillée](/guides/architecture)
+**Modes de déploiement :**
+- **Local** : Tous les services sur une seule machine (convient au développement et à la production selon la charge)
+- **Remote** : Bases distantes séparées pour haute disponibilité (production RGPH, grands volumes)
 
-### Webhooks & Monitoring
+[📖 Architecture Détaillée](/guides/architecture)
 
-Recevez des événements en temps réel depuis CSPro pour automatiser vos workflows.
+### 📡 Webhooks & Monitoring
 
-[Guide Webhooks](/guides/admin/webhooks)
+**Le problème :** Pas de visibilité en temps réel sur la collecte et le traitement des données.
+
+**Notre solution :** Webhooks intégrés + monitoring temps réel pour automatiser vos workflows.
+
+- Notifications sur événements CSPro (upload, sync, breakout)
+- Logs centralisés accessibles via interface web
+- Métriques et alertes configurables
+
+[📖 Guide Webhooks](/guides/admin/webhooks)
 
 ---
 
-## Production Validée
+## ✅ Utilisé en Production par des Instituts Statistiques
 
-**RGPH5 Sénégal** : L'ensemble des questionnaires du recensement collectés et breakés avec succès (ANSD)
+<div className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 p-6 rounded-lg border-l-4 border-green-500 my-6">
+  <h3 className="text-xl font-bold mb-4">🇸🇳 RGPH5 Sénégal (ANSD)</h3>
+  <p className="mb-2">
+    <strong>Recensement Général de la Population et de l'Habitat 2023</strong>
+  </p>
+  <p className="text-gray-700 dark:text-gray-300">
+    L'ensemble des questionnaires du recensement national collectés, synchronisés et breakés avec succès grâce au breakout sélectif et à l'architecture PostgreSQL.
+  </p>
+</div>
 
-**Autres déploiements** :
-- **Gambie** : Recensement et enquêtes continues
-- **Guinée** : Recensement
+**Autres déploiements en production :**
+
+- 🇬🇲 **Gambie (GBOS)** : Recensement national et enquêtes statistiques continues
+- 🇬🇳 **Guinée (INS)** : Recensement Général de la Population et de l'Habitat
 
 ---
 
