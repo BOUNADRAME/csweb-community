@@ -21,7 +21,7 @@ CSWeb utilise **toujours 2 bases distinctes** :
 
 - Stocke les utilisateurs, dictionnaires, tokens OAuth
 - Schéma imposé par CSWeb vanilla (compatibilité bidirectionnelle)
-- **Ne peut pas** être PostgreSQL ou SQL Server
+- **Doit être** MySQL (compatibilité CSWeb vanilla)
 
 ### 2. Base Breakout (Configurable)
 
@@ -203,7 +203,7 @@ docker compose exec csweb php bin/console csweb:check-database-drivers --test-co
 |---------|---------------|---------------------|
 | **Complexité setup** | Facile (1 commande) | Moyenne (config réseau/firewall) |
 | **Performances** | Rapide (réseau interne) | Dépend du réseau |
-| **Scalabilité** | Limitée (1 machine) | Élevée (serveurs dédiés) |
+| **Scalabilité** | Locale (1 machine) | Élevée (serveurs dédiés) |
 | **Coût** | Gratuit | Serveurs + licenses |
 | **Use case** | Dev/Test/POC | Production/RGPH |
 | **Volume recommandé** | < 50k cas | > 100k cas |
@@ -222,8 +222,8 @@ docker compose exec csweb php bin/console csweb:check-database-drivers --test-co
 
 **Quand choisir :**
 - Volume > 100k questionnaires
-- Analyses statistiques complexes
-- Budget limité (pas de licenses)
+- Analyses statistiques avancées
+- Solution open source (sans licenses commerciales)
 
 ### MySQL
 

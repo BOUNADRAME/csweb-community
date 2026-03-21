@@ -21,7 +21,7 @@ description: Introduction à CSWeb Community Platform
 | **Scheduler** | Crontab manuel | Web UI avec builder visuel |
 | **Monitoring** | Logs SSH requis | Streaming temps réel |
 | **Admin UI** | Basique | React moderne + Tailwind |
-| **Documentation** | Dispersée et difficile d'accès | Unifiée et accessible (255+ pages) |
+| **Documentation** | README et wiki | Site complet et unifié (255+ pages) |
 
 ---
 
@@ -152,52 +152,51 @@ CSWeb Community Platform s'inspire du travail de la communauté CSPro Users ([do
 
 ### Ce que nous ajoutons
 
-## Différences Clés vs CSWeb Vanilla
+## Fonctionnalités Avancées
 
 ### 1. Breakout Sélectif (par Assietou Diagne, ANSD)
 
-**CSWeb Vanilla :**
-```bash
-# Breake TOUS les dictionnaires (lent, risqué)
-php bin/console csweb:process-cases
-```
+Traitement ciblé par dictionnaire pour plus de flexibilité et de performance.
 
-**CSWeb Community :**
 ```bash
-# Breake UN dictionnaire spécifique
+# Traiter un dictionnaire spécifique
 php bin/console csweb:process-cases-by-dict EVAL_PRODUCTEURS
 ```
 
+**Avantages :**
+- Traitement indépendant par dictionnaire
+- Isolation complète des opérations
+- Flexibilité et rapidité accrues
+
 ### 2. Support Multi-SGBD
 
-**CSWeb Vanilla :**
-- MySQL uniquement
+Architecture flexible avec support de multiples bases de données pour le breakout.
 
-**CSWeb Community :**
+**Options disponibles :**
 - PostgreSQL (recommandé pour analytics)
 - MySQL (compatible legacy)
 - SQL Server (écosystème Microsoft)
 
-Configuration via UI ou fichier `.env`.
+Configuration simple via UI ou fichier `.env`.
 
-### 3. Docker Production-Ready
+### 3. Déploiement Docker Simplifié
 
-**CSWeb Vanilla :**
-- Installation manuelle Apache + MySQL + PHP
-- Configuration permissions complexe
+Installation automatisée et configuration pré-optimisée.
 
-**CSWeb Community :**
 ```bash
-docker compose --profile local-postgres up -d # C'est tout!
+docker compose --profile local-postgres up -d
 ```
+
+**Caractéristiques :**
+- Setup en 5 minutes
+- Configuration automatisée
+- Tous les drivers pré-installés
 
 ### 4. Monitoring Temps Réel
 
-**CSWeb Vanilla :**
-- SSH requis pour voir les logs
-- Pas de métriques
+Suivi en temps réel de vos opérations breakout.
 
-**CSWeb Community :**
+**Fonctionnalités :**
 - Logs streaming dans Admin Panel
 - Métriques CPU, RAM, DB
 - Alertes configurables

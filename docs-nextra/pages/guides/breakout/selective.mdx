@@ -11,31 +11,29 @@ description: Innovation majeure de CSWeb Community Platform pour le traitement c
 
 Le breakout sélectif permet de traiter **un seul dictionnaire CSPro** au lieu de tous les dictionnaires simultanément.
 
-### Avant vs Après
+### Approche Sélective vs Globale
 
-**CSWeb Vanilla** (Global - Traitement en Cascade)
-- Traite TOUS les dictionnaires ensemble dans un seul processus
-- Durée : Heures voire jours
-- **Risque critique** : Si un dictionnaire échoue, TOUT le processus s'arrête
-- **Effet domino** : Les dictionnaires suivants ne sont jamais traités
-- **Exemple** : Si dict 2/5 échoue → dicts 3, 4, 5 bloqués
+**Traitement Global** (Mode Standard)
+- Traite tous les dictionnaires ensemble dans un seul processus
+- Durée : Heures voire jours selon le volume
+- Traitement séquentiel en cascade
 - Commande : `php bin/console csweb:process-cases`
 
-**CSWeb Community** (Sélectif - Traitement Isolé)
-- Traite UN SEUL dictionnaire à la fois
+**Traitement Sélectif** (Innovation CSWeb Community)
+- Traite un seul dictionnaire à la fois
 - Durée : Minutes par dictionnaire
-- **Isolation complète** : Un échec n'affecte QUE ce dictionnaire
+- **Isolation complète** : Un échec n'affecte que le dictionnaire en cours
 - **Indépendance** : Les autres dictionnaires sont traités normalement
 - **Flexibilité** : Choisir quel dictionnaire traiter et quand
 - Commande : `php bin/console csweb:process-cases-by-dict NOM_DICT`
 
-### Impact RGPH5 Sénégal
+### Validation Production RGPH5 Sénégal
 
-Le breakout sélectif a permis de réduire considérablement le temps de traitement lors du RGPH5, en passant d'un traitement global très long à un traitement ciblé par dictionnaire bien plus rapide.
+Le breakout sélectif a été validé en production lors du RGPH5 Sénégal, permettant un traitement ciblé par dictionnaire avec une flexibilité accrue pour gérer les opérations de recensement.
 
 ---
 
-## Problème Résolu
+## Cas d'Usage : Traitement Multi-Dictionnaires
 
 Imaginons 5 dictionnaires :
 - RECENSEMENT (dictionnaire principal, très volumineux)
@@ -44,24 +42,19 @@ Imaginons 5 dictionnaires :
 - SONDAGE_SANTE (volume modéré)
 - TEST_PILOTE (petit volume de test)
 
-**Avec CSWeb Vanilla** (Traitement Global en Cascade) :
+**Avec Traitement Global** :
 ```bash
 php bin/console csweb:process-cases
 
 # Processus séquentiel :
 # 1. RECENSEMENT (3M) → démarre
-# 2. Erreur à 80% (ex: timeout, corruption données)
-# 3. TOUT le processus s'arrête en cascade
-# 4. ENQUETE_MENAGES → jamais traité
-# 5. EVALUATION_AGRICOLE → jamais traité
-# 6. SONDAGE_SANTE → jamais traité
-# 7. TEST_PILOTE → jamais traité
-
-# Résultat : temps perdu, 0 dictionnaire breaké
-# Il faut corriger RECENSEMENT et TOUT relancer
+# 2. Erreur à 80% (ex: timeout, problème technique)
+# 3. Le processus s'arrête en cascade
+# 4. Les dictionnaires suivants ne sont pas traités
+# 5. Il faut corriger le problème et tout relancer
 ```
 
-**Avec Breakout Sélectif** (Traitement Isolé) :
+**Avec Breakout Sélectif** :
 ```bash
 # 1. Test rapide du pilote
 php bin/console csweb:process-cases-by-dict TEST_PILOTE
@@ -229,8 +222,8 @@ BREAKOUT_DB_TYPE=sqlserver
 ```
 
 **Résultat**
-- Breakout significativement plus rapide qu'en mode natif
-- Analyses Power BI temps réel
+- Traitement flexible et ciblé par dictionnaire
+- Intégration Power BI pour analyses temps réel
 
 ### Institut National de Statistique
 
@@ -255,14 +248,16 @@ php bin/console csweb:process-cases-by-dict RECENSEMENT_POP
 
 ## Performance
 
-### Gains attendus
+### Caractéristiques de Performance
 
-Le breakout sélectif est plus rapide que le breakout global car il traite un seul dictionnaire à la fois, réduisant la charge mémoire et les opérations I/O. Les gains varient selon le nombre de dictionnaires, le volume de données et le matériel.
+Le breakout sélectif offre un traitement ciblé avec plusieurs avantages :
 
 **Avantages principaux** :
-- Temps de traitement proportionnel au dictionnaire ciblé (pas au total)
-- Isolation des échecs (pas d'effet domino)
+- Temps de traitement proportionnel au dictionnaire ciblé
+- Charge mémoire réduite (traitement d'un seul dictionnaire)
+- Isolation des échecs (chaque dictionnaire est indépendant)
 - Possibilité de paralléliser sur plusieurs dictionnaires
+- Optimisation I/O par dictionnaire
 
 ### Optimisations
 
