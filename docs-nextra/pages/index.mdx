@@ -127,17 +127,15 @@ php bin/console csweb:process-cases-by-dict EVAL_PRODUCTEURS
 
 ### 🗄️ Architecture Flexible Multi-DB
 
-**Le problème :** CSWeb vanilla est limité à MySQL, ce qui peut ne pas être optimal pour l'analytics de gros volumes.
+**Le problème :** CSWeb vanilla est limité à MySQL uniquement.
 
-**Notre solution :** Choisissez la base de données qui correspond à vos besoins :
+**Notre solution :** Breakout vers PostgreSQL, MySQL ou SQL Server.
 
-- **PostgreSQL** : Performances supérieures pour analytics et requêtes complexes
-- **MySQL** : Compatibilité totale avec CSWeb vanilla existant
-- **SQL Server** : Intégration dans un écosystème Microsoft
+- **Par dictionnaire** : Chaque dictionnaire → sa propre base breakout
+- **Local/Remote** : Base sur le même serveur ou serveur distant dédié
+- **Cohabitation** : Plusieurs bases simultanées (PostgreSQL + MySQL + SQL Server)
 
-**Modes de déploiement :**
-- **Local** : Tous les services sur une seule machine (convient au développement et à la production selon la charge)
-- **Remote** : Bases distantes séparées pour haute disponibilité (production RGPH, grands volumes)
+PostgreSQL pour performance analytics, MySQL pour compatibilité, SQL Server pour écosystème Microsoft.
 
 [📖 Architecture Détaillée](/guides/architecture)
 
