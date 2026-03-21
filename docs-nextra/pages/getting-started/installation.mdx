@@ -361,12 +361,11 @@ Après le premier démarrage, CSWeb vous redirige vers le wizard de configuratio
    | **Timezone**                | `UTC`                   | Ou votre fuseau horaire                              |
    | **Maximum execution time**  | `300`                   | En secondes                                          |
    | **Path to files directory** | `/var/www/html/files`   | Chemin par défaut                                    |
-   | **CSWeb API URL**           | `http://localhost/api/` | **Port 80 interne, PAS 8080 !**                      |
+   | **CSWeb API URL**           | `http://localhost:8080/api/` | **Port 8080 accessible depuis le navigateur**                      |
 
-   > **Important :** L'API URL doit être `http://localhost/api/` (sans le port 8080).
-   > À l'intérieur du conteneur Docker, CSWeb accède à sa propre API via le port interne **80**.
-   > Le port 8080 est uniquement le mapping externe visible dans votre navigateur.
-   > CSEntry et les services internes communiquent directement via localhost:80, pas via le port exposé 8080.
+   > **Important :** L'API URL doit être `http://localhost:8080/api/` (avec le port 8080).
+   > C'est l'URL accessible depuis votre navigateur pour accéder à l'API CSWeb.
+   > Le port 8080 est le port externe mappé dans Docker qui redirige vers le port 80 interne du conteneur.
 
 3. **Cliquer sur "Next"** pour finaliser l'installation.
 
@@ -614,8 +613,8 @@ Utilisez `root` comme Database username dans le wizard de configuration.
 
 ### API URL - "Failed to connect to localhost port 8080"
 
-L'API URL dans le wizard doit être `http://localhost/api/` (port 80 interne au conteneur).
-Le port 8080 n'est accessible que depuis votre navigateur (mapping externe).
+L'API URL dans le wizard doit être `http://localhost:8080/api/` (port 8080 accessible depuis le navigateur).
+C'est l'URL publique pour accéder à l'API CSWeb depuis l'extérieur du conteneur Docker.
 
 ### Container ne démarre pas (unhealthy)
 
