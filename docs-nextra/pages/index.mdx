@@ -36,34 +36,28 @@ description: Architecture flexible, Multi-DB, Docker - Setup en 5 minutes
 
 **CSWeb** est le serveur web officiel qui accompagne CSPro pour recevoir, stocker et synchroniser les questionnaires collectés sur tablettes Android.
 
-> **Note :** CSWeb vanilla (version officielle) nécessite une installation manuelle multi-composants (Apache, MySQL, PHP) et une expertise technique pour la configuration. CSWeb Community Platform automatise ce processus avec Docker.
+**CSWeb Community Platform** ajoute à CSWeb : déploiement Docker simplifié, support multi-DB, breakout sélectif et scheduler automatique.
 
 ---
 
-## Pourquoi CSWeb Community Platform ?
-
-**Le défi :** Déployer CSWeb vanilla nécessite plusieurs jours de configuration manuelle (Apache, MySQL, PHP, cron) et une expertise technique approfondie.
-
-**Notre solution :** CSWeb Community Platform simplifie ce processus avec **Docker (recommandé)** ou installation manuelle classique, tout en ajoutant des fonctionnalités enterprise-grade : multi-DB, breakout sélectif, scheduler automatique.
+## Fonctionnalités Principales
 
 <div className="grid md:grid-cols-2 gap-6 my-8">
   <div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-6 rounded-r-lg">
-    <h3 className="text-lg font-bold mb-3 text-blue-700 dark:text-blue-300">CSWeb Vanilla</h3>
+    <h3 className="text-lg font-bold mb-3 text-blue-700 dark:text-blue-300">🚀 Déploiement Rapide</h3>
     <div className="space-y-2 text-sm">
-      <div>• Installation manuelle uniquement</div>
-      <div>• MySQL uniquement</div>
-      <div>• Configuration cron manuelle</div>
-      <div>• Breakout global (tous les dictionnaires)</div>
+      <div>• Docker : Setup en 5 minutes</div>
+      <div>• Installation manuelle : Support complet</div>
+      <div>• Configuration automatisée</div>
     </div>
   </div>
 
   <div className="border-l-4 border-green-500 bg-green-50 dark:bg-green-900/20 p-6 rounded-r-lg">
-    <h3 className="text-lg font-bold mb-3 text-green-700 dark:text-green-300">CSWeb Community</h3>
+    <h3 className="text-lg font-bold mb-3 text-green-700 dark:text-green-300">⚡ Performance & Flexibilité</h3>
     <div className="space-y-2 text-sm">
-      <div>✨ Docker (5 min) OU installation manuelle</div>
-      <div>✨ Multi-DB (PostgreSQL, MySQL, SQL Server)</div>
-      <div>✨ Scheduler automatique intégré</div>
-      <div>✨ Breakout sélectif par dictionnaire</div>
+      <div>• Multi-DB (PostgreSQL, MySQL, SQL Server)</div>
+      <div>• Breakout sélectif par dictionnaire</div>
+      <div>• Scheduler automatique intégré</div>
     </div>
   </div>
 </div>
@@ -113,44 +107,39 @@ Configuration Apache + PHP + MySQL/PostgreSQL/SQL Server à la main, avec les fo
 
 ### 🎯 Breakout Sélectif par Dictionnaire
 
-**Le problème :** Le breakout global traite TOUS les dictionnaires en même temps, ce qui est lent et risqué pour les gros volumes.
-
-**Notre solution :** Breakez UN dictionnaire à la fois, en parallèle si nécessaire.
+Traitez un dictionnaire à la fois au lieu de tous en même temps. Plus rapide, plus ciblé.
 
 ```bash
-php bin/console csweb:process-cases-by-dict EVAL_PRODUCTEURS
+php bin/console csweb:process-cases-by-dict MENAGE
 ```
 
-**Impact réel - RGPH5 Sénégal :** Traitement de l'ensemble des questionnaires du recensement en une fraction du temps grâce au breakout ciblé.
+**Cas d'usage :** RGPH5 Sénégal - traitement accéléré des questionnaires du recensement national.
 
 [📖 Guide Complet](/guides/breakout/selective)
 
-### 🗄️ Architecture Flexible Multi-DB
+---
 
-**Le problème :** CSWeb vanilla est limité à MySQL uniquement.
+### 🗄️ Architecture Multi-DB Flexible
 
-**Notre solution :** Breakout vers PostgreSQL, MySQL ou SQL Server.
+Choisissez PostgreSQL, MySQL ou SQL Server pour le breakout. Configuration par dictionnaire, local ou distant.
 
-- **Par dictionnaire** : Chaque dictionnaire → sa propre base breakout
-- **Local/Remote** : Base sur le même serveur ou serveur distant dédié
-- **Cohabitation** : Plusieurs bases simultanées (PostgreSQL + MySQL + SQL Server)
-
-PostgreSQL pour performance analytics, MySQL pour compatibilité, SQL Server pour écosystème Microsoft.
+- PostgreSQL → performance analytics
+- MySQL → compatibilité legacy
+- SQL Server → écosystème Microsoft
 
 [📖 Architecture Détaillée](/guides/architecture)
 
-### 📡 Webhooks & Intégration Applications Tierces
+---
 
-**Le problème :** Impossible d'intégrer CSWeb avec d'autres systèmes ou de piloter le breakout depuis une application externe.
+### 📡 API & Webhooks
 
-**Notre solution :** API Webhooks pour contrôler CSWeb depuis vos applications.
+Intégrez CSWeb avec vos applications tierces : déclenchez le breakout, récupérez les logs, automatisez vos workflows.
 
-- **Déclencher le breakout sélectif** depuis une application tierce
-- **Gérer les logs** et monitoring via API
-- **Automatiser les workflows** (notifications, traitements post-breakout)
-- **Intégration BI/Dashboards** pour suivi temps réel
+- Pilotage du breakout depuis applications externes
+- Logs et monitoring via API
+- Intégration dashboards BI (Power BI, Tableau, Grafana)
 
-[📖 Guide Webhooks](/guides/admin/webhooks)
+[📖 Guide API & Webhooks](/guides/admin/webhooks)
 
 ---
 
