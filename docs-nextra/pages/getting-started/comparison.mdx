@@ -60,13 +60,11 @@ docker compose --profile local-sqlserver up -d
 #### Breakout Sélectif par Dictionnaire
 
 ```bash
-# Breaker UN dictionnaire spécifique (rapide, ciblé)
+# Traiter un dictionnaire spécifique
 php bin/console csweb:process-cases-by-dict EVAL_PRODUCTEURS
-
-# Au lieu du breakout global (lent, risqué)
 ```
 
-**Avantage :** RGPH5 Sénégal - traitement des questionnaires en une fraction du temps grâce au breakout sélectif.
+**Avantage :** Traitement ciblé et flexible. Validé en production lors du RGPH5 Sénégal.
 
 ---
 
