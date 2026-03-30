@@ -1665,7 +1665,7 @@
                     var $modal = $("#add-config-modal");
                     var dataSetting = {};
                     // get the data from your modal
-                    $modal.find("input").each(function () {
+                    $modal.find("input, select").each(function () {
                         if ($(this).attr("name"))
                             dataSetting[$(this).attr("name")] = $(this).val();
                     });
@@ -1860,7 +1860,7 @@
                     var $modal = $("#edit-config-modal");
                     var dataSetting = {};
                     // get the data from your modal
-                    $modal.find('input').each(function () {
+                    $modal.find('input, select').each(function () {
                         if ($(this).attr("name")) {
                             var attribName = $(this).attr("name");
                             attribName = attribName.substr(attribName.indexOf('-') + 1);
