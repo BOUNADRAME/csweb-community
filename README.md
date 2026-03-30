@@ -189,11 +189,23 @@ docker compose --profile local-postgres --profile dev up -d
 
 ### Resume des commandes
 
-| Breakout | Local | Remote |
-|----------|-------|--------|
-| **PostgreSQL** | `docker compose --profile local-postgres up -d` | `docker compose up -d csweb mysql` |
-| **MySQL** | `docker compose --profile local-mysql up -d` | `docker compose up -d csweb mysql` |
-| **SQL Server** | `docker compose --profile local-sqlserver up -d` | `docker compose up -d csweb mysql` |
+```
+┌────────────┬────────┬────────────────────────────────────────────────┐
+│    SGBD    │  Mode  │                    Commande                    │
+├────────────┼────────┼────────────────────────────────────────────────┤
+│ PostgreSQL │ Local  │ docker compose --profile local-postgres up -d  │
+├────────────┼────────┼────────────────────────────────────────────────┤
+│ PostgreSQL │ Remote │ docker compose up -d csweb mysql               │
+├────────────┼────────┼────────────────────────────────────────────────┤
+│ MySQL      │ Local  │ docker compose --profile local-mysql up -d     │
+├────────────┼────────┼────────────────────────────────────────────────┤
+│ MySQL      │ Remote │ docker compose up -d csweb mysql               │
+├────────────┼────────┼────────────────────────────────────────────────┤
+│ SQL Server │ Local  │ docker compose --profile local-sqlserver up -d │
+├────────────┼────────┼────────────────────────────────────────────────┤
+│ SQL Server │ Remote │ docker compose up -d csweb mysql               │
+└────────────┴────────┴────────────────────────────────────────────────┘
+```
 
 ---
 
