@@ -17,7 +17,7 @@ class DataSettings {
     }
 
     public function getDataSettings() {
-        $dataSettings = $this->pdo->query('SELECT `cspro_dictionaries`.`id` as id, `dictionary_name` as name, `dictionary_label` as label,  `host_name` as targetHostName, `port` as targetPort, `schema_name` as targetSchemaName,'
+        $dataSettings = $this->pdo->query('SELECT `cspro_dictionaries`.`id` as id, `dictionary_name` as name, `dictionary_label` as label, `cspro_dictionaries_schema`.`host_name` as targetHostName, `cspro_dictionaries_schema`.`port` as targetPort, `schema_name` as targetSchemaName,'
                         . ' `schema_user_name` as dbUserName, AES_DECRYPT(`schema_password`, \'cspro\') as dbPassword, `additional_config` as additionalConfig, `map_info` as mapInfo FROM `cspro_dictionaries_schema` RIGHT JOIN cspro_dictionaries'
                         . '  ON dictionary_id = cspro_dictionaries.id    ORDER BY dictionary_label')->fetchAll();
         $this->getDataCounts($dataSettings);
@@ -33,7 +33,7 @@ class DataSettings {
         $bind = [];
         $dataSetting = null;
         try {
-            $stm = 'SELECT `cspro_dictionaries`.`id` as id, `dictionary_name`as name, dictionary_label as label,  `host_name` as targetHostName, `port` as targetPort, `schema_name` as targetSchemaName,'
+            $stm = 'SELECT `cspro_dictionaries`.`id` as id, `dictionary_name` as name, `dictionary_label` as label, `cspro_dictionaries_schema`.`host_name` as targetHostName, `cspro_dictionaries_schema`.`port` as targetPort, `schema_name` as targetSchemaName,'
                     . ' `schema_user_name` as dbUserName, AES_DECRYPT(`schema_password`, \'cspro\') as dbPassword, `additional_config` as additionalConfig, `map_info` as mapInfo FROM `cspro_dictionaries_schema` RIGHT JOIN cspro_dictionaries'
                     . '  ON dictionary_id = cspro_dictionaries.id  WHERE dictionary_name = :dictName';
 
