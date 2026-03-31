@@ -1,24 +1,47 @@
-# Documentation (Nextra)
+# Documentation (Nextra + plain docs)
 docs-nextra/
+docs/
 
 # Git
 .git/
 .gitignore
+.github/
 
-# IDE
+# IDE / editors
 .claude/
 .settings/
 .buildpath
 .project
 nbproject/
+.vscode/
+.idea/
 
 # Tests
 tests/
 test-results/
 .phpunit.result.cache
 .php-cs-fixer.cache
+phpunit.xml
 
-# Dev tools
+# Dev tools & scripts
 CLAUDE.md
 cleanup.sh
 cleanup.bat
+README.md
+*.md
+
+# Dependencies built during docker build — ne pas copier, composer install le fait
+vendor/
+bower_components/
+composer.phar
+node_modules/
+
+# Logs et cache locaux
+var/cache/*
+var/logs/*
+logs/
+
+# Fichiers sensibles / env
+.env
+.env.local
+.env.*.local
