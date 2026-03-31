@@ -98,13 +98,14 @@
                 {% endif %}
                 {% block navSettings %}
                 {% if is_granted('ROLE_SETTINGS_ALL') == true %}
+                {% set inSettings = app.request.attributes.get('_route') in ['dataSettings', 'backup', 'applicationLogs'] %}
                     <li id="settings-nav-item" class="nav-item">
-                        <a class="nav-link collapsed" href="javascript:void(0)" data-toggle="collapse" data-target="#collapseSettings"
-                           aria-expanded="false" aria-controls="collapseSettings">
+                        <a class="nav-link {{ inSettings ? '' : 'collapsed' }}" href="javascript:void(0)" data-toggle="collapse" data-target="#collapseSettings"
+                           aria-expanded="{{ inSettings ? 'true' : 'false' }}" aria-controls="collapseSettings">
                             <i class="fas fa-fw fa-cog"></i>
                             <span>Settings</span>
                         </a>
-                        <div id="collapseSettings" class="collapse" aria-labelledby="headingSettings">
+                        <div id="collapseSettings" class="collapse {{ inSettings ? 'show' : '' }}" aria-labelledby="headingSettings">
                             <div class="bg-white collapse-inner rounded">
                                 <a class="collapse-item" href="{{ path('dataSettings') }}">
                                     <i class="fas fa-fw fa-database"></i>
