@@ -8,7 +8,7 @@
 # Multi-stage build for optimized production image
 # ============================================================================
 
-FROM php:8.1-apache AS base
+FROM php:8.3-apache-bookworm AS base
 
 # Install system dependencies for ALL database drivers
 RUN apt-get update && apt-get install -y \
@@ -28,13 +28,13 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Microsoft ODBC Driver for SQL Server (compatible Debian 13+)
-RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
-    && curl -fsSL https://packages.microsoft.com/config/debian/12/prod.list | tee /etc/apt/sources.list.d/mssql-release.list \
-    && sed -i 's|signed-by=/usr/share/keyrings/microsoft-prod.gpg||g; s|arch=amd64,arm64,armhf ||g' /etc/apt/sources.list.d/mssql-release.list || true \
-    && echo "deb [signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list \
+# Install Microsoft ODBC Driver for SQL Server (Debian 12 bookworm)
+RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
+        | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
+    && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" \
+        > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \
-    && ACCEPT_EULA=Y apt-get install -y msodbcsql18 || true \
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -50,8 +50,8 @@ RUN docker-php-ext-install \
     zip \
     opcache
 
-# Install PHP extensions for SQL Server
-RUN pecl install sqlsrv-5.11.1 pdo_sqlsrv-5.11.1 \
+# Install PHP extensions for SQL Server (latest stable compatible with PHP 8.1)
+RUN pecl install sqlsrv pdo_sqlsrv \
     && docker-php-ext-enable sqlsrv pdo_sqlsrv
 
 # Enable Apache modules
