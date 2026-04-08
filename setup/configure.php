@@ -47,7 +47,7 @@ $timezone = getenv('APP_TIMEZONE') ?: date_default_timezone_get();
 $filesDirectory = realpath(__DIR__ . '/..') . DIRECTORY_SEPARATOR . 'files';
 $maxExecutionTime = 300;
 
-$apiUrl = getProtocol() . '://' . $_SERVER['SERVER_NAME'] . getPort() . parentDirectory(parentDirectory($_SERVER['REQUEST_URI'])) . '/api/';
+$apiUrl = 'http://localhost' . getPort() . parentDirectory(parentDirectory($_SERVER['REQUEST_URI'])) . '/api/';
 
 function validateParameters($databaseName, $host, $databaseUsername, $databasePassword, $adminPassword, $filesDirectory, $apiUrl, $timezone, $maxExecutionTime) {
     if (strlen($databaseName) < 1) {
