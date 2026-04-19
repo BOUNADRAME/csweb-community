@@ -30,7 +30,7 @@ class BackupController extends AbstractController implements TokenAuthenticatedC
 
     #[Route('/backup', name: 'backup', methods: ['GET'])]
     public function viewBackupAction(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted('ROLE_BACKUP_ALL');
         return $this->render('backup.twig');
     }
 

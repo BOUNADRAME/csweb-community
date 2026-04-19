@@ -324,7 +324,9 @@ EOT;
                     (5,'reports_all'),
                     (6,'dictionary_sync_upload'),
                     (7,'dictionary_sync_download'),
-                    (8,'settings_all')
+                    (8,'settings_all'),
+                    (9,'backup_all'),
+                    (10,'logs_all')
                     ;
                     
 EOT;

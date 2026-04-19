@@ -33,6 +33,8 @@ class RolePermissions
     public const DICTIONARY_SYNC_UPLOAD = 6;
     public const DICTIONARY_SYNC_DOWNLOAD  = 7;
     public const SETTINGS_ALL  = 8;
+    public const BACKUP_ALL    = 9;
+    public const LOGS_ALL      = 10;
     
     public $permissions;
     public $dictionaryPermissions;

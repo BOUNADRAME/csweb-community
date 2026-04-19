@@ -108,7 +108,7 @@ class RolesRepository {
                 $count = $this->pdo->fetchAffected($stm, $bind);
 
                 $insertQuery = [];
-                $arrPermissions = [RolePermissions::DATA_ALL, RolePermissions::APPS_ALL, RolePermissions::USERS_ALL, RolePermissions::ROLES_ALL, RolePermissions::SETTINGS_ALL, RolePermissions::REPORTS_ALL];
+                $arrPermissions = [RolePermissions::DATA_ALL, RolePermissions::APPS_ALL, RolePermissions::USERS_ALL, RolePermissions::ROLES_ALL, RolePermissions::SETTINGS_ALL, RolePermissions::REPORTS_ALL, RolePermissions::BACKUP_ALL, RolePermissions::LOGS_ALL];
                 foreach ($arrPermissions as $permissionType) {
                     if ($role->rolePermissions->getPermission($permissionType)) {
                         $insertQuery [] = '(' . $role->id . ', ' . $permissionType . ')';
@@ -120,7 +120,7 @@ class RolesRepository {
                     $this->pdo->fetchAffected($stm);
                 }
 
-                //refresh role dictionary permissions 
+                //refresh role dictionary permissions
                 $stm = 'DELETE FROM cspro_role_dictionary_permissions WHERE role_id = :roleId';
                 $bind = ['roleId' => $role->id];
                 $count = $this->pdo->fetchAffected($stm, $bind);
@@ -175,7 +175,7 @@ class RolesRepository {
                 $count = $this->pdo->fetchAffected($stm, $bind);
 
                 $insertQuery = [];
-                $arrPermissions = [RolePermissions::DATA_ALL, RolePermissions::APPS_ALL, RolePermissions::USERS_ALL, RolePermissions::ROLES_ALL, RolePermissions::SETTINGS_ALL, RolePermissions::REPORTS_ALL];
+                $arrPermissions = [RolePermissions::DATA_ALL, RolePermissions::APPS_ALL, RolePermissions::USERS_ALL, RolePermissions::ROLES_ALL, RolePermissions::SETTINGS_ALL, RolePermissions::REPORTS_ALL, RolePermissions::BACKUP_ALL, RolePermissions::LOGS_ALL];
                 foreach ($arrPermissions as $permissionType) {
                     if ($role->rolePermissions->getPermission($permissionType)) {
                         $insertQuery [] = '(' . $role->id . ', ' . $permissionType . ')';
@@ -186,7 +186,7 @@ class RolesRepository {
                     $stm .= implode(', ', $insertQuery) . ';';
                     $this->pdo->fetchAffected($stm);
                 }
-                //refresh role dictionary permissions 
+                //refresh role dictionary permissions
                 $stm = 'DELETE FROM cspro_role_dictionary_permissions WHERE role_id = :roleId';
                 $bind = ['roleId' => $role->id];
                 $count = $this->pdo->fetchAffected($stm, $bind);

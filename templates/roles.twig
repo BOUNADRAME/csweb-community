@@ -75,6 +75,23 @@
                             </div>
                         </div>
                         <!-- form-group -->
+                        <div class="form-group row">
+                            <div class="col-sm-3 offset-sm-3">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" id="add-backup-checkbox" class="add-checkbox-group"> Backup
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-sm-3">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" id="add-logs-checkbox" class="add-checkbox-group"> Logs
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- form-group -->
                         <!-- Table for dictionary permissions -->
                         <table id="add-data-table" class="table table-striped table-bordered table-hover" style="width:100%"></table>
                         <div class="form-group row">
@@ -163,6 +180,23 @@
                                 <div class="checkbox">
                                     <label>
                                         <input type="checkbox" id="edit-settings-checkbox" class="edit-checkbox-group"> Settings
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- form-group -->
+                        <div class="form-group row">
+                            <div class="col-sm-3 offset-sm-3">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" id="edit-backup-checkbox" class="edit-checkbox-group"> Backup
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-sm-3">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" id="edit-logs-checkbox" class="edit-checkbox-group"> Logs
                                     </label>
                                 </div>
                             </div>
@@ -385,6 +419,8 @@
                         var usersPermission = document.getElementById("add-users-checkbox").checked;
                         var rolesPermission = document.getElementById("add-roles-checkbox").checked;
                         var settingsPermission = document.getElementById("add-settings-checkbox").checked;
+                        var backupPermission = document.getElementById("add-backup-checkbox").checked;
+                        var logsPermission = document.getElementById("add-logs-checkbox").checked;
 
                         var dictionaryPermissions = new Object();
                         var tableData = $('#add-data-table').DataTable().rows().data();
@@ -402,6 +438,8 @@
                                 usersPermission: usersPermission,
                                 rolesPermission: rolesPermission,
                                 settingsPermission: settingsPermission,
+                                backupPermission: backupPermission,
+                                logsPermission: logsPermission,
                                 dictionaryPermissions: dictionaryPermissions
                             }
                         }).then(function (response) {
@@ -447,6 +485,8 @@
                         var usersPermission = document.getElementById("edit-users-checkbox").checked;
                         var rolesPermission = document.getElementById("edit-roles-checkbox").checked;
                         var settingsPermission = document.getElementById("edit-settings-checkbox").checked;
+                        var backupPermission = document.getElementById("edit-backup-checkbox").checked;
+                        var logsPermission = document.getElementById("edit-logs-checkbox").checked;
 
                         var dictionaryPermissions = new Object();
                         var tableData = $('#edit-data-table').DataTable().rows().data();
@@ -465,6 +505,8 @@
                                 usersPermission: usersPermission,
                                 rolesPermission: rolesPermission,
                                 settingsPermission: settingsPermission,
+                                backupPermission: backupPermission,
+                                logsPermission: logsPermission,
                                 dictionaryPermissions: dictionaryPermissions
                             }
                         }).then(function (response) {
@@ -559,6 +601,8 @@
                         var usersPermission = role["rolePermissions"]["permissions"]["3"] === true ? true : false;
                         var rolesPermission = role["rolePermissions"]["permissions"]["4"] === true ? true : false;
                         var settingsPermission = role["rolePermissions"]["permissions"]["8"] === true ? true : false;
+                        var backupPermission = role["rolePermissions"]["permissions"]["9"] === true ? true : false;
+                        var logsPermission = role["rolePermissions"]["permissions"]["10"] === true ? true : false;
 
                         var dataCheckbox = document.getElementById("edit-data-checkbox");
                         dataCheckbox.checked = dataPermission;
@@ -572,6 +616,10 @@
                         rolesCheckbox.checked = rolesPermission;
                         var settingsCheckbox = document.getElementById("edit-settings-checkbox");
                         settingsCheckbox.checked = settingsPermission;
+                        var backupCheckbox = document.getElementById("edit-backup-checkbox");
+                        backupCheckbox.checked = backupPermission;
+                        var logsCheckbox = document.getElementById("edit-logs-checkbox");
+                        logsCheckbox.checked = logsPermission;
 
                         var rowNumber = $(event.target).closest('tr').index();
 
@@ -746,7 +794,27 @@
                                         {title: "Roles", data: function (data, type, row) {
                                                 if (data.name === "Administrator")
                                                     data = "Yes";
-                                                else if (data.rolePermissions[4] === true)
+                                                else if (data.rolePermissions.permissions[4] === true)
+                                                    data = "Yes";
+                                                else
+                                                    data = "No"
+
+                                                return data;
+                                            }},
+                                        {title: "Backup", data: function (data, type, row) {
+                                                if (data.name === "Administrator")
+                                                    data = "Yes";
+                                                else if (data.rolePermissions.permissions[9] === true)
+                                                    data = "Yes";
+                                                else
+                                                    data = "No"
+
+                                                return data;
+                                            }},
+                                        {title: "Logs", data: function (data, type, row) {
+                                                if (data.name === "Administrator")
+                                                    data = "Yes";
+                                                else if (data.rolePermissions.permissions[10] === true)
                                                     data = "Yes";
                                                 else
                                                     data = "No"

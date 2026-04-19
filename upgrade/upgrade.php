@@ -333,12 +333,24 @@ EOT;
                 }
             }
 
+            function schema11To12($pdo) {
+                try {
+                    $pdo->exec("INSERT IGNORE INTO \`cspro_permissions\` (\`id\`, \`name\`) VALUES (9, 'backup_all'), (10, 'logs_all')");
+                    // Grant backup_all and logs_all to Administrator role (id=2)
+                    $pdo->exec("INSERT IGNORE INTO \`cspro_role_permissions\` (\`role_id\`, \`permission_id\`) VALUES (2, 9), (2, 10)");
+                    $pdo->exec("UPDATE \`cspro_config\` SET \`value\`=12 WHERE \`name\` = 'schema_version'");
+                } catch (\Exception $e) {
+                    throw $e;
+                }
+            }
+
             $migrateFuncs = array(
                 5 => 'schema5To6',
                 7 => 'schema7To8',
                 8 => 'schema8To9',
                 9 => 'schema9To10',
-                10 => 'schema10To11'
+                10 => 'schema10To11',
+                11 => 'schema11To12'
             );
 
             // Check if app was already configured
