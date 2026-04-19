@@ -496,6 +496,12 @@ function writeApiConfigFile($databaseName, $host, $databaseUsername, $databasePa
     fwrite($configFile, "define('CSWEB_PROCESS_CASES_LOG_LEVEL', 'error');\n");
     fwrite($configFile, "?>\n");
     fclose($configFile);
+
+    // Persist config.php to Docker volume so it survives container recreations
+    $persistDir = '/var/www/html/config-persist';
+    if (is_dir($persistDir)) {
+        @copy($configFilePath, $persistDir . '/config.php');
+    }
 }
 
 // Make sure that we can reach the API url.
