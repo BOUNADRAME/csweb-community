@@ -262,6 +262,10 @@ Documentation complete : **https://bounadrame.github.io/csweb-community/**
 **Assietou Diagne** - Developer, ANSD
 - Breakout selectif par dictionnaire
 
+**Oumar DIOP** - Census & Survey ICT Expert / International Consultant
+- GitHub: [@copernix2](https://github.com/copernix2)
+- [LinkedIn](https://www.linkedin.com/in/oumardiop/)
+
 ---
 
 ## Production Validee
