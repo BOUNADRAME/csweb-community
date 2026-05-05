@@ -22,49 +22,49 @@ depuis le fichier `.env` :
 
 ### PHP
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PHP_MEMORY_LIMIT` | `512M` | Mémoire max par processus PHP |
-| `PHP_MAX_EXECUTION_TIME` | `300` | Temps max d'exécution (secondes) |
-| `PHP_MAX_INPUT_TIME` | `300` | Temps max de parsing input |
-| `PHP_UPLOAD_MAX_FILESIZE` | `100M` | Taille max d'un fichier uploadé |
-| `PHP_POST_MAX_SIZE` | `100M` | Taille max d'une requête POST |
-| `PHP_SESSION_GC_MAXLIFETIME` | `7200` | Durée de session (secondes) |
-| `PHP_OPCACHE_MEMORY` | `128` | Mémoire OPcache (MB) |
-| `PHP_OPCACHE_MAX_FILES` | `10000` | Nombre max de fichiers en cache |
+| Variable                     | Default | Description                      |
+| ---------------------------- | ------- | -------------------------------- |
+| `PHP_MEMORY_LIMIT`           | `512M`  | Mémoire max par processus PHP    |
+| `PHP_MAX_EXECUTION_TIME`     | `300`   | Temps max d'exécution (secondes) |
+| `PHP_MAX_INPUT_TIME`         | `300`   | Temps max de parsing input       |
+| `PHP_UPLOAD_MAX_FILESIZE`    | `100M`  | Taille max d'un fichier uploadé  |
+| `PHP_POST_MAX_SIZE`          | `100M`  | Taille max d'une requête POST    |
+| `PHP_SESSION_GC_MAXLIFETIME` | `7200`  | Durée de session (secondes)      |
+| `PHP_OPCACHE_MEMORY`         | `128`   | Mémoire OPcache (MB)             |
+| `PHP_OPCACHE_MAX_FILES`      | `10000` | Nombre max de fichiers en cache  |
 
 ### MySQL Metadata
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MYSQL_MAX_CONNECTIONS` | `200` | Connexions simultanées max |
-| `MYSQL_INNODB_BUFFER_POOL_SIZE` | `256M` | Cache InnoDB (75% RAM dispo idéal) |
-| `MYSQL_INNODB_LOG_FILE_SIZE` | `64M` | Taille du journal InnoDB |
-| `MYSQL_SLOW_QUERY_TIME` | `2` | Seuil requête lente (secondes) |
-| `MYSQL_MAX_ALLOWED_PACKET` | `64M` | Taille max d'un paquet |
-| `MYSQL_THREAD_CACHE_SIZE` | `16` | Threads en cache |
-| `MYSQL_TABLE_OPEN_CACHE` | `2000` | Tables ouvertes en cache |
-| `MYSQL_WAIT_TIMEOUT` | `28800` | Timeout connexion inactive (sec) |
+| Variable                        | Default | Description                        |
+| ------------------------------- | ------- | ---------------------------------- |
+| `MYSQL_MAX_CONNECTIONS`         | `200`   | Connexions simultanées max         |
+| `MYSQL_INNODB_BUFFER_POOL_SIZE` | `256M`  | Cache InnoDB (75% RAM dispo idéal) |
+| `MYSQL_INNODB_LOG_FILE_SIZE`    | `64M`   | Taille du journal InnoDB           |
+| `MYSQL_SLOW_QUERY_TIME`         | `2`     | Seuil requête lente (secondes)     |
+| `MYSQL_MAX_ALLOWED_PACKET`      | `64M`   | Taille max d'un paquet             |
+| `MYSQL_THREAD_CACHE_SIZE`       | `16`    | Threads en cache                   |
+| `MYSQL_TABLE_OPEN_CACHE`        | `2000`  | Tables ouvertes en cache           |
+| `MYSQL_WAIT_TIMEOUT`            | `28800` | Timeout connexion inactive (sec)   |
 
 ### PostgreSQL Breakout
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PG_MAX_CONNECTIONS` | `200` | Connexions simultanées max |
-| `PG_SHARED_BUFFERS` | `256MB` | Cache partagé (25% RAM dispo idéal) |
-| `PG_EFFECTIVE_CACHE_SIZE` | `1GB` | Estimation cache OS (50-75% RAM) |
-| `PG_WORK_MEM` | `4MB` | Mémoire par opération de tri |
-| `PG_MAINTENANCE_WORK_MEM` | `64MB` | Mémoire pour VACUUM, CREATE INDEX |
+| Variable                  | Default | Description                         |
+| ------------------------- | ------- | ----------------------------------- |
+| `PG_MAX_CONNECTIONS`      | `200`   | Connexions simultanées max          |
+| `PG_SHARED_BUFFERS`       | `256MB` | Cache partagé (25% RAM dispo idéal) |
+| `PG_EFFECTIVE_CACHE_SIZE` | `1GB`   | Estimation cache OS (50-75% RAM)    |
+| `PG_WORK_MEM`             | `4MB`   | Mémoire par opération de tri        |
+| `PG_MAINTENANCE_WORK_MEM` | `64MB`  | Mémoire pour VACUUM, CREATE INDEX   |
 
 ### Apache MPM Prefork
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `APACHE_MAX_REQUEST_WORKERS` | `150` | Processus Apache max (= users simultanés) |
-| `APACHE_SERVER_LIMIT` | `150` | Limite serveur (doit être >= MaxRequestWorkers) |
-| `APACHE_KEEP_ALIVE_TIMEOUT` | `5` | Timeout keep-alive (secondes) |
-| `APACHE_MAX_KEEP_ALIVE_REQUESTS` | `100` | Requêtes max par connexion keep-alive |
-| `APACHE_TIMEOUT` | `300` | Timeout requête (secondes) |
+| Variable                         | Default | Description                                     |
+| -------------------------------- | ------- | ----------------------------------------------- |
+| `APACHE_MAX_REQUEST_WORKERS`     | `150`   | Processus Apache max (= users simultanés)       |
+| `APACHE_SERVER_LIMIT`            | `150`   | Limite serveur (doit être >= MaxRequestWorkers) |
+| `APACHE_KEEP_ALIVE_TIMEOUT`      | `5`     | Timeout keep-alive (secondes)                   |
+| `APACHE_MAX_KEEP_ALIVE_REQUESTS` | `100`   | Requêtes max par connexion keep-alive           |
+| `APACHE_TIMEOUT`                 | `300`   | Timeout requête (secondes)                      |
 
 ---
 
@@ -149,6 +149,7 @@ RAM_TOTALE >= (APACHE_MAX_REQUEST_WORKERS * PHP_MEMORY_LIMIT)
 ```
 
 **Exemple** pour 150 workers avec 512M :
+
 ```
 150 * 512MB + 512MB + 512MB + 1GB = ~78GB (théorique max)
 ```
@@ -196,3 +197,13 @@ docker exec csweb-app php bin/console csweb:check-config --json
 2. Recréer les containers : `docker-compose up -d`
 3. Vérifier : `docker exec csweb-app php bin/console csweb:check-config`
 4. Pour PHP uniquement, vérifier avec : `docker exec csweb-app php -i | grep memory_limit`
+
+curl -X POST http://kairoskats.com:8080/api/token \
+ -H "Content-Type: application/json" \
+ -d '{
+"client_id": "cspro_android",
+"client_secret": "cspro",
+"grant_type": "password",
+"username": "admin",
+"password": "nJnY4Z9tOIjKDWMGC7Hr"
+}'
