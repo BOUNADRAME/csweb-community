@@ -2,8 +2,6 @@
 /**
  * CSPro Breakout Status Webhook
  *
- * Deploy to: /var/www/html/breakout-status-webhook.php
- *
  * Returns breakout status for one or more dictionaries:
  *   - breakout configured (yes/no)
  *   - cron enabled + expression
@@ -15,7 +13,7 @@
  *   - last_processed_time, last_run, next_run
  *
  * Environment:
- *   - BREAKOUT_WEBHOOK_TOKEN: shared secret token
+ *   - BREAKOUT_WEBHOOK_TOKEN: shared secret token (required)
  *
  * Usage:
  *   GET /breakout-status-webhook.php
@@ -25,25 +23,24 @@
  *   GET /breakout-status-webhook.php?breakout_configured=true
  *   GET /breakout-status-webhook.php?page=1&limit=20
  *   Authorization: Bearer <token>
+ *
+ * Response shape (uniform across all webhooks):
+ *   { success, data, error, meta? }
  */
 
-header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/webhook_helper.php';
 
-// ---- Configuration ----
-$expectedToken = getenv('BREAKOUT_WEBHOOK_TOKEN') ?: 'kairos_breakout_2024';
+requireMethod(['GET']);
+requireBearerToken();
 
+// Load CSWeb DB config
 $configFile = __DIR__ . '/src/AppBundle/config.php';
 if (!file_exists($configFile)) {
-    jsonResponse(500, ['success' => false, 'error' => 'CSWeb config.php not found at: ' . $configFile]);
+    respondError('server_misconfigured', 'CSWeb config.php not found at: ' . $configFile, 500);
 }
 require_once $configFile;
 
 // ---- Helpers ----
-function jsonResponse(int $httpCode, array $data): void {
-    http_response_code($httpCode);
-    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-    exit;
-}
 
 function getDbConnection(): PDO {
     $dsn = sprintf('mysql:host=%s;dbname=%s;charset=utf8mb4', DBHOST, DBNAME);
@@ -53,6 +50,7 @@ function getDbConnection(): PDO {
     ]);
 }
 
+/** @param array<string,mixed> $row */
 function getTargetDbConnection(array $row): ?PDO {
     try {
         $driver = match (strtolower($row['db_type'] ?? 'postgresql')) {
@@ -60,7 +58,7 @@ function getTargetDbConnection(array $row): ?PDO {
             'sqlserver' => 'sqlsrv',
             default     => 'pgsql',
         };
-        $port = !empty($row['port']) ? (int)$row['port'] : null;
+        $port = !empty($row['port']) ? (int) $row['port'] : null;
         if ($driver === 'mysql') {
             $dsn = 'mysql:host=' . $row['host_name'] . ($port ? ';port=' . $port : '') . ';dbname=' . $row['schema_name'] . ';charset=utf8mb4';
         } elseif ($driver === 'sqlsrv') {
@@ -77,38 +75,33 @@ function getTargetDbConnection(array $row): ?PDO {
     }
 }
 
-// ---- Token validation ----
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    jsonResponse(405, ['success' => false, 'error' => 'Method not allowed. Use GET.']);
-}
-
-$authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-if (!preg_match('/^Bearer\s+(.+)$/i', $authHeader, $matches)) {
-    jsonResponse(401, ['success' => false, 'error' => 'Missing or invalid Authorization header. Expected: Bearer <token>']);
-}
-if (!hash_equals($expectedToken, $matches[1])) {
-    jsonResponse(401, ['success' => false, 'error' => 'Invalid token']);
-}
-
 // ---- Parse query params ----
-$page  = max(1, (int)($_GET['page'] ?? 1));
-$limit = min(100, max(1, (int)($_GET['limit'] ?? 20)));
+$page  = max(1, (int) ($_GET['page'] ?? 1));
+$limit = min(100, max(1, (int) ($_GET['limit'] ?? 20)));
 $offset = ($page - 1) * $limit;
 
-// Filters
 $filterDictionary  = trim($_GET['dictionary'] ?? '');
-$filterDictionaries = array_filter(array_map('trim', explode(',', $_GET['dictionaries'] ?? '')));
+// Cap at 100 entries to bound the SQL IN(...) clause.
+$filterDictionaries = array_slice(
+    array_filter(array_map('trim', explode(',', $_GET['dictionaries'] ?? ''))),
+    0,
+    100
+);
 $filterCronEnabled = isset($_GET['cron_enabled']) ? ($_GET['cron_enabled'] === 'true') : null;
 $filterConfigured  = isset($_GET['breakout_configured']) ? ($_GET['breakout_configured'] === 'true') : null;
 
-// ---- Query ----
-$pdo = getDbConnection();
+// ---- Build query ----
+try {
+    $pdo = getDbConnection();
+} catch (\Throwable $e) {
+    respondError('internal_error', 'Database connection failed.', 500);
+}
 
 $where  = [];
 $params = [];
 
 if ($filterDictionary !== '') {
-    $where[]  = 'd.dictionary_name = :dict_single';
+    $where[] = 'd.dictionary_name = :dict_single';
     $params[':dict_single'] = strtoupper($filterDictionary);
 } elseif (!empty($filterDictionaries)) {
     $placeholders = implode(',', array_map(fn($i) => ':dict_' . $i, array_keys($filterDictionaries)));
@@ -132,70 +125,72 @@ if ($filterCronEnabled === true) {
 
 $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
-// Count total
-$countSql = "
-    SELECT COUNT(*) FROM cspro_dictionaries d
-    LEFT JOIN cspro_dictionaries_schema s ON s.dictionary_id = d.id
-    LEFT JOIN cspro_breakout_scheduler sch ON sch.dictionary_id = d.id
-    $whereClause
-";
-$countStmt = $pdo->prepare($countSql);
-$countStmt->execute($params);
-$total = (int)$countStmt->fetchColumn();
-$pages = (int)ceil($total / $limit);
+try {
+    // Count total
+    $countSql = "
+        SELECT COUNT(*) FROM cspro_dictionaries d
+        LEFT JOIN cspro_dictionaries_schema s ON s.dictionary_id = d.id
+        LEFT JOIN cspro_breakout_scheduler sch ON sch.dictionary_id = d.id
+        $whereClause
+    ";
+    $countStmt = $pdo->prepare($countSql);
+    $countStmt->execute($params);
+    $total = (int) $countStmt->fetchColumn();
+    $pages = (int) ceil($total / $limit);
 
-// Fetch rows
-$dataSql = "
-    SELECT
-        d.id,
-        d.dictionary_name,
-        d.dictionary_label,
-        (s.dictionary_id IS NOT NULL)     AS breakout_configured,
-        s.host_name,
-        s.port,
-        s.db_type,
-        s.schema_name,
-        s.schema_user_name,
-        AES_DECRYPT(s.schema_password, 'cspro') AS schema_password_plain,
-        COALESCE(sch.enabled, 0)          AS cron_enabled,
-        sch.cron_expression,
-        sch.last_run,
-        sch.next_run,
-        sch.last_exit_code
-    FROM cspro_dictionaries d
-    LEFT JOIN cspro_dictionaries_schema s ON s.dictionary_id = d.id
-    LEFT JOIN cspro_breakout_scheduler sch ON sch.dictionary_id = d.id
-    $whereClause
-    ORDER BY d.dictionary_name
-    LIMIT :limit OFFSET :offset
-";
+    // Fetch rows
+    $dataSql = "
+        SELECT
+            d.id,
+            d.dictionary_name,
+            d.dictionary_label,
+            (s.dictionary_id IS NOT NULL)     AS breakout_configured,
+            s.host_name,
+            s.port,
+            s.db_type,
+            s.schema_name,
+            s.schema_user_name,
+            AES_DECRYPT(s.schema_password, 'cspro') AS schema_password_plain,
+            COALESCE(sch.enabled, 0)          AS cron_enabled,
+            sch.cron_expression,
+            sch.last_run,
+            sch.next_run,
+            sch.last_exit_code
+        FROM cspro_dictionaries d
+        LEFT JOIN cspro_dictionaries_schema s ON s.dictionary_id = d.id
+        LEFT JOIN cspro_breakout_scheduler sch ON sch.dictionary_id = d.id
+        $whereClause
+        ORDER BY d.dictionary_name
+        LIMIT :limit OFFSET :offset
+    ";
 
-$stmt = $pdo->prepare($dataSql);
-foreach ($params as $k => $v) {
-    $stmt->bindValue($k, $v);
+    $stmt = $pdo->prepare($dataSql);
+    foreach ($params as $k => $v) {
+        $stmt->bindValue($k, $v);
+    }
+    $stmt->bindValue(':limit',  $limit,  PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
+    $rows = $stmt->fetchAll();
+} catch (\Throwable $e) {
+    respondError('internal_error', 'Failed to query dictionaries.', 500);
 }
-$stmt->bindValue(':limit',  $limit,  PDO::PARAM_INT);
-$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-$stmt->execute();
-$rows = $stmt->fetchAll();
 
-// ---- Build response per dictionary ----
+// ---- Build response ----
 $data = [];
 
 foreach ($rows as $row) {
     $dictName   = $row['dictionary_name'];
-    $configured = (bool)$row['breakout_configured'];
+    $configured = (bool) $row['breakout_configured'];
 
-    // Source DB: total cases (non deleted)
     $totalCases = 0;
     try {
-        $src = $pdo->query("SELECT COUNT(*) FROM `$dictName` WHERE `deleted` = 0");
-        $totalCases = (int)$src->fetchColumn();
+        $src = $pdo->query("SELECT COUNT(*) FROM `" . str_replace('`', '``', $dictName) . "` WHERE `deleted` = 0");
+        $totalCases = (int) $src->fetchColumn();
     } catch (\Exception $e) {
-        // Table may not exist yet
+        // Source table may not exist yet — keep totalCases at 0.
     }
 
-    // Target DB: processed cases + last_processed_time
     $processedCases    = null;
     $lastProcessedTime = null;
 
@@ -204,7 +199,7 @@ foreach ($rows as $row) {
         $targetConn  = getTargetDbConnection($row);
         if ($targetConn) {
             try {
-                $processedCases = (int)$targetConn->query("SELECT COUNT(*) FROM {$tablePrefix}cases WHERE deleted = 0")->fetchColumn();
+                $processedCases = (int) $targetConn->query("SELECT COUNT(*) FROM {$tablePrefix}cases WHERE deleted = 0")->fetchColumn();
             } catch (\Exception $e) {
                 $processedCases = null;
             }
@@ -233,11 +228,11 @@ foreach ($rows as $row) {
         'target_host'          => $configured ? ($row['host_name'] . ($row['port'] ? ':' . $row['port'] : '')) : null,
         'target_schema'        => $configured ? $row['schema_name'] : null,
         'db_type'              => $configured ? ($row['db_type'] ?? 'postgresql') : null,
-        'cron_enabled'         => (bool)$row['cron_enabled'],
+        'cron_enabled'         => (bool) $row['cron_enabled'],
         'cron_expression'      => $row['cron_expression'],
         'last_run'             => $row['last_run'],
         'next_run'             => $row['next_run'],
-        'last_exit_code'       => $row['last_exit_code'] !== null ? (int)$row['last_exit_code'] : null,
+        'last_exit_code'       => $row['last_exit_code'] !== null ? (int) $row['last_exit_code'] : null,
         'total_cases'          => $totalCases,
         'processed_cases'      => $processedCases,
         'cases_pending'        => $casesPending,
@@ -247,11 +242,9 @@ foreach ($rows as $row) {
     ];
 }
 
-jsonResponse(200, [
-    'success' => true,
-    'total'   => $total,
-    'page'    => $page,
-    'pages'   => $pages,
-    'limit'   => $limit,
-    'data'    => $data,
+respondSuccess($data, [
+    'total' => $total,
+    'page'  => $page,
+    'pages' => $pages,
+    'limit' => $limit,
 ]);

@@ -2,83 +2,94 @@
 /**
  * CSPro Dictionary Schema Webhook
  *
- * Deploy to: /var/www/html/kairos/dictionary-schema-webhook.php
- *
- * Manages the `cspro_dictionaries_schema` table which configures breakout
- * output destinations (MySQL schema for each dictionary).
+ * Manages the `cspro_dictionaries_schema` table (breakout output destinations).
  *
  * Environment:
- *   - BREAKOUT_WEBHOOK_TOKEN: shared secret token (must match CSPRO_WEBHOOK_TOKEN in Kairos)
+ *   - BREAKOUT_WEBHOOK_TOKEN: shared secret token (required)
  *
- * GET Actions:
- *   ?action=list                  — List all dictionaries with schema configuration status
- *   ?action=status&dictionary_id=3 — Get schema status for a specific dictionary
+ * GET:
+ *   ?action=list
+ *   ?action=status&dictionary_id=3   (or &dictionary_name=FOO_DICT)
  *
- * POST Actions (JSON body):
- *   action=register   — Register/update schema for a dictionary
- *   action=unregister — Remove schema configuration for a dictionary
+ * POST (JSON body):
+ *   { "action": "register",  "dictionary_id": 3 OR "dictionary_name": "FOO_DICT",
+ *     "host_name": "...", "schema_name": "...", "schema_user_name": "...", "schema_password": "..." }
+ *   { "action": "unregister", "dictionary_id": 3 OR "dictionary_name": "FOO_DICT" }
+ *
+ * Response shape: { success, data, error, meta? }
  */
 
-header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/webhook_helper.php';
 
-// ---- Configuration ----
-$expectedToken = getenv('BREAKOUT_WEBHOOK_TOKEN') ?: 'kairos_breakout_2024';
+requireMethod(['GET', 'POST']);
+requireBearerToken();
 
-// Load CSWeb database config
+// Load CSWeb DB config
 $configFile = __DIR__ . '/src/AppBundle/config.php';
 if (!file_exists($configFile)) {
-    jsonResponse(500, [
-        'success' => false,
-        'error'   => 'CSWeb config.php not found at: ' . $configFile,
-    ]);
+    respondError('server_misconfigured', 'CSWeb config.php not found at: ' . $configFile, 500);
 }
 require_once $configFile;
 
-// ---- Helpers ----
-function jsonResponse(int $httpCode, array $data): void {
-    http_response_code($httpCode);
-    echo json_encode($data, JSON_UNESCAPED_UNICODE);
-    exit;
-}
-
 function getDbConnection(): PDO {
     $dsn = sprintf('mysql:host=%s;dbname=%s;charset=utf8mb4', DBHOST, DBNAME);
-    $pdo = new PDO($dsn, DBUSER, DBPASS, [
+    return new PDO($dsn, DBUSER, DBPASS, [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
-    return $pdo;
 }
 
-// ---- Token validation ----
-$authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-if (!preg_match('/^Bearer\s+(.+)$/i', $authHeader, $matches)) {
-    jsonResponse(401, [
-        'success' => false,
-        'error'   => 'Missing or invalid Authorization header. Expected: Bearer <token>',
-    ]);
+/**
+ * Resolve a dictionary by id or by name (one of the two must be supplied).
+ * Returns the row or null if not found.
+ *
+ * @return array{id:int, dictionary_name:string, dictionary_label:string}|null
+ */
+function findDictionary(PDO $pdo, ?int $id, ?string $name): ?array {
+    if ($id !== null) {
+        $stmt = $pdo->prepare('SELECT id, dictionary_name, dictionary_label FROM cspro_dictionaries WHERE id = ?');
+        $stmt->execute([$id]);
+    } elseif ($name !== null) {
+        $stmt = $pdo->prepare('SELECT id, dictionary_name, dictionary_label FROM cspro_dictionaries WHERE dictionary_name = ?');
+        $stmt->execute([strtoupper($name)]);
+    } else {
+        return null;
+    }
+    $row = $stmt->fetch();
+    return $row ?: null;
 }
 
-$providedToken = $matches[1];
-if ($expectedToken === '' || !hash_equals($expectedToken, $providedToken)) {
-    jsonResponse(401, [
-        'success' => false,
-        'error'   => 'Invalid token',
-    ]);
+/**
+ * Extract dictionary_id (int) or dictionary_name (string) from a request payload.
+ *
+ * @param array<string,mixed> $src
+ * @return array{0:?int, 1:?string}
+ */
+function extractDictionaryRef(array $src): array {
+    $id = null;
+    if (isset($src['dictionary_id'])) {
+        if (!ctype_digit((string) $src['dictionary_id']) || (int) $src['dictionary_id'] < 1) {
+            respondError('invalid_body', '"dictionary_id" must be a positive integer.', 400);
+        }
+        $id = (int) $src['dictionary_id'];
+    }
+    $name = null;
+    if (isset($src['dictionary_name']) && trim((string) $src['dictionary_name']) !== '') {
+        $name = trim((string) $src['dictionary_name']);
+        if (!preg_match('/^[A-Z0-9_]+$/', $name)) {
+            respondError('invalid_dictionary', 'Invalid dictionary_name. Must match: ^[A-Z0-9_]+$.', 400);
+        }
+    }
+    return [$id, $name];
 }
 
-// ---- Route by method ----
+// ---- Route ----
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
     handleGet();
-} elseif ($method === 'POST') {
-    handlePost();
 } else {
-    jsonResponse(405, [
-        'success' => false,
-        'error'   => 'Method not allowed. Use GET or POST.',
-    ]);
+    handlePost();
 }
 
 // ---- GET handlers ----
@@ -88,186 +99,237 @@ function handleGet(): void {
     if ($action === 'list') {
         listDictionaries();
     } elseif ($action === 'status') {
-        $dictionaryId = $_GET['dictionary_id'] ?? '';
-        if (!ctype_digit($dictionaryId) || (int)$dictionaryId < 1) {
-            jsonResponse(400, [
-                'success' => false,
-                'error'   => 'Parameter "dictionary_id" must be a positive integer',
-            ]);
+        [$id, $name] = extractDictionaryRef($_GET);
+        if ($id === null && $name === null) {
+            respondError('invalid_body', 'Provide either "dictionary_id" or "dictionary_name".', 400);
         }
-        getDictionaryStatus((int)$dictionaryId);
+        getDictionaryStatus($id, $name);
     } else {
-        jsonResponse(400, [
-            'success' => false,
-            'error'   => 'Missing or invalid "action" parameter. Use: list, status',
-        ]);
+        respondError('invalid_action', 'Missing or invalid "action". Use: list, status.', 400);
     }
 }
 
 function listDictionaries(): void {
-    $pdo = getDbConnection();
-    $stmt = $pdo->query('
-        SELECT d.id, d.dictionary_name, d.dictionary_label,
-               (s.dictionary_id IS NOT NULL) AS configured,
-               s.host_name, s.schema_name, s.schema_user_name
-        FROM cspro_dictionaries d
-        LEFT JOIN cspro_dictionaries_schema s ON d.id = s.dictionary_id
-        ORDER BY d.dictionary_name
-    ');
-    $rows = $stmt->fetchAll();
-
-    // Cast configured to boolean
-    foreach ($rows as &$row) {
-        $row['configured'] = (bool)$row['configured'];
-        $row['id'] = (int)$row['id'];
+    try {
+        $pdo = getDbConnection();
+        $stmt = $pdo->query('
+            SELECT d.id, d.dictionary_name, d.dictionary_label,
+                   (s.dictionary_id IS NOT NULL) AS configured,
+                   s.host_name, s.schema_name, s.schema_user_name
+            FROM cspro_dictionaries d
+            LEFT JOIN cspro_dictionaries_schema s ON d.id = s.dictionary_id
+            ORDER BY d.dictionary_name
+        ');
+        $rows = $stmt->fetchAll();
+    } catch (\Throwable $e) {
+        respondError('internal_error', 'Failed to list dictionaries.', 500);
     }
 
-    jsonResponse(200, [
-        'success'      => true,
-        'dictionaries' => $rows,
-        'total'        => count($rows),
-    ]);
+    foreach ($rows as &$row) {
+        $row['configured'] = (bool) $row['configured'];
+        $row['id'] = (int) $row['id'];
+    }
+    unset($row);
+
+    respondSuccess($rows, ['total' => count($rows)]);
 }
 
-function getDictionaryStatus(int $dictionaryId): void {
-    $pdo = getDbConnection();
-    $stmt = $pdo->prepare('
-        SELECT d.id, d.dictionary_name, d.dictionary_label,
-               (s.dictionary_id IS NOT NULL) AS configured,
-               s.host_name, s.schema_name, s.schema_user_name
-        FROM cspro_dictionaries d
-        LEFT JOIN cspro_dictionaries_schema s ON d.id = s.dictionary_id
-        WHERE d.id = ?
-    ');
-    $stmt->execute([$dictionaryId]);
-    $row = $stmt->fetch();
-
-    if (!$row) {
-        jsonResponse(404, [
-            'success' => false,
-            'error'   => 'Dictionary not found with id: ' . $dictionaryId,
-        ]);
+function getDictionaryStatus(?int $id, ?string $name): void {
+    try {
+        $pdo = getDbConnection();
+        if ($id !== null) {
+            $stmt = $pdo->prepare('
+                SELECT d.id, d.dictionary_name, d.dictionary_label,
+                       (s.dictionary_id IS NOT NULL) AS configured,
+                       s.host_name, s.schema_name, s.schema_user_name
+                FROM cspro_dictionaries d
+                LEFT JOIN cspro_dictionaries_schema s ON d.id = s.dictionary_id
+                WHERE d.id = ?
+            ');
+            $stmt->execute([$id]);
+        } else {
+            $stmt = $pdo->prepare('
+                SELECT d.id, d.dictionary_name, d.dictionary_label,
+                       (s.dictionary_id IS NOT NULL) AS configured,
+                       s.host_name, s.schema_name, s.schema_user_name
+                FROM cspro_dictionaries d
+                LEFT JOIN cspro_dictionaries_schema s ON d.id = s.dictionary_id
+                WHERE d.dictionary_name = ?
+            ');
+            $stmt->execute([strtoupper((string) $name)]);
+        }
+        $row = $stmt->fetch();
+    } catch (\Throwable $e) {
+        respondError('internal_error', 'Failed to read dictionary.', 500);
     }
 
-    $row['configured'] = (bool)$row['configured'];
-    $row['id'] = (int)$row['id'];
+    if (!$row) {
+        respondError('dictionary_not_found', 'Dictionary not found.', 404);
+    }
 
-    jsonResponse(200, [
-        'success'    => true,
-        'dictionary' => $row,
-    ]);
+    $row['configured'] = (bool) $row['configured'];
+    $row['id'] = (int) $row['id'];
+
+    respondSuccess($row);
 }
 
 // ---- POST handlers ----
 function handlePost(): void {
-    $body = json_decode(file_get_contents('php://input'), true);
+    $body = readJsonBody();
     if (!$body || empty($body['action'])) {
-        jsonResponse(400, [
-            'success' => false,
-            'error'   => 'Missing "action" in request body. Use: register, unregister',
-        ]);
+        respondError('invalid_body', 'Missing "action" in request body. Use: register, unregister.', 400);
     }
 
     $action = $body['action'];
-
     if ($action === 'register') {
         registerSchema($body);
     } elseif ($action === 'unregister') {
         unregisterSchema($body);
     } else {
-        jsonResponse(400, [
-            'success' => false,
-            'error'   => 'Invalid action: ' . $action . '. Use: register, unregister',
-        ]);
+        respondError('invalid_action', 'Invalid action: ' . $action . '. Use: register, unregister.', 400);
     }
 }
 
+/**
+ * Hostname validation for breakout target databases.
+ *
+ * Pragmatic policy — accept anything that is syntactically a hostname or IP,
+ * reject only obvious garbage and known-dangerous ranges:
+ *
+ *   - DNS hostnames matching RFC 952/1123 → accepted (public, internal, .local)
+ *   - IPv4 / IPv6 valid literals → accepted (private, public, loopback)
+ *   - IPv4 link-local 169.254/16 → REJECTED (cloud-metadata SSRF, no legitimate DB use)
+ *
+ * Rationale: in production the breakout target may change at any time
+ * (failover, migration, customer-supplied host) and operators cannot be
+ * forced to maintain a static allowlist. The webhook is already gated by
+ * a Bearer token strong enough to keep this surface trustworthy.
+ */
+function isValidHostname(string $h): bool {
+    if ($h === '' || strlen($h) > 253) {
+        return false;
+    }
+
+    if (filter_var($h, FILTER_VALIDATE_IP)) {
+        // Always reject IPv4 link-local (169.254/16): this covers the
+        // AWS/GCP/Azure instance-metadata IP (169.254.169.254) used for
+        // credential theft via SSRF. No legitimate database lives there.
+        if (preg_match('/^169\.254\./', $h)) {
+            return false;
+        }
+        return true;
+    }
+
+    // DNS hostname (RFC 952/1123 simplified): letters/digits/dots/hyphens,
+    // no leading or trailing dot/hyphen, length 1..253.
+    return (bool) preg_match(
+        '/^(?=.{1,253}$)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/',
+        $h
+    );
+}
+
+/** @param array<string,mixed> $body */
 function registerSchema(array $body): void {
-    // Validate required fields
-    $required = ['dictionary_id', 'host_name', 'schema_name', 'schema_user_name', 'schema_password'];
+    $required = ['host_name', 'schema_name', 'schema_user_name', 'schema_password'];
     foreach ($required as $field) {
         if (empty($body[$field])) {
-            jsonResponse(400, [
-                'success' => false,
-                'error'   => 'Missing required field: ' . $field,
-            ]);
+            respondError('invalid_body', 'Missing required field: ' . $field, 400);
         }
     }
 
-    $dictionaryId = (int)$body['dictionary_id'];
-    if ($dictionaryId < 1) {
-        jsonResponse(400, [
-            'success' => false,
-            'error'   => '"dictionary_id" must be a positive integer',
-        ]);
+    // Length / charset constraints to prevent absurd inputs landing in DB.
+    if (!isValidHostname((string) $body['host_name'])) {
+        respondError('invalid_body', 'Invalid host_name (must be a valid hostname or IP).', 400);
+    }
+    if (strlen((string) $body['schema_name']) > 64
+        || !preg_match('/^[a-zA-Z0-9_]+$/', (string) $body['schema_name'])) {
+        respondError('invalid_body', 'Invalid schema_name (alphanumeric/underscore, max 64 chars).', 400);
+    }
+    if (strlen((string) $body['schema_user_name']) > 64) {
+        respondError('invalid_body', 'schema_user_name too long (max 64 chars).', 400);
+    }
+    if (strlen((string) $body['schema_password']) > 256) {
+        respondError('invalid_body', 'schema_password too long (max 256 chars).', 400);
     }
 
-    $pdo = getDbConnection();
-
-    // Verify dictionary exists
-    $check = $pdo->prepare('SELECT id FROM cspro_dictionaries WHERE id = ?');
-    $check->execute([$dictionaryId]);
-    if (!$check->fetch()) {
-        jsonResponse(404, [
-            'success' => false,
-            'error'   => 'Dictionary not found with id: ' . $dictionaryId,
-        ]);
+    [$id, $name] = extractDictionaryRef($body);
+    if ($id === null && $name === null) {
+        respondError('invalid_body', 'Provide either "dictionary_id" or "dictionary_name".', 400);
     }
 
-    $stmt = $pdo->prepare('
-        INSERT INTO cspro_dictionaries_schema
-            (dictionary_id, host_name, schema_name, schema_user_name, schema_password, modified_time, created_time)
-        VALUES (?, ?, ?, ?, ?, NOW(), NOW())
-        ON DUPLICATE KEY UPDATE
-            host_name = VALUES(host_name),
-            schema_name = VALUES(schema_name),
-            schema_user_name = VALUES(schema_user_name),
-            schema_password = VALUES(schema_password),
-            modified_time = NOW()
-    ');
-    $stmt->execute([
-        $dictionaryId,
-        $body['host_name'],
-        $body['schema_name'],
-        $body['schema_user_name'],
-        $body['schema_password'],
-    ]);
+    try {
+        $pdo = getDbConnection();
+        $dict = findDictionary($pdo, $id, $name);
+    } catch (\Throwable $e) {
+        respondError('internal_error', 'Failed to read dictionary.', 500);
+    }
 
-    jsonResponse(200, [
-        'success'       => true,
-        'message'       => 'Schema registered for dictionary_id=' . $dictionaryId,
-        'dictionary_id' => $dictionaryId,
+    if (!$dict) {
+        respondError('dictionary_not_found', 'Dictionary not found.', 404);
+    }
+
+    try {
+        // schema_password is stored AES-encrypted to stay consistent with the legacy
+        // CSWeb code path that reads it via AES_DECRYPT(s.schema_password, 'cspro').
+        $stmt = $pdo->prepare("
+            INSERT INTO cspro_dictionaries_schema
+                (dictionary_id, host_name, schema_name, schema_user_name, schema_password, modified_time, created_time)
+            VALUES (?, ?, ?, ?, AES_ENCRYPT(?, 'cspro'), NOW(), NOW())
+            ON DUPLICATE KEY UPDATE
+                host_name = VALUES(host_name),
+                schema_name = VALUES(schema_name),
+                schema_user_name = VALUES(schema_user_name),
+                schema_password = VALUES(schema_password),
+                modified_time = NOW()
+        ");
+        $stmt->execute([
+            $dict['id'],
+            $body['host_name'],
+            $body['schema_name'],
+            $body['schema_user_name'],
+            $body['schema_password'],
+        ]);
+    } catch (\Throwable $e) {
+        respondError('internal_error', 'Failed to register schema.', 500);
+    }
+
+    respondSuccess([
+        'dictionary_id'   => (int) $dict['id'],
+        'dictionary_name' => $dict['dictionary_name'],
+        'message'         => 'Schema registered.',
     ]);
 }
 
+/** @param array<string,mixed> $body */
 function unregisterSchema(array $body): void {
-    if (empty($body['dictionary_id'])) {
-        jsonResponse(400, [
-            'success' => false,
-            'error'   => 'Missing required field: dictionary_id',
-        ]);
+    [$id, $name] = extractDictionaryRef($body);
+    if ($id === null && $name === null) {
+        respondError('invalid_body', 'Provide either "dictionary_id" or "dictionary_name".', 400);
     }
 
-    $dictionaryId = (int)$body['dictionary_id'];
-    if ($dictionaryId < 1) {
-        jsonResponse(400, [
-            'success' => false,
-            'error'   => '"dictionary_id" must be a positive integer',
-        ]);
+    try {
+        $pdo = getDbConnection();
+        $dict = findDictionary($pdo, $id, $name);
+    } catch (\Throwable $e) {
+        respondError('internal_error', 'Failed to read dictionary.', 500);
     }
 
-    $pdo = getDbConnection();
-    $stmt = $pdo->prepare('DELETE FROM cspro_dictionaries_schema WHERE dictionary_id = ?');
-    $stmt->execute([$dictionaryId]);
+    if (!$dict) {
+        respondError('dictionary_not_found', 'Dictionary not found.', 404);
+    }
 
-    $deleted = $stmt->rowCount() > 0;
+    try {
+        $stmt = $pdo->prepare('DELETE FROM cspro_dictionaries_schema WHERE dictionary_id = ?');
+        $stmt->execute([$dict['id']]);
+        $deleted = $stmt->rowCount() > 0;
+    } catch (\Throwable $e) {
+        respondError('internal_error', 'Failed to unregister schema.', 500);
+    }
 
-    jsonResponse(200, [
-        'success'       => true,
-        'deleted'       => $deleted,
-        'message'       => $deleted
-            ? 'Schema unregistered for dictionary_id=' . $dictionaryId
-            : 'No schema was configured for dictionary_id=' . $dictionaryId,
-        'dictionary_id' => $dictionaryId,
+    respondSuccess([
+        'dictionary_id'   => (int) $dict['id'],
+        'dictionary_name' => $dict['dictionary_name'],
+        'deleted'         => $deleted,
+        'message'         => $deleted ? 'Schema unregistered.' : 'No schema was configured.',
     ]);
 }
