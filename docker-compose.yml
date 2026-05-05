@@ -96,6 +96,11 @@ services:
       - APACHE_MAX_KEEP_ALIVE_REQUESTS=${APACHE_MAX_KEEP_ALIVE_REQUESTS:-100}
       - APACHE_TIMEOUT=${APACHE_TIMEOUT:-300}
 
+      # Webhooks shared secret (used by breakout-*-webhook.php at repo root)
+      - BREAKOUT_WEBHOOK_TOKEN=${BREAKOUT_WEBHOOK_TOKEN}
+      # Filesystem root used by webhooks to locate var/logs etc.
+      - CSWEB_ROOT=${CSWEB_ROOT:-/var/www/html}
+
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
