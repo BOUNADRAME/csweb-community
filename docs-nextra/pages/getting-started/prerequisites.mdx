@@ -1,0 +1,195 @@
+---
+title: Prérequis Serveur
+description: Conditions et prérequis serveur pour déployer CSWeb Community Platform
+---
+
+# Prérequis Serveur
+
+Cette page détaille les **conditions techniques** nécessaires pour déployer CSWeb Community Platform sur un serveur appartenant à votre équipe ou organisation.
+
+> Ces prérequis concernent uniquement les **aspects techniques** (matériel, OS, réseau). Pour le guide d'installation pas-à-pas, voir [Installation](/getting-started/installation).
+
+---
+
+## 1. Type de serveur
+
+CSWeb Community Platform peut être déployé sur n'importe quelle infrastructure capable d'exécuter Docker.
+
+### Options supportées
+
+| Type | Description | Cas d'usage |
+|---|---|---|
+| **Serveur physique / on-premise** | Matériel possédé par l'organisation | Idéal si l'équipe possède déjà un serveur Ubuntu en interne |
+| **VPS** | Serveur virtuel privé loué | Économique et flexible — recommandé pour la majorité des déploiements |
+| **Cloud** | Instance cloud (AWS, Azure, GCP) | Scalabilité élevée, équipes habituées au cloud |
+
+### Fournisseurs VPS recommandés
+
+- **OVH** (France/UE)
+- **Hetzner** (Allemagne, excellent rapport qualité/prix)
+- **DigitalOcean** (USA, simple à utiliser)
+- **AWS Lightsail** (instances AWS simplifiées)
+- **Contabo** (Allemagne, très économique)
+
+### Fournisseurs cloud
+
+- **AWS EC2**
+- **Azure Virtual Machines**
+- **Google Compute Engine**
+
+---
+
+## 2. Système d'exploitation
+
+### OS recommandé
+
+**Ubuntu Server 22.04 LTS** (ou 24.04 LTS) — c'est l'environnement le mieux testé et documenté pour CSWeb Community Platform.
+
+> Si votre équipe possède déjà un serveur sous Ubuntu, **utilisez-le en priorité**.
+
+### OS alternatifs supportés
+
+Toute distribution Linux supportant Docker convient :
+
+- **Debian** 11 / 12
+- **Rocky Linux** 8 / 9
+- **AlmaLinux** 8 / 9
+- **RHEL** 8 / 9
+- **CentOS Stream** 9
+
+> ⚠️ **Windows Server** n'est **pas recommandé** pour la production. Docker Desktop sur Windows reste possible pour le développement uniquement.
+
+---
+
+## 3. Spécifications matérielles
+
+### Minimum (petites à moyennes enquêtes)
+
+Adapté pour des enquêtes locales, des tests, ou des équipes de taille modérée.
+
+| Composant | Minimum | Recommandé |
+|---|---|---|
+| **CPU** | 4 vCPU | 4 vCPU |
+| **RAM** | 8 Go | 16 Go |
+| **Stockage** | 100 Go SSD | 100 Go SSD |
+| **Réseau** | 100 Mbps | 1 Gbps |
+
+### Recommandé (grandes enquêtes / RGPH)
+
+Pour des recensements nationaux, enquêtes lourdes, ou breakout de gros volumes de données.
+
+| Composant | Recommandé |
+|---|---|
+| **CPU** | 8 vCPU |
+| **RAM** | 16 à 32 Go |
+| **Stockage** | 500 Go SSD |
+| **Base de données breakout** | Serveur DB dédié (optionnel) |
+| **Réseau** | 1 Gbps |
+
+### Notes sur le stockage
+
+- **SSD obligatoire** — les disques HDD provoquent des lenteurs sur les opérations de breakout
+- Prévoir **2–3x la taille brute des données CSPro** pour absorber les bases breakout, logs et backups
+- **RAID 1 recommandé** pour les serveurs physiques en production
+
+---
+
+## 4. Réseau & accès
+
+### Connexion Internet
+
+- **IP publique** : nécessaire si le serveur doit être accessible depuis l'extérieur (équipes terrain, superviseurs distants)
+- **IP privée uniquement** : possible pour un déploiement strictement interne (intranet)
+
+### Ports à ouvrir
+
+| Port | Protocole | Usage |
+|---|---|---|
+| **80** | HTTP | Redirection vers HTTPS |
+| **443** | HTTPS | Accès web sécurisé à CSWeb |
+| **22** | SSH | Administration serveur (à restreindre par IP) |
+
+### HTTPS / SSL
+
+- **Let's Encrypt** : certificat gratuit, automatiquement renouvelé (recommandé)
+- **Certificat commercial** : possible si politique organisationnelle l'exige
+- **Certificat auto-signé** : uniquement pour environnement de test
+
+### Nom de domaine
+
+- **Recommandé** : un sous-domaine dédié (ex: `csweb.votre-organisation.org`)
+- **Alternatif** : utilisation directe par IP (sans HTTPS Let's Encrypt valide)
+
+---
+
+## 5. Logiciels prérequis
+
+CSWeb Community Platform tourne intégralement avec **Docker**, donc seuls deux outils sont nécessaires sur le serveur hôte :
+
+| Logiciel | Version minimale | Installation |
+|---|---|---|
+| **Docker Engine** | 20.10+ | [docs.docker.com](https://docs.docker.com/engine/install/) |
+| **Docker Compose** | 2.0+ | Inclus dans les versions récentes de Docker |
+| **Git** | 2.0+ | `apt install git` (Ubuntu) |
+
+> Pas besoin d'installer PHP, MySQL, PostgreSQL ou Apache directement sur le serveur — tout est conteneurisé.
+
+---
+
+## 6. Sécurité du serveur
+
+Avant de déployer CSWeb en production, l'administrateur doit :
+
+- ✅ Mettre à jour le système (`apt update && apt upgrade`)
+- ✅ Configurer un **pare-feu** (UFW, firewalld, ou équivalent)
+- ✅ Désactiver l'authentification SSH par mot de passe (clés SSH uniquement)
+- ✅ Installer **Fail2Ban** ou équivalent contre les attaques par force brute
+- ✅ Activer les mises à jour de sécurité automatiques (`unattended-upgrades`)
+- ✅ Configurer des sauvegardes régulières (voir [Backup](/guides/deployment/backup))
+
+---
+
+## 7. Compétences requises côté équipe
+
+L'équipe locale qui hébergera CSWeb doit disposer des compétences suivantes ou avoir accès à un administrateur :
+
+| Compétence | Niveau | Pourquoi |
+|---|---|---|
+| Administration Linux de base | Requis | Connexion SSH, manipulation de fichiers, services |
+| Docker (notions) | Recommandé | Diagnostic et redémarrage des conteneurs |
+| Notions réseau (DNS, ports, HTTPS) | Recommandé | Configuration domaine et certificats |
+| CSPro | Requis pour les utilisateurs métier | Conception des dictionnaires d'enquête |
+
+> Si l'équipe ne dispose pas de ces compétences en interne, un accompagnement externe (consultant) peut être envisagé.
+
+---
+
+## 8. Hébergement
+
+CSWeb Community Platform est un **logiciel auto-hébergé**. L'équipe d'enquête doit donc :
+
+- **Posséder ou louer** son propre serveur (physique, VPS ou cloud)
+- **Être responsable** de la maintenance et des sauvegardes
+- **Avoir un administrateur** disponible pour les opérations système
+
+> Le projet **ne fournit pas de service d'hébergement managé**. Pour obtenir des conseils sur le choix d'un fournisseur VPS adapté, consultez la [page Discord](https://discord.gg/csweb-community) ou ouvrez une [issue GitHub](https://github.com/BOUNADRAME/csweb-community/issues).
+
+---
+
+## Récapitulatif rapide
+
+Avant de lancer l'installation, vérifiez que vous avez :
+
+- [ ] Un serveur Linux (Ubuntu 22.04 LTS recommandé)
+- [ ] Au moins 4 vCPU, 8 Go RAM, 100 Go SSD
+- [ ] Docker 20.10+ et Docker Compose 2.0+ installés
+- [ ] Une IP publique (ou accès intranet)
+- [ ] Un nom de domaine pointant vers le serveur (recommandé)
+- [ ] Les ports 80 et 443 ouverts
+- [ ] Un administrateur Linux disponible
+- [ ] Une stratégie de sauvegarde définie
+
+---
+
+[← Retour à l'accueil](/getting-started)
+[Passer à l'installation →](/getting-started/installation)
