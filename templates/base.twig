@@ -96,6 +96,14 @@
                             <span>Roles</span></a>
                     </li>
                 {% endif %}
+                {% if is_granted('ROLE_DASHBOARD_ALL') == true %}
+                    {% set inDashboard = app.request.attributes.get('_route') == 'breakoutDashboard' %}
+                    <li id="dashboard-nav-item" class="nav-item {{ inDashboard ? 'active' : '' }}">
+                        <a class="nav-link" href="{{ path('breakoutDashboard') }}">
+                            <i class="fas fa-fw fa-tachometer-alt"></i>
+                            <span>Dashboard</span></a>
+                    </li>
+                {% endif %}
                 {% block navSettings %}
                 {% if is_granted('ROLE_SETTINGS_ALL') == true %}
                 {% set inSettings = app.request.attributes.get('_route') in ['dataSettings', 'backup', 'applicationLogs'] %}

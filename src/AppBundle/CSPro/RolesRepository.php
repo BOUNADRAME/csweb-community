@@ -108,7 +108,7 @@ class RolesRepository {
                 $count = $this->pdo->fetchAffected($stm, $bind);
 
                 $insertQuery = [];
-                $arrPermissions = [RolePermissions::DATA_ALL, RolePermissions::APPS_ALL, RolePermissions::USERS_ALL, RolePermissions::ROLES_ALL, RolePermissions::SETTINGS_ALL, RolePermissions::REPORTS_ALL, RolePermissions::BACKUP_ALL, RolePermissions::LOGS_ALL];
+                $arrPermissions = [RolePermissions::DATA_ALL, RolePermissions::APPS_ALL, RolePermissions::USERS_ALL, RolePermissions::ROLES_ALL, RolePermissions::SETTINGS_ALL, RolePermissions::REPORTS_ALL, RolePermissions::BACKUP_ALL, RolePermissions::LOGS_ALL, RolePermissions::DASHBOARD_ALL];
                 foreach ($arrPermissions as $permissionType) {
                     if ($role->rolePermissions->getPermission($permissionType)) {
                         $insertQuery [] = '(' . $role->id . ', ' . $permissionType . ')';
@@ -175,7 +175,7 @@ class RolesRepository {
                 $count = $this->pdo->fetchAffected($stm, $bind);
 
                 $insertQuery = [];
-                $arrPermissions = [RolePermissions::DATA_ALL, RolePermissions::APPS_ALL, RolePermissions::USERS_ALL, RolePermissions::ROLES_ALL, RolePermissions::SETTINGS_ALL, RolePermissions::REPORTS_ALL, RolePermissions::BACKUP_ALL, RolePermissions::LOGS_ALL];
+                $arrPermissions = [RolePermissions::DATA_ALL, RolePermissions::APPS_ALL, RolePermissions::USERS_ALL, RolePermissions::ROLES_ALL, RolePermissions::SETTINGS_ALL, RolePermissions::REPORTS_ALL, RolePermissions::BACKUP_ALL, RolePermissions::LOGS_ALL, RolePermissions::DASHBOARD_ALL];
                 foreach ($arrPermissions as $permissionType) {
                     if ($role->rolePermissions->getPermission($permissionType)) {
                         $insertQuery [] = '(' . $role->id . ', ' . $permissionType . ')';

@@ -72,6 +72,21 @@ if [ -f /var/www/html/src/AppBundle/config.php ]; then
             echo '[CSWeb] Could not check/drop schema_name constraint: ' . \$e->getMessage() . PHP_EOL;
         }
     " 2>/dev/null || true
+
+    # Register dashboard_all permission (id 11) — idempotent
+    echo "[CSWeb] Checking dashboard_all permission..."
+    php -r "
+        require '/var/www/html/src/AppBundle/config.php';
+        try {
+            \$port = defined('DBPORT') ? DBPORT : '3306';
+            \$pdo = new PDO('mysql:host=' . DBHOST . ';dbname=' . DBNAME . ';port=' . \$port, DBUSER, DBPASS);
+            \$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            \$pdo->exec(\"INSERT IGNORE INTO cspro_permissions (id, name, modified_time, created_time) VALUES (11, 'dashboard_all', NOW(), NOW())\");
+            echo '[CSWeb] dashboard_all permission registered' . PHP_EOL;
+        } catch (Exception \$e) {
+            echo '[CSWeb] Could not register dashboard_all permission: ' . \$e->getMessage() . PHP_EOL;
+        }
+    " 2>/dev/null || true
 else
     echo "[CSWeb] config.php not found, skipping cache clear (run /setup first)."
 fi

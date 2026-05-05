@@ -64,6 +64,7 @@ class ApiKeyUserProvider implements UserProviderInterface {
                 $roles[] = 'ROLE_APPS_ALL';
                 $roles[] = 'ROLE_BACKUP_ALL';
                 $roles[] = 'ROLE_LOGS_ALL';
+                $roles[] = 'ROLE_DASHBOARD_ALL';
             }
             elseif ($roleId == User::STANDARD_USER) {
                 $roles[] = 'ROLE_STANDARD_USER';

@@ -1,0 +1,587 @@
+{% extends "base.twig" %}
+{% block resources %}
+    <style>
+        .kpi-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 1rem; }
+        .kpi-card {
+            flex: 1 1 0; min-width: 160px;
+            background: #fff; border-left: 4px solid #4e73df; border-radius: 4px;
+            padding: 12px 14px; box-shadow: 0 0.15rem 1.75rem 0 rgba(58,59,69,.08);
+            cursor: pointer; transition: transform .1s ease, box-shadow .1s ease;
+        }
+        .kpi-card:hover { transform: translateY(-1px); box-shadow: 0 0.25rem 1.75rem 0 rgba(58,59,69,.15); }
+        .kpi-card.kpi-active { border-left-width: 6px; background: #f6f8ff; }
+        .kpi-card .kpi-label { color: #858796; font-size: 0.72rem; text-transform: uppercase; font-weight: 700; letter-spacing: .3px; }
+        .kpi-card .kpi-value { color: #2e3a59; font-size: 1.5rem; font-weight: 700; line-height: 1.1; margin-top: 4px; }
+        .kpi-card .kpi-sub   { color: #858796; font-size: 0.78rem; margin-top: 2px; }
+        .kpi-card.kpi-good   { border-left-color: #1cc88a; }
+        .kpi-card.kpi-warn   { border-left-color: #f6c23e; }
+        .kpi-card.kpi-error  { border-left-color: #e74a3b; }
+        .kpi-card.kpi-muted  { border-left-color: #b7b9cc; }
+
+        .progress-thin { height: 6px; margin-top: 6px; }
+
+        .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; }
+        .status-dot.s-ok       { background: #1cc88a; }
+        .status-dot.s-pending  { background: #f6c23e; }
+        .status-dot.s-error    { background: #e74a3b; }
+        .status-dot.s-running  { background: #36b9cc; animation: pulse 1.4s infinite; }
+        .status-dot.s-unconfig { background: #b7b9cc; }
+        .status-dot.s-never    { background: #858796; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+        .mini-bar { background: #eaecf4; height: 6px; border-radius: 3px; overflow: hidden; min-width: 80px; }
+        .mini-bar > span { display: block; height: 100%; background: #4e73df; }
+        .mini-bar.bar-good > span { background: #1cc88a; }
+        .mini-bar.bar-warn > span { background: #f6c23e; }
+        .mini-bar.bar-err  > span { background: #e74a3b; }
+
+        .problems-card { background: #fff; border-radius: 4px; padding: 12px 14px; box-shadow: 0 0.15rem 1.75rem 0 rgba(58,59,69,.08); margin-bottom: 12px; }
+        .problems-card h6 { margin: 0 0 8px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: #5a5c69; }
+        .problems-card .problem-item { display: flex; justify-content: space-between; padding: 4px 0; border-top: 1px solid #f1f3f9; font-size: 0.85rem; }
+        .problems-card .problem-item:first-child { border-top: 0; }
+        .problems-card .problem-item:hover { background: #f8f9fc; cursor: pointer; }
+        .problems-card .problem-meta { color: #858796; font-size: 0.78rem; margin-left: 8px; white-space: nowrap; }
+        .problems-card .empty { color: #b7b9cc; font-size: 0.82rem; font-style: italic; }
+
+        .toolbar-dash { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 8px; }
+        .toolbar-dash .toolbar-left  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .toolbar-dash .toolbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .toolbar-dash .live-toggle { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: #5a5c69; }
+        .toolbar-dash .updated-hint { font-size: 0.78rem; color: #858796; }
+        .toolbar-dash .updated-hint.is-stale { color: #f6c23e; }
+
+        #breakout-dashboard-table th, #breakout-dashboard-table td { vertical-align: middle; }
+        #breakout-dashboard-table .col-status   { width: 38px; text-align: center; }
+        #breakout-dashboard-table .col-pct      { width: 140px; }
+        #breakout-dashboard-table .col-actions  { width: 120px; }
+        .badge-soft { font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; background: #f1f3f9; color: #5a5c69; margin-left: 6px; }
+        .skeleton-line { display: inline-block; height: 1em; min-width: 50px; background: linear-gradient(90deg, #eef0f6 25%, #f6f8fc 50%, #eef0f6 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 3px; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    </style>
+{% endblock %}
+{% block helps %}
+    <li class="nav-item mx-1">
+        <a href="https://bounadrame.github.io/csweb-community/" target="_blank" class="nav-text-cspro"><i class="far fa-question-circle"></i> Help</a>
+    </li>
+{% endblock %}
+{% block content %}
+    <div class="row">
+        <div class="col-12">
+            <div id="alert" class="alert-placeholder-cspro alert-margin-cspro"></div>
+        </div>
+    </div>
+
+    <div class="toolbar-dash">
+        <div class="toolbar-left">
+            <h5 class="m-0"><i class="fas fa-tachometer-alt"></i> Breakout Dashboard</h5>
+            <span class="updated-hint" id="dash-updated-hint">Last update: —</span>
+        </div>
+        <div class="toolbar-right">
+            <label class="live-toggle">
+                <input type="checkbox" id="dash-live-toggle"> Live
+                <span class="badge-soft" id="dash-live-status" style="display:none">60s</span>
+            </label>
+            <button type="button" class="btn btn-secondary btn-sm" id="dash-refresh-btn">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI tiles -->
+    <div class="kpi-row">
+        <div class="kpi-card"        id="kpi-dicts"      data-filter="all">
+            <div class="kpi-label">Dictionaries</div>
+            <div class="kpi-value"><span class="skeleton-line"></span></div>
+            <div class="kpi-sub" id="kpi-dicts-sub">configured</div>
+        </div>
+        <div class="kpi-card"        id="kpi-collected"  data-filter="all">
+            <div class="kpi-label">Cases collected</div>
+            <div class="kpi-value"><span class="skeleton-line"></span></div>
+            <div class="kpi-sub">source databases</div>
+        </div>
+        <div class="kpi-card"        id="kpi-processed"  data-filter="all">
+            <div class="kpi-label">Cases processed</div>
+            <div class="kpi-value"><span class="skeleton-line"></span></div>
+            <div class="kpi-sub">target databases</div>
+        </div>
+        <div class="kpi-card"        id="kpi-completion" data-filter="all">
+            <div class="kpi-label">Global completion</div>
+            <div class="kpi-value"><span class="skeleton-line"></span></div>
+            <div class="progress progress-thin"><div class="progress-bar" id="kpi-completion-bar" role="progressbar" style="width:0%"></div></div>
+        </div>
+        <div class="kpi-card kpi-muted" id="kpi-pending" data-filter="pending">
+            <div class="kpi-label">Pending</div>
+            <div class="kpi-value"><span class="skeleton-line"></span></div>
+            <div class="kpi-sub" id="kpi-pending-sub">across dictionaries</div>
+        </div>
+        <div class="kpi-card kpi-muted" id="kpi-errors"  data-filter="error">
+            <div class="kpi-label">Errors</div>
+            <div class="kpi-value"><span class="skeleton-line"></span></div>
+            <div class="kpi-sub">non-zero exit code</div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Health matrix -->
+        <div class="col-lg-9 col-md-8">
+            <div class="card shadow mb-4">
+                <div class="card-body p-3">
+                    <div class="d-flex flex-wrap align-items-center mb-2" style="gap:8px;">
+                        <select class="form-control form-control-sm" id="dash-filter-status" style="max-width:170px">
+                            <option value="all">All statuses</option>
+                            <option value="up_to_date">Up-to-date</option>
+                            <option value="pending">Pending</option>
+                            <option value="error">Error</option>
+                            <option value="running">Running</option>
+                            <option value="not_configured">Not configured</option>
+                            <option value="never_run">Never run</option>
+                        </select>
+                        <select class="form-control form-control-sm" id="dash-filter-cron" style="max-width:170px">
+                            <option value="">Cron: all</option>
+                            <option value="true">Cron: enabled</option>
+                            <option value="false">Cron: disabled</option>
+                        </select>
+                        <input type="text" class="form-control form-control-sm" id="dash-filter-search"
+                               placeholder="Search dictionary…" style="max-width:240px">
+                        <select class="form-control form-control-sm ml-auto" id="dash-page-size" style="max-width:100px">
+                            <option value="15">15</option>
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="breakout-dashboard-table" class="table table-sm table-striped table-bordered table-hover" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th class="col-status"></th>
+                                    <th>Dictionary</th>
+                                    <th class="col-pct">Completion</th>
+                                    <th>Pending</th>
+                                    <th>Last run</th>
+                                    <th>Next run</th>
+                                    <th>Exit</th>
+                                    <th class="col-actions text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="breakout-dashboard-body">
+                                <tr><td colspan="8" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <small class="text-muted" id="dash-list-summary">—</small>
+                        <nav><ul class="pagination pagination-sm mb-0" id="dash-pagination"></ul></nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top problems sidebar -->
+        <div class="col-lg-3 col-md-4">
+            <div class="problems-card">
+                <h6><i class="fas fa-exclamation-circle text-danger"></i> Errors</h6>
+                <div id="problems-errors"><span class="empty">Loading…</span></div>
+            </div>
+            <div class="problems-card">
+                <h6><i class="fas fa-hourglass-half text-warning"></i> Most pending</h6>
+                <div id="problems-pending"><span class="empty">Loading…</span></div>
+            </div>
+            <div class="problems-card">
+                <h6><i class="fas fa-circle text-secondary"></i> Configured but never run</h6>
+                <div id="problems-never"><span class="empty">Loading…</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            "use strict";
+
+            // ----- State -----
+            var state = {
+                page: 1,
+                limit: 25,
+                statusFilter: "all",
+                cronFilter: "",
+                search: "",
+                live: false,
+                liveTimer: null,
+                liveIntervalMs: 60000,
+                lastSummary: null,
+                visibilityHandler: null,
+                idleSince: Date.now()
+            };
+            var URL_SUMMARY      = "{{ path('breakoutDashboardSummary') }}";
+            var URL_DICTIONARIES = "{{ path('breakoutDashboardDictionaries') }}";
+            var URL_LOGS_PATH    = "{{ path('dataSettings') }}";
+            var URL_RUN_NOW      = "{{ path('schedulerRunNow') }}";
+
+            // ----- Helpers -----
+            function escapeHtml(s) { var d = document.createElement("div"); d.appendChild(document.createTextNode(s == null ? "" : String(s))); return d.innerHTML; }
+
+            function fmtNumber(n) {
+                if (n == null) return "—";
+                if (typeof n !== "number") n = Number(n);
+                if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + "M";
+                if (n >= 1e3) return (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + "K";
+                return String(n);
+            }
+
+            function fmtRelative(iso) {
+                if (!iso) return '<span class="text-muted">—</span>';
+                var d = new Date(iso.replace(" ", "T"));
+                if (isNaN(d.getTime())) return escapeHtml(iso);
+                var diff = (Date.now() - d.getTime()) / 1000;
+                var rel;
+                if (diff < 60) rel = Math.floor(diff) + "s ago";
+                else if (diff < 3600) rel = Math.floor(diff / 60) + "m ago";
+                else if (diff < 86400) rel = Math.floor(diff / 3600) + "h ago";
+                else rel = Math.floor(diff / 86400) + "d ago";
+                return '<span title="' + escapeHtml(iso) + '">' + rel + '</span>';
+            }
+
+            function fmtFuture(iso) {
+                if (!iso) return '<span class="text-muted">—</span>';
+                var d = new Date(iso.replace(" ", "T"));
+                if (isNaN(d.getTime())) return escapeHtml(iso);
+                var diff = (d.getTime() - Date.now()) / 1000;
+                if (diff < 0) return '<span title="' + escapeHtml(iso) + '" class="text-muted">overdue</span>';
+                var rel;
+                if (diff < 60)      rel = "in " + Math.floor(diff) + "s";
+                else if (diff < 3600)  rel = "in " + Math.floor(diff / 60) + "m";
+                else if (diff < 86400) rel = "in " + Math.floor(diff / 3600) + "h";
+                else rel = "in " + Math.floor(diff / 86400) + "d";
+                return '<span title="' + escapeHtml(iso) + '">' + rel + '</span>';
+            }
+
+            function statusFor(d) {
+                if (!d.breakout_configured) return { key: "not_configured", cls: "s-unconfig", label: "Not configured" };
+                if (d.last_exit_code === -1) return { key: "running", cls: "s-running", label: "Running" };
+                if (d.last_exit_code != null && d.last_exit_code !== 0) return { key: "error", cls: "s-error", label: "Error (exit " + d.last_exit_code + ")" };
+                if (d.last_run == null)    return { key: "never_run", cls: "s-never", label: "Never run" };
+                if (d.is_up_to_date === false) return { key: "pending", cls: "s-pending", label: "Pending" };
+                return { key: "up_to_date", cls: "s-ok", label: "Up-to-date" };
+            }
+
+            function clientFilter(rows) {
+                var sf = state.statusFilter;
+                var q = state.search.toLowerCase();
+                return rows.filter(function (d) {
+                    if (sf !== "all" && statusFor(d).key !== sf) return false;
+                    if (q && d.dictionary.toLowerCase().indexOf(q) === -1
+                          && (d.label || "").toLowerCase().indexOf(q) === -1) return false;
+                    return true;
+                });
+            }
+
+            function setUpdated(ts) {
+                var hint = document.getElementById("dash-updated-hint");
+                if (!ts) { hint.textContent = "Last update: —"; return; }
+                var d = new Date(ts.replace(" ", "T"));
+                hint.textContent = "Last update: " + (isNaN(d.getTime()) ? ts : d.toLocaleTimeString());
+                hint.classList.remove("is-stale");
+            }
+
+            // ----- KPI rendering -----
+            function renderSummary(payload) {
+                var s = payload.summary;
+                var p = payload.topProblems || { errors: [], pending: [], neverRun: [] };
+                state.lastSummary = s;
+
+                document.querySelector("#kpi-dicts .kpi-value").textContent = s.dictionaries_configured + " / " + s.dictionaries_total;
+                document.getElementById("kpi-dicts-sub").textContent = "configured / total";
+
+                document.querySelector("#kpi-collected .kpi-value").textContent = fmtNumber(s.total_cases);
+                document.querySelector("#kpi-processed .kpi-value").textContent = fmtNumber(s.processed_cases);
+
+                var pct = s.completion_rate == null ? 0 : Math.max(0, Math.min(100, s.completion_rate));
+                var pctTxt = s.completion_rate == null ? "—" : pct.toFixed(1) + "%";
+                document.querySelector("#kpi-completion .kpi-value").textContent = pctTxt;
+                var bar = document.getElementById("kpi-completion-bar");
+                bar.style.width = pct + "%";
+                bar.className = "progress-bar " + (pct >= 95 ? "bg-success" : pct >= 80 ? "bg-warning" : "bg-danger");
+                var compCard = document.getElementById("kpi-completion");
+                compCard.classList.remove("kpi-good", "kpi-warn", "kpi-error", "kpi-muted");
+                compCard.classList.add(s.completion_rate == null ? "kpi-muted" : pct >= 95 ? "kpi-good" : pct >= 80 ? "kpi-warn" : "kpi-error");
+
+                document.querySelector("#kpi-pending .kpi-value").textContent = fmtNumber(s.pending_cases);
+                document.getElementById("kpi-pending-sub").textContent = s.dicts_with_pending + " dict(s)";
+                var pendCard = document.getElementById("kpi-pending");
+                pendCard.classList.remove("kpi-good", "kpi-warn", "kpi-error", "kpi-muted");
+                pendCard.classList.add(s.pending_cases > 0 ? "kpi-warn" : "kpi-muted");
+
+                document.querySelector("#kpi-errors .kpi-value").textContent = String(s.dicts_in_error);
+                var errCard = document.getElementById("kpi-errors");
+                errCard.classList.remove("kpi-good", "kpi-warn", "kpi-error", "kpi-muted");
+                errCard.classList.add(s.dicts_in_error > 0 ? "kpi-error" : "kpi-muted");
+
+                renderProblems(p);
+                setUpdated(payload.generated_at);
+            }
+
+            function renderProblems(p) {
+                function row(title, sub, dict) {
+                    return '<div class="problem-item" data-dict="' + escapeHtml(dict) + '">'
+                        +    '<span>' + escapeHtml(title) + '</span>'
+                        +    '<span class="problem-meta">' + escapeHtml(sub) + '</span>'
+                        +  '</div>';
+                }
+                var $err = document.getElementById("problems-errors");
+                if (!p.errors.length) { $err.innerHTML = '<span class="empty">No errors.</span>'; }
+                else { $err.innerHTML = p.errors.map(function (e) { return row(e.dictionary_name, "exit " + e.last_exit_code, e.dictionary_name); }).join(""); }
+
+                var $pen = document.getElementById("problems-pending");
+                if (!p.pending.length) { $pen.innerHTML = '<span class="empty">Nothing pending.</span>'; }
+                else { $pen.innerHTML = p.pending.map(function (e) { return row(e.dictionary_name, fmtNumber(e.cases_pending) + " cases", e.dictionary_name); }).join(""); }
+
+                var $nev = document.getElementById("problems-never");
+                if (!p.neverRun.length) { $nev.innerHTML = '<span class="empty">All have been run.</span>'; }
+                else { $nev.innerHTML = p.neverRun.map(function (e) { return row(e.dictionary_name, "configured", e.dictionary_name); }).join(""); }
+            }
+
+            // ----- Table rendering -----
+            function renderTable(payload) {
+                var rows = clientFilter(payload.data || []);
+                var tbody = document.getElementById("breakout-dashboard-body");
+                if (!rows.length) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">No dictionaries match the current filters.</td></tr>';
+                } else {
+                    tbody.innerHTML = rows.map(function (d) {
+                        var st = statusFor(d);
+                        var compPct = d.completion_rate == null ? null : Math.max(0, Math.min(100, d.completion_rate));
+                        var compCls = compPct == null ? "" : compPct >= 95 ? "bar-good" : compPct >= 80 ? "bar-warn" : "bar-err";
+                        var compHtml = compPct == null
+                            ? '<span class="text-muted">—</span>'
+                            : '<div class="d-flex align-items-center" title="' + (d.processed_cases||0) + ' / ' + (d.total_cases||0) + '">'
+                              + '<div class="mini-bar ' + compCls + '" style="flex:1"><span style="width:' + compPct + '%"></span></div>'
+                              + '<small class="ml-2">' + compPct.toFixed(1) + '%</small></div>';
+                        var exitTxt = d.last_exit_code == null ? '<span class="text-muted">—</span>'
+                                    : d.last_exit_code === -1 ? '<span class="text-info">running</span>'
+                                    : d.last_exit_code === 0  ? '<span class="text-success">0</span>'
+                                    : '<span class="text-danger">' + d.last_exit_code + '</span>';
+                        var pending = d.cases_pending == null ? '<span class="text-muted">—</span>' : fmtNumber(d.cases_pending);
+                        return '<tr data-dict="' + escapeHtml(d.dictionary) + '">'
+                            +  '<td class="col-status"><span class="status-dot ' + st.cls + '" title="' + escapeHtml(st.label) + '"></span></td>'
+                            +  '<td><strong>' + escapeHtml(d.dictionary) + '</strong>'
+                            +    (d.label && d.label !== d.dictionary ? '<br><small class="text-muted">' + escapeHtml(d.label) + '</small>' : '')
+                            +  '</td>'
+                            +  '<td class="col-pct">' + compHtml + '</td>'
+                            +  '<td>' + pending + '</td>'
+                            +  '<td>' + fmtRelative(d.last_run) + '</td>'
+                            +  '<td>' + (d.cron_enabled ? fmtFuture(d.next_run) : '<span class="text-muted">—</span>') + '</td>'
+                            +  '<td>' + exitTxt + '</td>'
+                            +  '<td class="col-actions text-center">'
+                            +    (d.breakout_configured
+                                  ? '<button type="button" class="btn btn-link btn-sm p-1 dash-run-now" title="Run now"><i class="fas fa-play"></i></button>'
+                                  : '')
+                            +    '<a href="' + URL_LOGS_PATH + '#tab-logs" class="btn btn-link btn-sm p-1" title="View logs"><i class="fas fa-file-alt"></i></a>'
+                            +  '</td>'
+                            +  '</tr>';
+                    }).join("");
+                }
+
+                document.getElementById("dash-list-summary").textContent =
+                    "Showing " + rows.length + " of " + (payload.total || 0) + " dictionaries"
+                    + (state.statusFilter !== "all" || state.search ? " (filtered)" : "");
+
+                renderPagination(payload);
+            }
+
+            function renderPagination(payload) {
+                var $pg = document.getElementById("dash-pagination");
+                var pages = payload.pages || 1;
+                var page  = payload.page  || 1;
+                if (pages <= 1) { $pg.innerHTML = ""; return; }
+                var html = "";
+                function item(label, p, disabled, active) {
+                    return '<li class="page-item' + (disabled ? " disabled" : "") + (active ? " active" : "") + '">'
+                        +    '<a class="page-link" href="#" data-page="' + p + '">' + label + '</a>'
+                        + '</li>';
+                }
+                html += item("«", page - 1, page <= 1, false);
+                var start = Math.max(1, page - 2), end = Math.min(pages, page + 2);
+                if (start > 1)   { html += item("1", 1, false, page === 1); if (start > 2) html += item("…", 0, true, false); }
+                for (var p = start; p <= end; p++) html += item(String(p), p, false, p === page);
+                if (end < pages) { if (end < pages - 1) html += item("…", 0, true, false); html += item(String(pages), pages, false, page === pages); }
+                html += item("»", page + 1, page >= pages, false);
+                $pg.innerHTML = html;
+            }
+
+            // ----- Loading -----
+            function buildListUrl(opts) {
+                opts = opts || {};
+                var qs = "?page=" + state.page + "&limit=" + state.limit;
+                if (state.cronFilter !== "") qs += "&cron_enabled=" + encodeURIComponent(state.cronFilter);
+                if (opts.nocache) qs += "&nocache=1";
+                // status / search are applied client-side over the current page (cheap),
+                // server filters cover the heavy ones (cron / configured / dict name).
+                return URL_DICTIONARIES + qs;
+            }
+
+            function buildSummaryUrl(opts) {
+                opts = opts || {};
+                return URL_SUMMARY + (opts.nocache ? "?nocache=1" : "");
+            }
+
+            function loadAll(opts) {
+                opts = opts || {};
+                fetch(buildSummaryUrl(opts), { credentials: "same-origin" })
+                    .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+                    .then(renderSummary)
+                    .catch(function (e) {
+                        if (e === 401 || e === 403 || e === 405) { window.location.href = "{{ path('logout') }}"; return; }
+                        showAlert("Failed to load dashboard summary.", "alert alert-danger");
+                    });
+
+                fetch(buildListUrl(opts), { credentials: "same-origin" })
+                    .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+                    .then(renderTable)
+                    .catch(function (e) {
+                        if (e === 401 || e === 403 || e === 405) { window.location.href = "{{ path('logout') }}"; return; }
+                        showAlert("Failed to load dictionaries.", "alert alert-danger");
+                    });
+            }
+
+            // ----- Live mode -----
+            function setLive(on) {
+                state.live = on;
+                document.getElementById("dash-live-status").style.display = on ? "" : "none";
+                if (state.liveTimer) { clearInterval(state.liveTimer); state.liveTimer = null; }
+                if (on) {
+                    state.idleSince = Date.now();
+                    state.liveTimer = setInterval(function () {
+                        if (document.visibilityState !== "visible") return;
+                        if (Date.now() - state.idleSince > 10 * 60 * 1000) {
+                            // 10-minute idle auto-pause
+                            document.getElementById("dash-live-toggle").checked = false;
+                            setLive(false);
+                            showAlert("Live mode paused after 10 minutes of inactivity.", "alert alert-info");
+                            return;
+                        }
+                        loadAll();
+                    }, state.liveIntervalMs);
+                }
+            }
+
+            // ----- Wire up UI -----
+            document.getElementById("dash-refresh-btn").addEventListener("click", function () {
+                state.idleSince = Date.now();
+                loadAll({ nocache: true });
+            });
+
+            document.getElementById("dash-live-toggle").addEventListener("change", function (e) {
+                setLive(e.target.checked);
+            });
+
+            ["mousemove", "keydown", "click"].forEach(function (evt) {
+                document.addEventListener(evt, function () { state.idleSince = Date.now(); }, { passive: true });
+            });
+
+            document.getElementById("dash-filter-status").addEventListener("change", function (e) {
+                state.statusFilter = e.target.value;
+                // Server side currently only filters configured/cron — status is client-side over the loaded page.
+                // This is intentional: the heavy filters stay on the server.
+                if (state.statusFilter === "not_configured") {
+                    state.cronFilter = ""; // implicit
+                }
+                loadAll();
+            });
+            document.getElementById("dash-filter-cron").addEventListener("change", function (e) {
+                state.cronFilter = e.target.value;
+                state.page = 1;
+                loadAll();
+            });
+            var searchTimer;
+            document.getElementById("dash-filter-search").addEventListener("input", function (e) {
+                state.search = e.target.value;
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(function () {
+                    // search is client-side filtering (avoids round-trip on every keystroke)
+                    fetch(buildListUrl(), { credentials: "same-origin" })
+                        .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+                        .then(renderTable)
+                        .catch(function () {});
+                }, 250);
+            });
+            document.getElementById("dash-page-size").addEventListener("change", function (e) {
+                state.limit = parseInt(e.target.value, 10) || 25;
+                state.page = 1;
+                loadAll();
+            });
+
+            document.getElementById("dash-pagination").addEventListener("click", function (e) {
+                var a = e.target.closest("a[data-page]"); if (!a) return;
+                e.preventDefault();
+                var p = parseInt(a.dataset.page, 10);
+                if (p && p > 0) { state.page = p; loadAll(); }
+            });
+
+            // KPI cards click → status filter shortcut
+            document.querySelectorAll(".kpi-card[data-filter]").forEach(function (card) {
+                card.addEventListener("click", function () {
+                    var f = card.dataset.filter;
+                    if (f === "all") { state.statusFilter = "all"; }
+                    else if (f === "pending") { state.statusFilter = "pending"; }
+                    else if (f === "error") { state.statusFilter = "error"; }
+                    document.getElementById("dash-filter-status").value = state.statusFilter;
+                    document.querySelectorAll(".kpi-card").forEach(function (c) { c.classList.remove("kpi-active"); });
+                    if (f !== "all") card.classList.add("kpi-active");
+                    loadAll();
+                });
+            });
+
+            // Run-now button
+            document.getElementById("breakout-dashboard-body").addEventListener("click", function (e) {
+                var btn = e.target.closest(".dash-run-now"); if (!btn) return;
+                var tr = btn.closest("tr"); var dict = tr ? tr.dataset.dict : null; if (!dict) return;
+                if (!confirm("Trigger breakout for " + dict + " now?")) return;
+                btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                // Use the existing scheduler/run-now endpoint, but it requires a schedule id.
+                // For dictionaries without a schedule, we leave the button hidden (already done in render).
+                // Here we pass id=0 which scheduler validates; a fail is shown to the user.
+                fetch(URL_RUN_NOW, {
+                    method: "POST", credentials: "same-origin",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: 0, dictName: dict })
+                })
+                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+                .then(function (res) {
+                    if (res.ok) showAlert(res.body.description || "Breakout started.", "alert alert-success");
+                    else        showAlert(res.body.description || "Failed to start breakout.", "alert alert-danger");
+                    btn.disabled = false; btn.innerHTML = '<i class="fas fa-play"></i>';
+                    setTimeout(loadAll, 1500);
+                })
+                .catch(function () {
+                    btn.disabled = false; btn.innerHTML = '<i class="fas fa-play"></i>';
+                    showAlert("Failed to start breakout.", "alert alert-danger");
+                });
+            });
+
+            // Top-problems → focus row
+            document.querySelectorAll(".problems-card").forEach(function (card) {
+                card.addEventListener("click", function (e) {
+                    var item = e.target.closest(".problem-item"); if (!item) return;
+                    var dict = item.dataset.dict; if (!dict) return;
+                    document.getElementById("dash-filter-search").value = dict;
+                    state.search = dict;
+                    fetch(buildListUrl(), { credentials: "same-origin" })
+                        .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+                        .then(renderTable)
+                        .catch(function () {});
+                });
+            });
+
+            // Stale-data hint after 10 min
+            setInterval(function () {
+                var hint = document.getElementById("dash-updated-hint");
+                if (!state.lastSummary) return;
+                if (state.live) return;
+                if (Date.now() - state.idleSince > 10 * 60 * 1000) hint.classList.add("is-stale");
+            }, 30000);
+
+            // Initial load
+            loadAll();
+        })();
+    </script>
+{% endblock %}

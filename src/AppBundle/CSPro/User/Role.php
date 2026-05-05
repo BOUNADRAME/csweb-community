@@ -35,6 +35,7 @@ class RolePermissions
     public const SETTINGS_ALL  = 8;
     public const BACKUP_ALL    = 9;
     public const LOGS_ALL      = 10;
+    public const DASHBOARD_ALL = 11;
     
     public $permissions;
     public $dictionaryPermissions;

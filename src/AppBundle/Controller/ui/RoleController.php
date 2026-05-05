@@ -91,6 +91,7 @@ class RoleController extends AbstractController implements TokenAuthenticatedCon
         $settingsPermission = $request->get('settingsPermissions');
         $backupPermission = $request->get('backupPermission');
         $logsPermission = $request->get('logsPermission');
+        $dashboardPermission = $request->get('dashboardPermission');
 
         is_array($dictionaryPermissions) ?: $dictionaryPermissions = [];
 
@@ -104,6 +105,7 @@ class RoleController extends AbstractController implements TokenAuthenticatedCon
         $settingsPermission === "true" ? $role->rolePermissions->setPermission(RolePermissions::SETTINGS_ALL, true) : $role->rolePermissions->setPermission(RolePermissions::SETTINGS_ALL, false);
         $backupPermission === "true" ? $role->rolePermissions->setPermission(RolePermissions::BACKUP_ALL, true) : $role->rolePermissions->setPermission(RolePermissions::BACKUP_ALL, false);
         $logsPermission === "true" ? $role->rolePermissions->setPermission(RolePermissions::LOGS_ALL, true) : $role->rolePermissions->setPermission(RolePermissions::LOGS_ALL, false);
+        $dashboardPermission === "true" ? $role->rolePermissions->setPermission(RolePermissions::DASHBOARD_ALL, true) : $role->rolePermissions->setPermission(RolePermissions::DASHBOARD_ALL, false);
 
         foreach ($dictionaryPermissions as $dp) {
             $roleDictPermission = new RoleDictionaryPermissions($dp['dictionaryname'], $dp['dictionaryId'], $dp['syncUpload'], $dp['syncDownload'], $dp['dictionarylabel']);
@@ -145,6 +147,7 @@ class RoleController extends AbstractController implements TokenAuthenticatedCon
         $settingsPermission = $request->get('settingsPermission');
         $backupPermission = $request->get('backupPermission');
         $logsPermission = $request->get('logsPermission');
+        $dashboardPermission = $request->get('dashboardPermission');
 
         $role = new Role();
         $role->name = $roleName;
@@ -157,6 +160,7 @@ class RoleController extends AbstractController implements TokenAuthenticatedCon
         $settingsPermission === "true" ? $role->rolePermissions->setPermission(RolePermissions::SETTINGS_ALL, true) : $role->rolePermissions->setPermission(RolePermissions::SETTINGS_ALL, false);
         $backupPermission === "true" ? $role->rolePermissions->setPermission(RolePermissions::BACKUP_ALL, true) : $role->rolePermissions->setPermission(RolePermissions::BACKUP_ALL, false);
         $logsPermission === "true" ? $role->rolePermissions->setPermission(RolePermissions::LOGS_ALL, true) : $role->rolePermissions->setPermission(RolePermissions::LOGS_ALL, false);
+        $dashboardPermission === "true" ? $role->rolePermissions->setPermission(RolePermissions::DASHBOARD_ALL, true) : $role->rolePermissions->setPermission(RolePermissions::DASHBOARD_ALL, false);
 
         foreach ($dictionaryPermissions as $dp) {
             //$this->logger->error($dp['dictionaryname']);

@@ -90,6 +90,13 @@
                                     </label>
                                 </div>
                             </div>
+                            <div class="col-sm-3">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" id="add-dashboard-checkbox" class="add-checkbox-group"> Dashboard
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                         <!-- form-group -->
                         <!-- Table for dictionary permissions -->
@@ -197,6 +204,13 @@
                                 <div class="checkbox">
                                     <label>
                                         <input type="checkbox" id="edit-logs-checkbox" class="edit-checkbox-group"> Logs
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-sm-3">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" id="edit-dashboard-checkbox" class="edit-checkbox-group"> Dashboard
                                     </label>
                                 </div>
                             </div>
@@ -421,6 +435,7 @@
                         var settingsPermission = document.getElementById("add-settings-checkbox").checked;
                         var backupPermission = document.getElementById("add-backup-checkbox").checked;
                         var logsPermission = document.getElementById("add-logs-checkbox").checked;
+                        var dashboardPermission = document.getElementById("add-dashboard-checkbox").checked;
 
                         var dictionaryPermissions = new Object();
                         var tableData = $('#add-data-table').DataTable().rows().data();
@@ -440,6 +455,7 @@
                                 settingsPermission: settingsPermission,
                                 backupPermission: backupPermission,
                                 logsPermission: logsPermission,
+                                dashboardPermission: dashboardPermission,
                                 dictionaryPermissions: dictionaryPermissions
                             }
                         }).then(function (response) {
@@ -487,6 +503,7 @@
                         var settingsPermission = document.getElementById("edit-settings-checkbox").checked;
                         var backupPermission = document.getElementById("edit-backup-checkbox").checked;
                         var logsPermission = document.getElementById("edit-logs-checkbox").checked;
+                        var dashboardPermission = document.getElementById("edit-dashboard-checkbox").checked;
 
                         var dictionaryPermissions = new Object();
                         var tableData = $('#edit-data-table').DataTable().rows().data();
@@ -507,6 +524,7 @@
                                 settingsPermission: settingsPermission,
                                 backupPermission: backupPermission,
                                 logsPermission: logsPermission,
+                                dashboardPermission: dashboardPermission,
                                 dictionaryPermissions: dictionaryPermissions
                             }
                         }).then(function (response) {
@@ -603,6 +621,7 @@
                         var settingsPermission = role["rolePermissions"]["permissions"]["8"] === true ? true : false;
                         var backupPermission = role["rolePermissions"]["permissions"]["9"] === true ? true : false;
                         var logsPermission = role["rolePermissions"]["permissions"]["10"] === true ? true : false;
+                        var dashboardPermission = role["rolePermissions"]["permissions"]["11"] === true ? true : false;
 
                         var dataCheckbox = document.getElementById("edit-data-checkbox");
                         dataCheckbox.checked = dataPermission;
@@ -620,6 +639,8 @@
                         backupCheckbox.checked = backupPermission;
                         var logsCheckbox = document.getElementById("edit-logs-checkbox");
                         logsCheckbox.checked = logsPermission;
+                        var dashboardCheckbox = document.getElementById("edit-dashboard-checkbox");
+                        dashboardCheckbox.checked = dashboardPermission;
 
                         var rowNumber = $(event.target).closest('tr').index();
 
@@ -815,6 +836,16 @@
                                                 if (data.name === "Administrator")
                                                     data = "Yes";
                                                 else if (data.rolePermissions.permissions[10] === true)
+                                                    data = "Yes";
+                                                else
+                                                    data = "No"
+
+                                                return data;
+                                            }},
+                                        {title: "Dashboard", data: function (data, type, row) {
+                                                if (data.name === "Administrator")
+                                                    data = "Yes";
+                                                else if (data.rolePermissions.permissions[11] === true)
                                                     data = "Yes";
                                                 else
                                                     data = "No"
