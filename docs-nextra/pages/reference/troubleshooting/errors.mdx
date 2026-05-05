@@ -465,71 +465,150 @@ docker compose up -d
 docker network create csweb_default
 ```
 
-## Erreurs Webhooks
+## Erreurs Webhooks (racine)
 
-### WHK-001: Unauthorized
+Les 4 webhooks PHP racine (`breakout-webhook.php`, `breakout-status-webhook.php`,
+`dictionary-schema-webhook.php`, `log-reader-webhook.php`) partagent un format
+de réponse uniforme et un catalogue de codes d'erreur stable :
 
-**Message** :
+```json
+{ "success": false, "data": null, "error": { "code": "<id>", "message": "<description>" } }
+```
+
+### WHK-001 : `missing_token` / `invalid_token` (HTTP 401)
+
+**Réponse :**
 
 ```json
 {
-  "error": "Invalid webhook token"
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "missing_token",
+    "message": "Missing or invalid Authorization header. Expected: Bearer <token>."
+  }
 }
 ```
 
-**Solutions** :
+**Solutions :**
 
 ```bash
-# Vérifier token match
-echo $CSPRO_WEBHOOK_TOKEN  # CSWeb
-echo $BREAKOUT_WEBHOOK_TOKEN  # CSPro
+# Vérifier que la variable est définie côté serveur CSWeb
+docker exec csweb-app printenv BREAKOUT_WEBHOOK_TOKEN
 
-# Utiliser même token
-CSPRO_WEBHOOK_TOKEN=secret123
+# Vérifier que le client envoie exactement la même valeur
+curl -H "Authorization: Bearer <token>" http://csweb.example.com/breakout-status-webhook.php
+
+# Régénérer un token solide
+openssl rand -hex 32
 ```
 
-### WHK-002: Webhook Timeout
+### WHK-002 : `server_misconfigured` (HTTP 500)
 
-**Message** :
-
-```
-Webhook timed out after 30 seconds
-```
-
-**Solutions** :
-
-```php
-// Répondre immédiatement
-http_response_code(202);
-echo json_encode(['status' => 'accepted']);
-
-// Traitement async
-fastcgi_finish_request();
-exec("php process-webhook.php > /dev/null 2>&1 &");
-```
-
-### WHK-003: Invalid Payload
-
-**Message** :
+**Réponse :**
 
 ```json
 {
-  "error": "Missing required field: 'dictionary'"
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "server_misconfigured",
+    "message": "Server misconfiguration: BREAKOUT_WEBHOOK_TOKEN environment variable is not set."
+  }
 }
 ```
 
-**Solutions** :
+**Solutions :**
 
 ```bash
-# Payload correct
-curl -X POST http://localhost:8080/webhooks/breakout \
-  -H "X-Webhook-Token: secret123" \
+# Définir la variable dans .env
+echo "BREAKOUT_WEBHOOK_TOKEN=$(openssl rand -hex 32)" >> .env
+
+# Recréer le container csweb pour qu'il pick up la variable
+docker compose up -d --no-deps csweb
+```
+
+### WHK-003 : `rate_limited` (HTTP 429)
+
+**Réponse :**
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "rate_limited",
+    "message": "Too many requests. Retry after 42 seconds."
+  }
+}
+```
+
+Header HTTP additionnel : `Retry-After: 42`
+
+**Solutions :**
+
+- Espacer les appels (limite : 60 req / 60 s par couple `(token, IP)`).
+- Honorer le header `Retry-After` côté client.
+- Si vous orchestrez plusieurs équipes derrière la même IP, segmenter par IP source.
+
+### WHK-004 : `invalid_body` / `invalid_dictionary` / `invalid_filename` (HTTP 400)
+
+**Réponse (exemple `invalid_dictionary`) :**
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "invalid_dictionary",
+    "message": "Invalid dictionary name. Must match: ^[A-Z0-9_]+$."
+  }
+}
+```
+
+**Solutions :**
+
+```bash
+# Payload correct pour breakout-webhook.php
+curl -X POST http://csweb.example.com/breakout-webhook.php \
+  -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"dictionary": "EVAL_DICT"}'
+
+# Payload correct pour dictionary-schema-webhook.php (par dict_name)
+curl -X POST http://csweb.example.com/dictionary-schema-webhook.php \
+  -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "event": "case_uploaded",
-    "dictionary": "EVAL_DICT",
-    "case_id": "abc123"
+    "action": "register",
+    "dictionary_name": "EVAL_DICT",
+    "host_name": "host.docker.internal",
+    "schema_name": "eval_breakout",
+    "schema_user_name": "csweb",
+    "schema_password": "secret"
   }'
+```
+
+### WHK-005 : `body_too_large` (HTTP 413)
+
+Le body POST est limité à **64 KB** sur tous les webhooks. Au-delà, la
+requête est rejetée avant parsing JSON.
+
+**Solutions :** vérifier la taille du payload côté client. Si vous batchez
+plusieurs registers, faites-les en boucle plutôt qu'en un seul appel.
+
+### WHK-006 : `breakout_failed` (HTTP 500)
+
+Renvoyé par `breakout-webhook.php` quand le process Symfony termine avec
+un exit code non-zéro. Le payload `data.exitCode` indique le code, et
+`data.output` / `data.stderr` contiennent les **4 derniers KB** de sortie
+(par défaut). Pour le contenu complet, consulter le fichier listé dans
+`data.logFile` ou activer `BREAKOUT_WEBHOOK_VERBOSE=1`.
+
+```bash
+# Lire le log complet d'un breakout via le webhook log-reader
+curl -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN" \
+  "http://csweb.example.com/log-reader-webhook.php?file=EVAL_DICT_20260419_103000-api.log&lines=2000"
 ```
 
 ## Erreurs Performance

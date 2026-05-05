@@ -1,6 +1,32 @@
-# Webhooks API API pour configurer et gérer les webhooks CSWeb.
+# Webhooks API
 
-## Authentification Requise Toutes les requêtes nécessitent un **Bearer token OAuth2**.
+API pour configurer et gérer les webhooks CSWeb.
+
+> **Deux familles de webhooks distinctes**
+>
+> CSWeb expose deux mécanismes différents :
+>
+> 1. **API REST `/api/webhooks`** (cette page) — webhooks **sortants** authentifiés par OAuth2. CSWeb appelle vos systèmes externes lorsqu'un événement métier se produit (case uploaded, case modified, etc.).
+> 2. **Webhooks PHP racine** — endpoints **entrants** authentifiés par un Bearer token statique. Vos systèmes externes (Kairos, scripts cron, monitoring) appellent CSWeb pour piloter le breakout, lire les logs, ou consulter le statut. Voir leur documentation dédiée :
+>    - [Breakout Status Webhook](/reference/api/breakout-status) — `GET /breakout-status-webhook.php`
+>    - `POST /breakout-webhook.php` — déclenche un breakout
+>    - `GET|POST /dictionary-schema-webhook.php` — gère la configuration des cibles breakout
+>    - `GET /log-reader-webhook.php` — lit les logs CSWeb
+>
+>    Tous les webhooks racine partagent le même contrat de réponse :
+>    ```json
+>    { "success": true,  "data": ... | null, "error": null,             "meta": {...}? }
+>    { "success": false, "data": null,        "error": { "code": "...", "message": "..." } }
+>    ```
+>    et le même catalogue de codes d'erreur (`missing_token`, `invalid_token`, `server_misconfigured`, `method_not_allowed`, `body_too_large`, `rate_limited`, `invalid_body`, `invalid_dictionary`, `invalid_filename`, `invalid_action`, `dictionary_not_found`, `file_not_found`, `file_not_readable`, `process_failed`, `breakout_failed`, `internal_error`).
+>
+>    Sécurité commune : variable `BREAKOUT_WEBHOOK_TOKEN` **obligatoire**, rate-limit 60 req/min/IP, body POST max 64 KB, header `X-Robots-Tag: noindex, nofollow`.
+
+---
+
+## Authentification Requise
+
+Toutes les requêtes nécessitent un **Bearer token OAuth2**.
 
 ```http
 Authorization: Bearer YOUR_ACCESS_TOKEN
@@ -8,7 +34,9 @@ Authorization: Bearer YOUR_ACCESS_TOKEN
 
 ---
 
-## Concept des Webhooks Les **webhooks** permettent à CSWeb de notifier des applications externes lors d'événements spécifiques :
+## Concept des Webhooks
+
+Les **webhooks** permettent à CSWeb de notifier des applications externes lors d'événements spécifiques :
 
 - **Case uploaded** : Nouveau questionnaire uploadé
 - **Case modified** : Questionnaire modifié

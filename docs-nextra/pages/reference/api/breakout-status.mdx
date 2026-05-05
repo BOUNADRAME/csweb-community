@@ -17,11 +17,17 @@ Authorization: Bearer <token>
 **Configuration du token :**
 
 ```env
-# docker-compose.yml ou .env
-BREAKOUT_WEBHOOK_TOKEN=mon_token_secret_2024
+# .env (à la racine du projet)
+BREAKOUT_WEBHOOK_TOKEN=<32+ octets aléatoires>
 ```
 
-Valeur par défaut si non définie : `kairos_breakout_2024`
+> **Important :** la variable `BREAKOUT_WEBHOOK_TOKEN` est **obligatoire**. Si elle n'est pas définie, l'endpoint répond `500 server_misconfigured`. Aucune valeur par défaut n'est codée dans les webhooks.
+
+Pour générer un token solide :
+
+```bash
+openssl rand -hex 32
+```
 
 ---
 
@@ -35,14 +41,14 @@ GET /breakout-status-webhook.php
 
 ## Paramètres de requête
 
-| Paramètre              | Type    | Description                                              |
-|------------------------|---------|----------------------------------------------------------|
-| `dictionary`           | string  | Filtrer par nom exact d'un dictionnaire (ex: `KATS_DICT`) |
-| `dictionaries`         | string  | Filtrer par plusieurs dictionnaires séparés par virgule   |
-| `cron_enabled`         | boolean | `true` = seulement ceux avec cron actif                  |
-| `breakout_configured`  | boolean | `true` = seulement ceux avec breakout configuré          |
-| `page`                 | integer | Numéro de page (défaut: `1`)                             |
-| `limit`                | integer | Résultats par page, max `100` (défaut: `20`)             |
+| Paramètre              | Type    | Description                                                |
+|------------------------|---------|------------------------------------------------------------|
+| `dictionary`           | string  | Filtrer par nom exact d'un dictionnaire (ex: `KATS_DICT`)  |
+| `dictionaries`         | string  | Filtrer par plusieurs dictionnaires séparés par virgule (limité à 100 entrées) |
+| `cron_enabled`         | boolean | `true` = seulement ceux avec cron actif                    |
+| `breakout_configured`  | boolean | `true` = seulement ceux avec breakout configuré            |
+| `page`                 | integer | Numéro de page (défaut: `1`)                               |
+| `limit`                | integer | Résultats par page, max `100` (défaut: `20`)               |
 
 ---
 
@@ -52,50 +58,53 @@ GET /breakout-status-webhook.php
 
 ```bash
 curl -X GET "http://localhost:8080/breakout-status-webhook.php" \
-  -H "Authorization: Bearer mon_token_secret_2024"
+  -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN"
 ```
 
 ### Un seul dictionnaire
 
 ```bash
 curl -X GET "http://localhost:8080/breakout-status-webhook.php?dictionary=KATS_DICT" \
-  -H "Authorization: Bearer mon_token_secret_2024"
+  -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN"
 ```
 
 ### Plusieurs dictionnaires
 
 ```bash
 curl -X GET "http://localhost:8080/breakout-status-webhook.php?dictionaries=KATS_DICT,EVAL_DICT" \
-  -H "Authorization: Bearer mon_token_secret_2024"
+  -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN"
 ```
 
 ### Uniquement ceux avec breakout configuré et cron actif
 
 ```bash
 curl -X GET "http://localhost:8080/breakout-status-webhook.php?breakout_configured=true&cron_enabled=true" \
-  -H "Authorization: Bearer mon_token_secret_2024"
+  -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN"
 ```
 
 ### Pagination : page 2, 50 résultats
 
 ```bash
 curl -X GET "http://localhost:8080/breakout-status-webhook.php?page=2&limit=50" \
-  -H "Authorization: Bearer mon_token_secret_2024"
+  -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN"
 ```
 
 ---
 
 ## Format de réponse
 
+Toutes les réponses des webhooks suivent le contrat unifié :
+
+```json
+{ "success": true,  "data": ... | null, "error": null,             "meta": {...}? }
+{ "success": false, "data": null,        "error": { "code": "...", "message": "..." } }
+```
+
 ### Succès (200 OK)
 
 ```json
 {
   "success": true,
-  "total": 3,
-  "page": 1,
-  "pages": 1,
-  "limit": 20,
   "data": [
     {
       "dictionary": "KATS_DICT",
@@ -135,7 +144,14 @@ curl -X GET "http://localhost:8080/breakout-status-webhook.php?page=2&limit=50" 
       "is_up_to_date": null,
       "last_processed_time": null
     }
-  ]
+  ],
+  "error": null,
+  "meta": {
+    "total": 3,
+    "page": 1,
+    "pages": 1,
+    "limit": 20
+  }
 }
 ```
 
@@ -143,7 +159,7 @@ curl -X GET "http://localhost:8080/breakout-status-webhook.php?page=2&limit=50" 
 
 ## Description des champs
 
-### Champs de pagination
+### `meta` (pagination)
 
 | Champ   | Type    | Description                        |
 |---------|---------|------------------------------------|
@@ -152,45 +168,74 @@ curl -X GET "http://localhost:8080/breakout-status-webhook.php?page=2&limit=50" 
 | `pages` | integer | Nombre total de pages              |
 | `limit` | integer | Taille de page utilisée            |
 
-### Champs par dictionnaire
+### Items de `data`
 
 | Champ                  | Type            | Description                                                        |
 |------------------------|-----------------|--------------------------------------------------------------------|
-| `dictionary`           | string          | Nom du dictionnaire (ex: `KATS_DICT`)                             |
+| `dictionary`           | string          | Nom du dictionnaire (ex: `KATS_DICT`)                              |
 | `label`                | string          | Libellé du dictionnaire                                            |
 | `breakout_configured`  | boolean         | `true` si une DB cible est configurée                              |
 | `target_host`          | string \| null  | Hôte de la DB cible (`host:port`)                                  |
 | `target_schema`        | string \| null  | Nom de la base/schéma cible                                        |
-| `db_type`              | string \| null  | Type de DB cible : `postgresql`, `mysql`, `sqlserver`             |
+| `db_type`              | string \| null  | Type de DB cible : `postgresql`, `mysql`, `sqlserver`              |
 | `cron_enabled`         | boolean         | `true` si le scheduler automatique est activé                      |
-| `cron_expression`      | string \| null  | Expression cron du scheduler (ex: `*/30 * * * *`)                 |
-| `last_run`             | string \| null  | Dernière exécution du cron (`YYYY-MM-DD HH:MM:SS`)                |
+| `cron_expression`      | string \| null  | Expression cron du scheduler (ex: `*/30 * * * *`)                  |
+| `last_run`             | string \| null  | Dernière exécution du cron (`YYYY-MM-DD HH:MM:SS`)                 |
 | `next_run`             | string \| null  | Prochaine exécution planifiée                                      |
-| `last_exit_code`       | integer \| null | Code de sortie du dernier cron (`0` = succès)                     |
-| `total_cases`          | integer         | Nombre de questionnaires actifs dans CSWeb (source)               |
-| `processed_cases`      | integer \| null | Questionnaires présents dans la DB cible (`null` si inaccessible) |
-| `cases_pending`        | integer \| null | `total_cases - processed_cases` (questionnaires non encore breakés) |
-| `completion_rate`      | float \| null   | Taux de complétion en % (`processed_cases / total_cases × 100`)   |
+| `last_exit_code`       | integer \| null | Code de sortie du dernier cron (`0` = succès, `-1` = en cours)     |
+| `total_cases`          | integer         | Nombre de questionnaires actifs dans CSWeb (source)                |
+| `processed_cases`      | integer \| null | Questionnaires présents dans la DB cible (`null` si inaccessible)  |
+| `cases_pending`        | integer \| null | `total_cases - processed_cases` (questionnaires non encore breakés)|
+| `completion_rate`      | float \| null   | Taux de complétion en % (`processed_cases / total_cases × 100`)    |
 | `is_up_to_date`        | boolean \| null | `true` si `cases_pending === 0`                                    |
-| `last_processed_time`  | string \| null  | Horodatage du dernier job traité dans la DB cible                 |
+| `last_processed_time`  | string \| null  | Horodatage du dernier job traité dans la DB cible                  |
 
-> **Note :** Les champs `processed_cases`, `cases_pending`, `completion_rate`, `is_up_to_date` et `last_processed_time` sont `null` si le breakout n'est pas configuré ou si la DB cible est inaccessible au moment de la requête.
+> **Note :** les champs `processed_cases`, `cases_pending`, `completion_rate`, `is_up_to_date` et `last_processed_time` sont `null` si le breakout n'est pas configuré ou si la DB cible est inaccessible au moment de la requête.
 
 ---
 
 ## Codes d'erreur
 
-| Code | Description                                              |
-|------|----------------------------------------------------------|
-| 401  | Token manquant, invalide ou header `Authorization` absent |
-| 405  | Méthode non autorisée (seul GET est accepté)             |
-| 500  | Fichier `config.php` introuvable                         |
+Toutes les erreurs renvoient `success: false`, `data: null` et un objet `error` :
 
-**Exemple 401 :**
 ```json
 {
   "success": false,
-  "error": "Missing or invalid Authorization header. Expected: Bearer <token>"
+  "data": null,
+  "error": { "code": "<identifiant>", "message": "<description humaine>" }
+}
+```
+
+| HTTP | `error.code`            | Cause                                                       |
+|------|-------------------------|-------------------------------------------------------------|
+| 401  | `missing_token`         | Header `Authorization: Bearer <token>` absent ou mal formé  |
+| 401  | `invalid_token`         | Token reçu ne correspond pas à `BREAKOUT_WEBHOOK_TOKEN`     |
+| 405  | `method_not_allowed`    | Verbe HTTP autre que `GET`                                  |
+| 429  | `rate_limited`          | 60 requêtes / 60 s dépassées (header `Retry-After` fourni)  |
+| 500  | `server_misconfigured`  | `BREAKOUT_WEBHOOK_TOKEN` non défini ou `config.php` absent  |
+| 500  | `internal_error`        | Erreur DB ou exception non spécifique                       |
+
+**Exemple 401 (`missing_token`) :**
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "missing_token",
+    "message": "Missing or invalid Authorization header. Expected: Bearer <token>."
+  }
+}
+```
+
+**Exemple 429 (`rate_limited`) :**
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "rate_limited",
+    "message": "Too many requests. Retry after 42 seconds."
+  }
 }
 ```
 
@@ -209,24 +254,33 @@ is_up_to_date = null   → Breakout non configuré ou DB cible inaccessible
 ### Surveiller la santé du cron
 
 ```
-cron_enabled = true + last_exit_code = 0  → Cron actif et dernière exécution OK
-cron_enabled = true + last_exit_code ≠ 0  → Erreur lors du dernier run
+cron_enabled = true + last_exit_code = 0   → Cron actif et dernière exécution OK
+cron_enabled = true + last_exit_code = -1  → Breakout en cours d'exécution
+cron_enabled = true + last_exit_code ≠ 0   → Erreur lors du dernier run
 cron_enabled = false                       → Breakout manuel uniquement
 ```
 
 ### Exemple de logique de décision (Python)
 
 ```python
-import requests
+import os, requests
 
-token = "mon_token_secret_2024"
+token = os.environ["BREAKOUT_WEBHOOK_TOKEN"]
 response = requests.get(
     "http://csweb.example.com/breakout-status-webhook.php",
     headers={"Authorization": f"Bearer {token}"},
-    params={"breakout_configured": "true", "cron_enabled": "true"}
+    params={"breakout_configured": "true", "cron_enabled": "true"},
 )
+payload = response.json()
 
-for d in response.json()["data"]:
+if not payload["success"]:
+    err = payload["error"]
+    raise SystemExit(f"[{err['code']}] {err['message']}")
+
+print(f"Page {payload['meta']['page']}/{payload['meta']['pages']} "
+      f"({payload['meta']['total']} dictionnaires)")
+
+for d in payload["data"]:
     name = d["dictionary"]
     rate = d["completion_rate"]
     pending = d["cases_pending"]
@@ -234,9 +288,17 @@ for d in response.json()["data"]:
 
     if not d["is_up_to_date"]:
         print(f"[ALERTE] {name}: {pending} questionnaires en attente ({rate}% traités)")
-    if exit_code != 0:
+    if exit_code is not None and exit_code != 0 and exit_code != -1:
         print(f"[ERREUR] {name}: dernier cron en échec (exit code {exit_code})")
 ```
+
+---
+
+## Limites et garde-fous
+
+- **Body POST max** : non applicable (endpoint GET).
+- **Rate-limit** : 60 requêtes par fenêtre glissante de 60 secondes par couple (token, IP). Au-delà : `429` avec header `Retry-After`.
+- **Liste `dictionaries`** : capée à 100 entrées côté serveur pour borner la requête SQL.
 
 ---
 
@@ -244,12 +306,13 @@ for d in response.json()["data"]:
 
 Le fichier `breakout-status-webhook.php` est déployé à la **racine de l'application CSWeb** (même niveau que `index.php`). Il se connecte à la base MySQL de CSWeb via le fichier `src/AppBundle/config.php`.
 
-### Variable d'environnement requise
+### Variables d'environnement requises
 
 ```yaml
 # docker-compose.yml
 environment:
-  BREAKOUT_WEBHOOK_TOKEN: "mon_token_secret_2024"
+  BREAKOUT_WEBHOOK_TOKEN: "${BREAKOUT_WEBHOOK_TOKEN}"
+  CSWEB_ROOT: "/var/www/html"
 ```
 
 ### Générer un token sécurisé

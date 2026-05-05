@@ -34,237 +34,188 @@ Récupérez les métriques de collecte en temps réel pour alimenter vos dashboa
 
 ---
 
-## API pour Applications Tierces
+## Webhooks racine
 
-### Déclencher le Breakout Sélectif
+CSWeb expose 4 endpoints PHP à la racine, pilotables depuis vos systèmes
+externes (Kairos, scripts cron, monitoring, BI). Tous partagent :
 
-Lancez le breakout d'un dictionnaire spécifique depuis votre application.
+- **Auth** : `Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN`
+- **Format de réponse uniforme** :
+  ```json
+  { "success": true,  "data": ... | null, "error": null,             "meta": {...}? }
+  { "success": false, "data": null,        "error": { "code": "...", "message": "..." } }
+  ```
+- **Rate-limit** : 60 requêtes / 60 secondes par couple (token, IP)
+- **Body POST max** : 64 KB
 
-**Endpoint :** `POST /api/breakout/trigger`
+| Endpoint                          | Méthode    | Rôle                                                  | Doc                                             |
+|-----------------------------------|------------|-------------------------------------------------------|-------------------------------------------------|
+| `/breakout-webhook.php`           | POST       | Déclencher un breakout pour un dictionnaire           | Voir ci-dessous                                 |
+| `/breakout-status-webhook.php`    | GET        | Statut breakout par dictionnaire (paginé)             | [→ détails](/reference/api/breakout-status)     |
+| `/dictionary-schema-webhook.php`  | GET / POST | CRUD sur la configuration des cibles breakout         | Voir ci-dessous                                 |
+| `/log-reader-webhook.php`         | GET        | Lire les fichiers de log CSWeb                        | Voir ci-dessous                                 |
+
+### Déclencher un breakout
 
 ```bash
-curl -X POST http://localhost:8080/api/breakout/trigger \
-  -H "Authorization: Bearer YOUR_API_TOKEN" \
+curl -X POST http://csweb.example.com/breakout-webhook.php \
+  -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"dictionary": "MENAGE_DICT"}'
+```
+
+**Réponse (succès)** :
+
+```json
+{
+  "success": true,
+  "data": {
+    "dictionary": "MENAGE_DICT",
+    "exitCode": 0,
+    "output": "Processed 1500 cases…",
+    "stderr": "",
+    "durationMs": 45230,
+    "logFile": "MENAGE_DICT_20260321_103015-api.log"
+  },
+  "error": null
+}
+```
+
+`output` et `stderr` sont **tronqués à 4 KB** par défaut. Pour le contenu
+complet, soit lire `data.logFile` via `log-reader-webhook.php`, soit poser
+`BREAKOUT_WEBHOOK_VERBOSE=1` côté serveur.
+
+### Lire le statut consolidé d'un breakout
+
+Voir la page dédiée : [Breakout Status Webhook](/reference/api/breakout-status).
+
+### Lister / lire les logs
+
+```bash
+# Lister les logs disponibles
+curl -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN" \
+  "http://csweb.example.com/log-reader-webhook.php?action=list"
+
+# Lire les 200 dernières lignes d'un fichier
+curl -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN" \
+  "http://csweb.example.com/log-reader-webhook.php?file=ui.log&lines=200"
+```
+
+Restrictions :
+- Seuls les fichiers matchant `^[a-zA-Z0-9._-]+\.log$` sont exposés.
+- Le fichier doit physiquement résider dans `var/logs/` (pas de symlink échappant).
+- `lines` borné à 5000.
+
+### Configurer la cible breakout d'un dictionnaire
+
+```bash
+# Enregistrer (ou mettre à jour) la cible — par dict_name OU dict_id
+curl -X POST http://csweb.example.com/dictionary-schema-webhook.php \
+  -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "dictionary": "MENAGE",
-    "mode": "selective"
+    "action": "register",
+    "dictionary_name": "MENAGE_DICT",
+    "host_name": "host.docker.internal",
+    "schema_name": "menage_breakout",
+    "schema_user_name": "csweb",
+    "schema_password": "<secret>"
   }'
+
+# Lire la config existante
+curl -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN" \
+  "http://csweb.example.com/dictionary-schema-webhook.php?action=list"
+
+# Supprimer la config (par nom OU id)
+curl -X POST http://csweb.example.com/dictionary-schema-webhook.php \
+  -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "unregister", "dictionary_name": "MENAGE_DICT"}'
 ```
 
-**Réponse :**
-```json
-{
-  "status": "success",
-  "job_id": "breakout_123456",
-  "dictionary": "MENAGE",
-  "started_at": "2026-03-21T10:30:00Z"
-}
-```
-
-### Récupérer les Logs
-
-Accédez aux logs de breakout depuis votre application de monitoring.
-
-**Endpoint :** `GET /api/logs/breakout`
-
-```bash
-curl -X GET "http://localhost:8080/api/logs/breakout?dictionary=MENAGE&limit=100" \
-  -H "Authorization: Bearer YOUR_API_TOKEN"
-```
-
-**Réponse :**
-```json
-{
-  "logs": [
-    {
-      "timestamp": "2026-03-21T10:30:15Z",
-      "level": "info",
-      "dictionary": "MENAGE",
-      "message": "Processing 1500 cases",
-      "progress": "45%"
-    }
-  ]
-}
-```
-
-### Métriques en Temps Réel
-
-Alimentez vos dashboards avec les métriques de collecte.
-
-**Endpoint :** `GET /api/metrics`
-
-```bash
-curl -X GET http://localhost:8080/api/metrics \
-  -H "Authorization: Bearer YOUR_API_TOKEN"
-```
-
-**Réponse :**
-```json
-{
-  "total_cases": 15420,
-  "cases_by_dictionary": {
-    "MENAGE": 8200,
-    "INDIVIDU": 7220
-  },
-  "breakout_status": {
-    "MENAGE": "completed",
-    "INDIVIDU": "in_progress"
-  },
-  "sync_rate": "98.5%"
-}
-```
-
----
-
-## Webhooks Entrants (CSPro → CSWeb)
-
-Recevez des événements en temps réel depuis CSPro pour automatiser vos workflows.
-
-### 1. Breakout Webhook
-
-**Fichier** : `breakout-webhook.php`
-
-**Fonction** : Lancer breakout automatiquement quand nouveau case uploadé.
-
-**Configuration CSPro** :
-- Event: `case_uploaded`
-- URL: `http://your-server/breakout-webhook.php`
-
-### 2. Log Reader Webhook
-
-**Fichier** : `log-reader-webhook.php`
-
-**Fonction** : Streamer logs CSPro vers système externe (ELK, Splunk).
-
-### 3. Dictionary Schema Webhook
-
-**Fichier** : `dictionary-schema-webhook.php`
-
-**Fonction** : Synchroniser schemas dictionnaires vers base analytics.
+Le `schema_password` est stocké chiffré (`AES_ENCRYPT(?, 'cspro')`) en base.
 
 ## Configuration
 
-### Token Sécurité
+### Variable d'environnement
 
 ```bash
-# .env
-CSPRO_WEBHOOK_TOKEN=your_secret_token_here
+# .env (à la racine du projet)
+BREAKOUT_WEBHOOK_TOKEN=<32+ octets aléatoires>
 ```
 
-**CSWeb** et **CSPro** doivent utiliser le même token.
+> **Important :** la variable est **obligatoire**. Si elle n'est pas définie,
+> les webhooks répondent `500 server_misconfigured` au démarrage. Aucun token
+> par défaut n'est codé en dur.
 
-### CSPro Configuration
-
-Dans CSPro :
-1. Settings → Webhooks
-2. Add Webhook :
-   - URL: `http://your-server/breakout-webhook.php`
-   - Token: `your_secret_token_here`
-   - Events: `case_uploaded`, `case_modified`
-
-## Tester Webhooks
-
-### Curl Test
+Pour générer une valeur solide :
 
 ```bash
-curl -X POST http://localhost:8080/breakout-webhook.php \
-  -H "X-Webhook-Token: your_secret_token_here" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "event": "case_uploaded",
-    "dictionary": "EVAL_DICT",
-    "case_id": "abc123"
-  }'
+openssl rand -hex 32
 ```
 
-**Response attendue** :
-
-```json
-{
-  "status": "success",
-  "message": "Breakout scheduled for EVAL_DICT"
-}
-```
-
-### Logs
+Puis recréer le container csweb pour pick up la variable :
 
 ```bash
-# Voir logs webhook
-tail -f /var/www/html/var/logs/webhook.log
-
-# Filtrer événements
-grep "case_uploaded" /var/www/html/var/logs/webhook.log
+docker compose up -d --no-deps csweb
 ```
 
-## Événements
+### Codes d'erreur
 
-| Événement | Description | Payload |
-|-----------|-------------|---------|
-| `case_uploaded` | Nouveau questionnaire | `dictionary`, `case_id` |
-| `case_modified` | Questionnaire modifié | `dictionary`, `case_id`, `changes` |
-| `case_verified` | Questionnaire vérifié | `dictionary`, `case_id` |
-| `dictionary_uploaded` | Nouveau dictionnaire | `dictionary`, `version` |
+Tous les webhooks utilisent le même catalogue de codes (`error.code`) :
 
-## Sécurité
-
-### Vérification Token
-
-Tous les webhooks vérifient `X-Webhook-Token` :
-
-```php
-<?php
-$token = $_SERVER['HTTP_X_WEBHOOK_TOKEN'] ?? '';
-$expected = getenv('CSPRO_WEBHOOK_TOKEN');
-
-if (!hash_equals($expected, $token)) {
-    http_response_code(401);
-    exit(json_encode(['error' => 'Invalid token']));
-}
-```
+| HTTP | `error.code`            | Cause                                              |
+|------|-------------------------|----------------------------------------------------|
+| 400  | `invalid_body`          | JSON invalide ou champs requis manquants           |
+| 400  | `invalid_dictionary`    | Nom de dict ne matche pas `^[A-Z0-9_]+$`           |
+| 400  | `invalid_filename`      | Nom de fichier log non conforme                    |
+| 400  | `invalid_action`        | Action inconnue                                    |
+| 401  | `missing_token`         | Header `Authorization` absent ou mal formé         |
+| 401  | `invalid_token`         | Token reçu ne correspond pas                       |
+| 403  | `file_not_readable`     | Fichier de log non lisible                         |
+| 404  | `dictionary_not_found`  | Dict inexistant                                    |
+| 404  | `file_not_found`        | Fichier de log inexistant                          |
+| 405  | `method_not_allowed`    | Verbe HTTP non supporté                            |
+| 413  | `body_too_large`        | Body POST > 64 KB                                  |
+| 429  | `rate_limited`          | Quota dépassé (header `Retry-After` fourni)        |
+| 500  | `server_misconfigured`  | `BREAKOUT_WEBHOOK_TOKEN` non défini                |
+| 500  | `process_failed`        | `proc_open` impossible                             |
+| 500  | `breakout_failed`       | Breakout terminé avec exit ≠ 0                     |
+| 500  | `internal_error`        | Erreur DB / exception non spécifique               |
 
 ### HTTPS Recommandé
 
-En production :
-
-```
-https://your-server.com/breakout-webhook.php
-```
+En production, exposer les webhooks uniquement via HTTPS (Let's Encrypt,
+reverse proxy, etc.). Le Bearer token transite en clair sur HTTP.
 
 ## Customisation
 
 ### Webhook Custom
 
-Créer `custom-webhook.php` :
+Créer `custom-webhook.php` à la racine et réutiliser le helper partagé pour
+hériter automatiquement de l'authentification, du rate-limit, du capping
+de body et du format de réponse uniforme :
 
 ```php
 <?php
-require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/webhook_helper.php';
 
-// Vérifier token
-$token = $_SERVER['HTTP_X_WEBHOOK_TOKEN'] ?? '';
-if (!hash_equals(getenv('CSPRO_WEBHOOK_TOKEN'), $token)) {
-    http_response_code(401);
-    exit;
+requireMethod(['POST']);
+requireBearerToken();
+
+$body = readJsonBody();
+if (!$body || empty($body['dictionary'])) {
+    respondError('invalid_body', 'Missing "dictionary" in request body.', 400);
 }
 
-// Parser payload
-$payload = json_decode(file_get_contents('php://input'), true);
+// Logique custom : envoyer une notification Slack
+$slack = 'https://hooks.slack.com/services/YOUR/WEBHOOK';
+$ch = curl_init($slack);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['text' => "New case in {$body['dictionary']}"]));
+curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+curl_exec($ch);
 
-// Logique custom
-if ($payload['event'] === 'case_uploaded') {
-    // Envoyer notification Slack
-    $slack = 'https://hooks.slack.com/services/YOUR/WEBHOOK';
-    $data = ['text' => "New case: {$payload['case_id']}"];
-
-    $ch = curl_init($slack);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-    curl_exec($ch);
-}
-
-http_response_code(200);
-echo json_encode(['status' => 'ok']);
+respondSuccess(['notified' => true]);
 ```
 
 ## Monitoring
@@ -316,11 +267,21 @@ tail -f /var/log/nginx/access.log
 ### Token Mismatch (401)
 
 ```bash
-# Vérifier token CSWeb
-echo $CSPRO_WEBHOOK_TOKEN
+# Vérifier le token côté serveur CSWeb
+docker exec csweb-app printenv BREAKOUT_WEBHOOK_TOKEN
 
-# Vérifier token CSPro
-# (dans settings CSPro)
+# Vérifier le token côté client (.env de Kairos / variable d'environnement
+# de votre intégration). Les deux doivent être strictement identiques.
+```
+
+Réponse attendue en cas de mismatch :
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": { "code": "invalid_token", "message": "Invalid token." }
+}
 ```
 
 ### Timeout
