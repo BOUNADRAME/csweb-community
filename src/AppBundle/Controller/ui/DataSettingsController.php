@@ -495,6 +495,49 @@ class DataSettingsController extends AbstractController implements TokenAuthenti
         }
     }
 
+    #[Route('/breakout/logs/purge-all', name: 'breakoutLogPurgeAll', methods: ['POST'])]
+    public function breakoutLogPurgeAll(Request $request): Response {
+        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        try {
+            $body = json_decode($request->getContent(), true) ?: [];
+            $dictFilter = isset($body['dict']) ? trim((string) $body['dict']) : '';
+            $logDir = $this->kernel->getProjectDir() . '/var/logs/breakout';
+            $deleted = 0;
+            $failed = 0;
+
+            if (is_dir($logDir)) {
+                $files = glob($logDir . '/*.log') ?: [];
+                foreach ($files as $filePath) {
+                    $filename = basename($filePath);
+                    if ($dictFilter !== '') {
+                        if (!preg_match('/^(.+?)_(manual_)?\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.log$/', $filename, $m)
+                            || $m[1] !== $dictFilter) {
+                            continue;
+                        }
+                    }
+                    if (@unlink($filePath)) {
+                        $deleted++;
+                    } else {
+                        $failed++;
+                    }
+                }
+            }
+
+            $scope = $dictFilter === '' ? 'all dictionaries' : 'dictionary "' . $dictFilter . '"';
+            $result = [
+                'deleted' => $deleted,
+                'failed' => $failed,
+                'description' => $deleted . ' log file(s) purged for ' . $scope . '.'
+                    . ($failed > 0 ? ' ' . $failed . ' failed.' : ''),
+                'code' => 200,
+            ];
+            return new Response(json_encode($result, JSON_THROW_ON_ERROR), Response::HTTP_OK);
+        } catch (\Exception $e) {
+            $result = ['description' => 'Purge failed. ' . $e->getMessage(), 'code' => 500];
+            return new Response(json_encode($result, JSON_THROW_ON_ERROR), Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     #[Route('/breakout/logs/content', name: 'breakoutLogContent', methods: ['GET'])]
     public function breakoutLogContent(Request $request): Response {
         $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
