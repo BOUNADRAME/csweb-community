@@ -45,10 +45,35 @@ class DataSettingsController extends AbstractController implements TokenAuthenti
     #[Route('/dataSettings', name: 'dataSettings', methods: ['GET'])]
     public function viewDataSettingsAction(Request $request): Response {
         $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
-        // Set the oauth token
         $dataSettings = $this->dataSettings->getDataSettings();
-        $this->logger->debug('data settings ' . print_r($dataSettings, true));
-        return $this->render('dataSettings.twig', ['dataSettings' => $dataSettings]);
+        return $this->render('dataSettings.twig', [
+            'dataSettings'    => $dataSettings,
+            'connectionMode'  => $this->getConnectionMode(),
+            'tunnelInfo'      => $this->getTunnelInfo(),
+        ]);
+    }
+
+    /**
+     * @return string 'direct' | 'tunnel'
+     */
+    private function getConnectionMode(): string {
+        $mode = strtolower((string) (getenv('BREAKOUT_CONNECTION_MODE') ?: 'direct'));
+        return $mode === 'tunnel' ? 'tunnel' : 'direct';
+    }
+
+    /**
+     * @return array{host:string, remoteHost:string, remotePort:int, localPort:int}|null
+     */
+    private function getTunnelInfo(): ?array {
+        if ($this->getConnectionMode() !== 'tunnel') {
+            return null;
+        }
+        return [
+            'host'        => (string) (getenv('BREAKOUT_SSH_HOST') ?: ''),
+            'remoteHost'  => (string) (getenv('BREAKOUT_TUNNEL_REMOTE_HOST') ?: '127.0.0.1'),
+            'remotePort'  => (int) (getenv('BREAKOUT_TUNNEL_REMOTE_PORT') ?: 3306),
+            'localPort'   => (int) (getenv('BREAKOUT_TUNNEL_LOCAL_PORT') ?: 13306),
+        ];
     }
 
     #[Route('/getSettings', name: 'getSettings', methods: ['GET'])]

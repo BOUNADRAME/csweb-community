@@ -1,0 +1,200 @@
+# Modes de connexion au breakout
+
+Le breakout pousse les données collectées vers une base SGBD cible
+(PostgreSQL / MySQL / SQL Server). Selon votre infrastructure, CSWeb peut
+atteindre cette base de **deux** façons. Le mode est piloté par la variable
+d'environnement `BREAKOUT_CONNECTION_MODE` dans votre fichier `.env`.
+
+> **TL;DR** — Si la base cible est joignable directement depuis votre serveur
+> CSWeb (réseau privé, co-localisation, ou port public), utilisez `direct`.
+> Si la base est uniquement accessible via SSH (port DB fermé sur Internet),
+> utilisez `tunnel`.
+
+---
+
+## Arbre de décision
+
+```
+Votre base de breakout est-elle joignable depuis votre container CSWeb
+sur son host:port (sans authentification réseau supplémentaire) ?
+
+├── Oui → BREAKOUT_CONNECTION_MODE=direct
+│   ├── Co-localisation (même VPS)              → host = host.docker.internal ou 127.0.0.1
+│   ├── Réseau privé / VPC / VPN                → host = 10.x.x.x, 192.168.x.x, etc.
+│   ├── Profil Docker local (mysql-breakout)    → host = mysql-breakout
+│   └── Port DB exposé publiquement (whitelist) → host = adresse publique
+│
+└── Non, j'utilise SSH (clé privée) pour atteindre la base
+    → BREAKOUT_CONNECTION_MODE=tunnel
+```
+
+---
+
+## Mode `direct` (par défaut)
+
+**Comportement** : CSWeb ouvre une connexion TCP directe vers `host_name:port`
+tel que vous les renseignez dans **Data Configuration → Add Configuration**.
+
+**Configuration `.env`** :
+
+```env
+BREAKOUT_CONNECTION_MODE=direct
+```
+
+C'est tout. Aucune autre variable n'est nécessaire.
+
+**Multi-base** : chaque dictionnaire peut pointer vers un host/port différent.
+CSWeb ne fait que respecter ce que vous renseignez.
+
+```
+DICT_A    → 10.7.0.17:3306    (PG dans VPC privé)
+DICT_B    → host.docker.internal:5432    (Postgres local)
+DICT_C    → backup-db.internal:1433    (SQL Server interne)
+```
+
+---
+
+## Mode `tunnel`
+
+**Comportement** : au démarrage du container, CSWeb monte **un tunnel SSH**
+vers `BREAKOUT_SSH_HOST` puis branche `127.0.0.1:LOCAL_PORT` (à l'intérieur
+du container) sur `REMOTE_HOST:REMOTE_PORT` (sur le serveur distant).
+
+Toutes les connexions de breakout passent par ce tunnel — même si l'opérateur
+saisit un autre hostname dans **Add Configuration** (le hostname devient
+purement cosmétique).
+
+**Cas d'usage** : la base est sur un VPS dont vous accédez la base **uniquement
+via SSH** (le port 3306 / 5432 / 1433 est fermé sur Internet pour des raisons
+de sécurité — c'est la pratique recommandée). Vous y accédez normalement avec
+votre clé privée, comme avec DBeaver, MySQL Workbench, etc.
+
+**Configuration `.env`** :
+
+```env
+BREAKOUT_CONNECTION_MODE=tunnel
+
+# Cible SSH
+BREAKOUT_SSH_HOST=167.86.113.146
+BREAKOUT_SSH_PORT=22
+BREAKOUT_SSH_USER=root
+
+# Chemin de la clé privée SUR L'HÔTE (sera bind-mountée dans le container)
+BREAKOUT_SSH_KEY_PATH_HOST=/Users/votre-user/.ssh/id_breakout
+
+# Forwarding
+BREAKOUT_TUNNEL_LOCAL_PORT=13306
+BREAKOUT_TUNNEL_REMOTE_HOST=127.0.0.1
+BREAKOUT_TUNNEL_REMOTE_PORT=3306
+
+# Reconnexion auto (autossh)
+BREAKOUT_TUNNEL_KEEPALIVE=30
+```
+
+### Préparer la clé SSH
+
+```bash
+# Permissions strictes
+chmod 600 ~/.ssh/id_breakout
+
+# Vérifier que la clé fonctionne en direct (depuis votre Mac/Linux)
+ssh -i ~/.ssh/id_breakout -p 22 root@167.86.113.146 "echo ok"
+```
+
+### Démarrage
+
+```bash
+docker compose up -d --build csweb
+```
+
+Au boot, le log `csweb-app` doit montrer :
+
+```
+[CSWeb] Connection mode: tunnel — preparing SSH forward...
+[CSWeb] SSH tunnel up: 127.0.0.1:13306 → 167.86.113.146:3306
+```
+
+Si vous voyez à la place `Connection mode: tunnel` puis `WARN: autossh failed
+to start`, vérifiez :
+
+1. La clé est-elle bien lisible par Docker ? `chmod 600` côté hôte.
+2. Le user SSH a-t-il bien cette clé dans son `~/.ssh/authorized_keys` ?
+3. Le port 22 est-il joignable depuis votre container ? (Pas de blocage firewall)
+
+### Témoin visuel dans l'UI
+
+Quand le mode tunnel est actif, la page **Data Settings** affiche un bandeau
+en haut :
+
+> 🔌 **Tunnel mode active.** All breakout connections are routed through SSH
+> to `<BREAKOUT_SSH_HOST>` → `<REMOTE_HOST>:<REMOTE_PORT>` (local port `13306`).
+> The hostname / port you set below are stored as-is for display, but CSWeb
+> rewrites them to `127.0.0.1:13306` at connection time.
+
+Idem dans les modals **Add Configuration** et **Edit Configuration** : un
+encart d'information rappelle que le hostname renseigné est cosmétique.
+
+---
+
+## Limite : un seul tunnel par déploiement
+
+La v1 du mode tunnel ne gère **qu'une seule cible SSH globale**
+(`BREAKOUT_SSH_HOST`). Si vous avez plusieurs bases cibles sur **plusieurs
+serveurs SSH différents**, vous avez deux options :
+
+### Option recommandée — Une instance CSWeb par tenant
+
+Chaque institut / équipe d'enquête déploie sa propre CSWeb, configurée pour
+son propre serveur DB (mode `direct` co-localisé, ou mode `tunnel` vers son
+unique cible SSH). C'est l'architecture recommandée pour les déploiements
+ANSD / RGPH / Statinfo.
+
+### Option future — Tunnels par dictionnaire
+
+Une évolution prévue (non implémentée) permettra de stocker un profil de
+tunnel par ligne `cspro_dictionaries_schema`. Sera activée si un cas
+opérationnel le justifie.
+
+---
+
+## Migrer entre modes
+
+### `direct` → `tunnel`
+
+1. Renseigner les variables `BREAKOUT_SSH_*` et `BREAKOUT_TUNNEL_*` dans `.env`.
+2. Passer `BREAKOUT_CONNECTION_MODE=tunnel`.
+3. `docker compose up -d --build csweb`.
+
+Les configurations `cspro_dictionaries_schema` existantes restent valides —
+le hostname stocké est ignoré au profit de la sortie locale du tunnel. Le
+bandeau UI rappelle que ces valeurs sont devenues cosmétiques.
+
+### `tunnel` → `direct`
+
+1. Passer `BREAKOUT_CONNECTION_MODE=direct` dans `.env`.
+2. Vérifier que les `host_name` stockés en DB pointent bien vers une cible
+   réellement joignable depuis CSWeb (sinon les "Test Connection" échoueront).
+3. `docker compose up -d csweb`.
+
+---
+
+## Sécurité
+
+- En mode `direct`, **n'exposez pas** la base sur Internet sans whitelist IP
+  ou TLS. Préférez un VPC privé.
+- En mode `tunnel`, la clé SSH est bind-mountée en lecture seule depuis l'hôte
+  vers le container. Elle n'est **jamais** copiée dans l'image Docker. Une
+  copie temporaire (`/tmp/breakout_ssh_key`) est créée au boot avec mode `0600`.
+- Utilisez une **clé dédiée** pour ce tunnel (pas votre clé personnelle), et
+  restreignez son usage côté serveur via `~/.ssh/authorized_keys`
+  (`from="..." command="..."`).
+- `StrictHostKeyChecking=accept-new` est utilisé par défaut : la première
+  connexion enregistre la clé hôte. Pour pinning strict, pré-populez
+  `/home/www-data/.ssh/known_hosts` côté container.
+
+---
+
+## Ressources
+
+- [Webhooks API](/reference/api/webhooks) — déclenchement et statut breakout
+- [Variables d'environnement](/reference/config/environment) — référence complète `.env`

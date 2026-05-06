@@ -71,6 +71,13 @@
                 </div>
                 <!-- /.modal-header -->
                 <div class="modal-body">
+                    {% if connectionMode == 'tunnel' and tunnelInfo %}
+                    <div class="alert alert-info py-2" role="alert">
+                        <i class="fas fa-network-wired"></i>
+                        <strong>Tunnel mode active.</strong>
+                        Hostname / port fields are stored for display, but CSWeb routes the actual connection through the SSH tunnel to <code>{{ tunnelInfo.host }}</code>.
+                    </div>
+                    {% endif %}
                     <form class="form-horizontal" id="add-config-form" role="form">
                         <!-- form-group row -->
                         <div class="form-group row has-feedback">
@@ -284,6 +291,13 @@
                 </div>
                 <!-- /.modal-header -->
                 <div class="modal-body">
+                    {% if connectionMode == 'tunnel' and tunnelInfo %}
+                    <div class="alert alert-info py-2" role="alert">
+                        <i class="fas fa-network-wired"></i>
+                        <strong>Tunnel mode active.</strong>
+                        Hostname / port fields are stored for display, but CSWeb routes the actual connection through the SSH tunnel to <code>{{ tunnelInfo.host }}</code>.
+                    </div>
+                    {% endif %}
                     <form class="form-horizontal" id="edit-config-form" role="form">
                         <div id="view-additional-config-json">
                             <pre id="additional-config-json-text-holder">
@@ -787,6 +801,28 @@
         <!-- /.col-12 -->
     </div>
     <!-- /.row -->
+
+    {% if connectionMode == 'tunnel' and tunnelInfo %}
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-info d-flex align-items-center" role="alert" style="border-left:4px solid #36b9cc;">
+                <i class="fas fa-network-wired fa-lg mr-3"></i>
+                <div class="flex-grow-1">
+                    <strong>Tunnel mode active.</strong>
+                    All breakout connections are routed through SSH to
+                    <code>{{ tunnelInfo.host }}</code> →
+                    <code>{{ tunnelInfo.remoteHost }}:{{ tunnelInfo.remotePort }}</code>
+                    (local port <code>{{ tunnelInfo.localPort }}</code>).
+                    <br>
+                    <small class="text-muted">
+                        The hostname / port you set below are stored as-is for display, but CSWeb rewrites them to <code>127.0.0.1:{{ tunnelInfo.localPort }}</code> at connection time.
+                        Switch back to <code>direct</code> mode in <code>.env</code> (<code>BREAKOUT_CONNECTION_MODE=direct</code>) to disable.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
     <div class="row">
         <div class="col-12">
             <div class="card shadow mb-4">

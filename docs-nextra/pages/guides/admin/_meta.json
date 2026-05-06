@@ -4,5 +4,6 @@
   "scheduler": "Web Scheduler",
   "backup": "Backup Automatique",
   "webhooks": "Webhooks",
+  "connection-modes": "Modes de Connexion (Direct / Tunnel)",
   "monitoring": "Monitoring"
 }
