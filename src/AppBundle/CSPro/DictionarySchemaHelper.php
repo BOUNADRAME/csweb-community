@@ -53,9 +53,18 @@ class DictionarySchemaHelper {
 
         if ($result) {
             $driver = DataSettings::resolveDriver($result['db_type'] ?? 'postgresql');
-            $this->connectionParams = ['dbname' => $result['schema_name'], 'user' => $result['schema_user_name'], 'password' => $result['password'], 'host' => $result['host_name'], 'driver' => $driver];
-            if (!empty($result['port'])) {
-                $this->connectionParams['port'] = (int) $result['port'];
+            // Resolve effective host/port via the connection mode (direct = use
+            // host_name as-is, tunnel = rewrite to 127.0.0.1:tunnel-port).
+            $resolved = \AppBundle\Service\BreakoutConnectionResolver::resolve($result);
+            $this->connectionParams = [
+                'dbname'   => $result['schema_name'],
+                'user'     => $result['schema_user_name'],
+                'password' => $result['password'],
+                'host'     => $resolved['host'],
+                'driver'   => $driver,
+            ];
+            if ($resolved['port'] !== null) {
+                $this->connectionParams['port'] = $resolved['port'];
             }
             return true;
         } else {

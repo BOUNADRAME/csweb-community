@@ -50,6 +50,29 @@ function getDbConnection(): PDO {
     ]);
 }
 
+/**
+ * Resolve effective host/port for the breakout target based on
+ * BREAKOUT_CONNECTION_MODE. Mirrors BreakoutConnectionResolver::resolve()
+ * but kept inline here to keep the webhook standalone (no Symfony bootstrap).
+ *
+ * @param array<string,mixed> $row
+ * @return array{host:string, port:?int}
+ */
+function resolveTargetEndpoint(array $row): array {
+    $mode = strtolower((string) (getenv('BREAKOUT_CONNECTION_MODE') ?: 'direct'));
+    if ($mode === 'tunnel') {
+        return [
+            'host' => '127.0.0.1',
+            'port' => (int) (getenv('BREAKOUT_TUNNEL_LOCAL_PORT') ?: 13306),
+        ];
+    }
+    $port = $row['port'] ?? null;
+    return [
+        'host' => (string) ($row['host_name'] ?? ''),
+        'port' => $port !== null && $port !== '' ? (int) $port : null,
+    ];
+}
+
 /** @param array<string,mixed> $row */
 function getTargetDbConnection(array $row): ?PDO {
     try {
@@ -58,13 +81,13 @@ function getTargetDbConnection(array $row): ?PDO {
             'sqlserver' => 'sqlsrv',
             default     => 'pgsql',
         };
-        $port = !empty($row['port']) ? (int) $row['port'] : null;
+        ['host' => $effHost, 'port' => $effPort] = resolveTargetEndpoint($row);
         if ($driver === 'mysql') {
-            $dsn = 'mysql:host=' . $row['host_name'] . ($port ? ';port=' . $port : '') . ';dbname=' . $row['schema_name'] . ';charset=utf8mb4';
+            $dsn = 'mysql:host=' . $effHost . ($effPort ? ';port=' . $effPort : '') . ';dbname=' . $row['schema_name'] . ';charset=utf8mb4';
         } elseif ($driver === 'sqlsrv') {
-            $dsn = 'sqlsrv:Server=' . $row['host_name'] . ($port ? ',' . $port : '') . ';Database=' . $row['schema_name'];
+            $dsn = 'sqlsrv:Server=' . $effHost . ($effPort ? ',' . $effPort : '') . ';Database=' . $row['schema_name'];
         } else {
-            $dsn = 'pgsql:host=' . $row['host_name'] . ($port ? ';port=' . $port : '') . ';dbname=' . $row['schema_name'];
+            $dsn = 'pgsql:host=' . $effHost . ($effPort ? ';port=' . $effPort : '') . ';dbname=' . $row['schema_name'];
         }
         return new PDO($dsn, $row['schema_user_name'], $row['schema_password_plain'], [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,

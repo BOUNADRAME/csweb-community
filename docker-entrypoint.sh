@@ -99,6 +99,67 @@ if [ -f /etc/cron.d/csweb-scheduler ]; then
 fi
 
 # ============================================================================
+# Breakout target SSH tunnel (BREAKOUT_CONNECTION_MODE=tunnel)
+# ============================================================================
+BREAKOUT_CONNECTION_MODE=${BREAKOUT_CONNECTION_MODE:-direct}
+if [ "$BREAKOUT_CONNECTION_MODE" = "tunnel" ]; then
+    echo "[CSWeb] Connection mode: tunnel — preparing SSH forward..."
+
+    KEY_PATH="/run/secrets/breakout_ssh_key"
+
+    # /dev/null is the default mount when BREAKOUT_SSH_KEY_PATH_HOST is unset
+    # in .env. Treat both "missing" and "empty" as fail-fast.
+    if [ ! -s "$KEY_PATH" ]; then
+        echo "[CSWeb] ERROR: BREAKOUT_CONNECTION_MODE=tunnel requires a real SSH"
+        echo "[CSWeb]        private key. Set BREAKOUT_SSH_KEY_PATH_HOST in .env"
+        echo "[CSWeb]        to the host path of your private key (e.g. /Users/me/.ssh/id_breakout)."
+        exit 1
+    fi
+
+    if [ -z "$BREAKOUT_SSH_HOST" ] || [ -z "$BREAKOUT_SSH_USER" ]; then
+        echo "[CSWeb] ERROR: BREAKOUT_SSH_HOST and BREAKOUT_SSH_USER must be set"
+        echo "[CSWeb]        when BREAKOUT_CONNECTION_MODE=tunnel."
+        exit 1
+    fi
+
+    # Copy the key to a writable location so we can chmod 600 (the bind mount
+    # might be on a filesystem where chmod is a no-op, e.g. macOS Docker Desktop).
+    install -m 600 "$KEY_PATH" /tmp/breakout_ssh_key
+    chown www-data:www-data /tmp/breakout_ssh_key
+
+    # known_hosts: accept the remote host on first connect (we lose host-key
+    # pinning, but the alternative is an interactive prompt that breaks startup).
+    # Operators wanting strict checking can pre-populate /home/www-data/.ssh/known_hosts.
+    mkdir -p /home/www-data/.ssh
+    chown -R www-data:www-data /home/www-data/.ssh
+    chmod 700 /home/www-data/.ssh
+
+    BREAKOUT_SSH_PORT=${BREAKOUT_SSH_PORT:-22}
+    BREAKOUT_TUNNEL_LOCAL_PORT=${BREAKOUT_TUNNEL_LOCAL_PORT:-13306}
+    BREAKOUT_TUNNEL_REMOTE_HOST=${BREAKOUT_TUNNEL_REMOTE_HOST:-127.0.0.1}
+    BREAKOUT_TUNNEL_REMOTE_PORT=${BREAKOUT_TUNNEL_REMOTE_PORT:-3306}
+    BREAKOUT_TUNNEL_KEEPALIVE=${BREAKOUT_TUNNEL_KEEPALIVE:-30}
+
+    # autossh -M 0 disables its own monitor port and relies on SSH ServerAlive.
+    # -f forks to background, -N disables remote command (port-forward only).
+    AUTOSSH_GATETIME=0 \
+    autossh -M 0 -f -N \
+        -o "ServerAliveInterval=${BREAKOUT_TUNNEL_KEEPALIVE}" \
+        -o "ServerAliveCountMax=3" \
+        -o "ExitOnForwardFailure=yes" \
+        -o "StrictHostKeyChecking=accept-new" \
+        -o "UserKnownHostsFile=/home/www-data/.ssh/known_hosts" \
+        -i /tmp/breakout_ssh_key \
+        -L "0.0.0.0:${BREAKOUT_TUNNEL_LOCAL_PORT}:${BREAKOUT_TUNNEL_REMOTE_HOST}:${BREAKOUT_TUNNEL_REMOTE_PORT}" \
+        -p "${BREAKOUT_SSH_PORT}" \
+        "${BREAKOUT_SSH_USER}@${BREAKOUT_SSH_HOST}" \
+        && echo "[CSWeb] SSH tunnel up: 127.0.0.1:${BREAKOUT_TUNNEL_LOCAL_PORT} → ${BREAKOUT_SSH_HOST}:${BREAKOUT_TUNNEL_REMOTE_PORT}" \
+        || echo "[CSWeb] WARN: autossh failed to start (CSWeb will run but breakout queries will time out until tunnel is up)"
+else
+    echo "[CSWeb] Connection mode: direct — skipping SSH tunnel setup."
+fi
+
+# ============================================================================
 # Apply environment-based configuration via envsubst
 # ============================================================================
 echo "[CSWeb] Applying environment configuration..."

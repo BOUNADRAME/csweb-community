@@ -60,15 +60,22 @@ class DataSettings {
 
     private function buildConnectionParams(array $dataSetting): array {
         $driver = self::resolveDriver($dataSetting['dbType'] ?? 'postgresql');
+        // Resolve effective host/port via BREAKOUT_CONNECTION_MODE so that
+        // both "test connection" (when adding/updating a config) and the
+        // actual breakout queries go through the SSH tunnel when configured.
+        $resolved = \AppBundle\Service\BreakoutConnectionResolver::resolve([
+            'host_name' => $dataSetting['targetHostName'] ?? null,
+            'port'      => $dataSetting['targetPort'] ?? null,
+        ]);
         $params = [
             'dbname'   => $dataSetting['targetSchemaName'],
             'user'     => $dataSetting['dbUserName'],
             'password' => $dataSetting['dbPassword'],
-            'host'     => $dataSetting['targetHostName'],
+            'host'     => $resolved['host'],
             'driver'   => $driver,
         ];
-        if (!empty($dataSetting['targetPort'])) {
-            $params['port'] = (int) $dataSetting['targetPort'];
+        if ($resolved['port'] !== null) {
+            $params['port'] = $resolved['port'];
         }
         return $params;
     }

@@ -40,6 +40,9 @@ services:
       - ./docker/apache/000-default.conf:/etc/templates/000-default.conf:ro
       - ./docker/apache/mpm_prefork.conf:/etc/templates/mpm_prefork.conf:ro
       - ./docker/php/php.ini:/etc/templates/csweb.ini:ro
+      # SSH private key for tunnel mode. When BREAKOUT_SSH_KEY_PATH_HOST is
+      # not set, /dev/null is mounted (a no-op the entrypoint detects).
+      - ${BREAKOUT_SSH_KEY_PATH_HOST:-/dev/null}:/run/secrets/breakout_ssh_key:ro
 
     environment:
       # Application
@@ -100,6 +103,17 @@ services:
       - BREAKOUT_WEBHOOK_TOKEN=${BREAKOUT_WEBHOOK_TOKEN}
       # Filesystem root used by webhooks to locate var/logs etc.
       - CSWEB_ROOT=${CSWEB_ROOT:-/var/www/html}
+
+      # Breakout target connection mode (direct | tunnel)
+      - BREAKOUT_CONNECTION_MODE=${BREAKOUT_CONNECTION_MODE:-direct}
+      - BREAKOUT_SSH_HOST=${BREAKOUT_SSH_HOST:-}
+      - BREAKOUT_SSH_PORT=${BREAKOUT_SSH_PORT:-22}
+      - BREAKOUT_SSH_USER=${BREAKOUT_SSH_USER:-}
+      - BREAKOUT_SSH_KEY_PASSPHRASE=${BREAKOUT_SSH_KEY_PASSPHRASE:-}
+      - BREAKOUT_TUNNEL_LOCAL_PORT=${BREAKOUT_TUNNEL_LOCAL_PORT:-13306}
+      - BREAKOUT_TUNNEL_REMOTE_HOST=${BREAKOUT_TUNNEL_REMOTE_HOST:-127.0.0.1}
+      - BREAKOUT_TUNNEL_REMOTE_PORT=${BREAKOUT_TUNNEL_REMOTE_PORT:-3306}
+      - BREAKOUT_TUNNEL_KEEPALIVE=${BREAKOUT_TUNNEL_KEEPALIVE:-30}
 
     extra_hosts:
       - "host.docker.internal:host-gateway"

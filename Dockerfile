@@ -27,6 +27,8 @@ RUN apt-get update && apt-get install -y \
     default-mysql-client \
     nodejs \
     npm \
+    openssh-client \
+    autossh \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

@@ -507,7 +507,14 @@ class BreakoutStatusService {
 
     /** @param array<string,mixed> $row */
     private function getTargetConnection(array $row): ?PDO {
-        $key = ($row['host_name'] ?? '') . '|' . ($row['port'] ?? '') . '|' . ($row['db_type'] ?? '') . '|' . ($row['schema_name'] ?? '');
+        // Resolve effective host/port based on BREAKOUT_CONNECTION_MODE
+        // (direct = use the configured host_name as-is, tunnel = rewrite to
+        // 127.0.0.1:BREAKOUT_TUNNEL_LOCAL_PORT).
+        $resolved = BreakoutConnectionResolver::resolve($row);
+        $effHost = $resolved['host'];
+        $effPort = $resolved['port'];
+
+        $key = $effHost . '|' . $effPort . '|' . ($row['db_type'] ?? '') . '|' . ($row['schema_name'] ?? '');
         if (array_key_exists($key, $this->targetConnections)) {
             return $this->targetConnections[$key];
         }
@@ -517,13 +524,12 @@ class BreakoutStatusService {
                 'sqlserver' => 'sqlsrv',
                 default     => 'pgsql',
             };
-            $port = !empty($row['port']) ? (int) $row['port'] : null;
             if ($driver === 'mysql') {
-                $dsn = 'mysql:host=' . $row['host_name'] . ($port ? ';port=' . $port : '') . ';dbname=' . $row['schema_name'] . ';charset=utf8mb4';
+                $dsn = 'mysql:host=' . $effHost . ($effPort ? ';port=' . $effPort : '') . ';dbname=' . $row['schema_name'] . ';charset=utf8mb4';
             } elseif ($driver === 'sqlsrv') {
-                $dsn = 'sqlsrv:Server=' . $row['host_name'] . ($port ? ',' . $port : '') . ';Database=' . $row['schema_name'];
+                $dsn = 'sqlsrv:Server=' . $effHost . ($effPort ? ',' . $effPort : '') . ';Database=' . $row['schema_name'];
             } else {
-                $dsn = 'pgsql:host=' . $row['host_name'] . ($port ? ';port=' . $port : '') . ';dbname=' . $row['schema_name'];
+                $dsn = 'pgsql:host=' . $effHost . ($effPort ? ';port=' . $effPort : '') . ';dbname=' . $row['schema_name'];
             }
             $conn = new PDO($dsn, $row['schema_user_name'], $row['schema_password_plain'], [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
