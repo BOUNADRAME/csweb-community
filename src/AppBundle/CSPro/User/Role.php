@@ -36,6 +36,24 @@ class RolePermissions
     public const BACKUP_ALL    = 9;
     public const LOGS_ALL      = 10;
     public const DASHBOARD_ALL = 11;
+
+    /**
+     * Boolean (non-dictionary-scoped) permissions persisted as rows in
+     * cspro_role_permissions. Single source of truth — used by both addRole
+     * and saveRole so that adding a new permission only requires editing
+     * this constant + cspro_permissions seed.
+     */
+    public const ALL_BOOLEAN_PERMISSIONS = [
+        self::DATA_ALL,
+        self::APPS_ALL,
+        self::USERS_ALL,
+        self::ROLES_ALL,
+        self::SETTINGS_ALL,
+        self::REPORTS_ALL,
+        self::BACKUP_ALL,
+        self::LOGS_ALL,
+        self::DASHBOARD_ALL,
+    ];
     
     public $permissions;
     public $dictionaryPermissions;

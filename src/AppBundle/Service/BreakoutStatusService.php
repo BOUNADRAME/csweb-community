@@ -399,11 +399,27 @@ class BreakoutStatusService {
         ];
     }
 
+    /**
+     * Reject anything that is not a strict CSPro dictionary identifier.
+     * Source dictionary names live in cspro_dictionaries.dictionary_name and
+     * are constrained by upstream code, but we re-check here so this service
+     * never interpolates an unsafe value into a SQL identifier.
+     */
+    private static function isSafeDictName(string $name): bool {
+        return (bool) preg_match('/^[A-Z0-9_]{1,64}$/', $name);
+    }
+
     private function countSourceCases(string $dictName): int {
         if (array_key_exists($dictName, $this->memoSourceCount)) {
             return $this->memoSourceCount[$dictName];
         }
+        if (!self::isSafeDictName($dictName)) {
+            $this->memoSourceCount[$dictName] = 0;
+            return 0;
+        }
         try {
+            // $dictName is alphanumeric/underscore only — safe to interpolate as
+            // a backtick-quoted identifier. We still wrap defensively.
             $safe = '`' . str_replace('`', '``', $dictName) . '`';
             // Cheap estimate first via INFORMATION_SCHEMA — avoids COUNT(*) on very large tables.
             $stmt = $this->pdo->prepare(
@@ -427,16 +443,24 @@ class BreakoutStatusService {
 
     /** @param array<string,mixed> $row */
     private function countProcessedCases(array $row): ?int {
-        $key = $row['dictionary_name'];
+        $key = (string) ($row['dictionary_name'] ?? '');
         if (array_key_exists($key, $this->memoProcessedCount)) {
             return $this->memoProcessedCount[$key];
+        }
+        if (!self::isSafeDictName($key)) {
+            $this->memoProcessedCount[$key] = null;
+            return null;
         }
         $conn = $this->getTargetConnection($row);
         if (!$conn) {
             $this->memoProcessedCount[$key] = null;
             return null;
         }
-        $prefix = $this->tablePrefix($row['dictionary_name']);
+        $prefix = $this->tablePrefix($key);
+        if ($prefix === null) {
+            $this->memoProcessedCount[$key] = null;
+            return null;
+        }
         try {
             $val = (int) $conn->query("SELECT COUNT(*) FROM {$prefix}cases WHERE deleted = 0")->fetchColumn();
             $this->memoProcessedCount[$key] = $val;
@@ -449,9 +473,14 @@ class BreakoutStatusService {
 
     /** @param array<string,mixed> $row */
     private function lastJobTime(array $row): ?string {
+        $key = (string) ($row['dictionary_name'] ?? '');
+        if (!self::isSafeDictName($key)) {
+            return null;
+        }
         $conn = $this->getTargetConnection($row);
         if (!$conn) return null;
-        $prefix = $this->tablePrefix($row['dictionary_name']);
+        $prefix = $this->tablePrefix($key);
+        if ($prefix === null) return null;
         try {
             $jobRow = $conn->query(
                 "SELECT modified_time FROM {$prefix}cspro_jobs WHERE id = (SELECT MAX(id) FROM {$prefix}cspro_jobs WHERE status = 2)"
@@ -462,8 +491,18 @@ class BreakoutStatusService {
         }
     }
 
-    private function tablePrefix(string $dictName): string {
-        return strtolower(str_replace(' ', '_', str_replace('_DICT', '', $dictName))) . '_';
+    /**
+     * Build the per-dict table prefix used by the breakout target schema.
+     * Returns null if $dictName is not a safe identifier (caller MUST treat
+     * a null prefix as "skip this dict"). Strips a trailing _DICT only —
+     * the previous implementation also stripped the substring in the middle
+     * (e.g. MY_DICTIONARY → MYIONARY).
+     */
+    private function tablePrefix(string $dictName): ?string {
+        if (!self::isSafeDictName($dictName)) {
+            return null;
+        }
+        return strtolower(preg_replace('/_DICT$/', '', $dictName)) . '_';
     }
 
     /** @param array<string,mixed> $row */

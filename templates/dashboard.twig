@@ -210,7 +210,11 @@
                 liveIntervalMs: 60000,
                 lastSummary: null,
                 visibilityHandler: null,
-                idleSince: Date.now()
+                idleSince: Date.now(),
+                // AbortControllers per request type — a new request cancels any
+                // in-flight one to avoid out-of-order rendering when the user
+                // clicks pagination, search, filters or refresh in quick succession.
+                inflight: { summary: null, list: null }
             };
             var URL_SUMMARY      = "{{ path('breakoutDashboardSummary') }}";
             var URL_DICTIONARIES = "{{ path('breakoutDashboardDictionaries') }}";
@@ -424,20 +428,40 @@
                 return URL_SUMMARY + (opts.nocache ? "?nocache=1" : "");
             }
 
+            function abortable(slot) {
+                if (state.inflight[slot]) {
+                    try { state.inflight[slot].abort(); } catch (e) {}
+                }
+                var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+                state.inflight[slot] = ctrl;
+                return ctrl;
+            }
+
             function loadAll(opts) {
                 opts = opts || {};
-                fetch(buildSummaryUrl(opts), { credentials: "same-origin" })
+
+                var summaryCtrl = abortable("summary");
+                fetch(buildSummaryUrl(opts), { credentials: "same-origin", signal: summaryCtrl ? summaryCtrl.signal : undefined })
                     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-                    .then(renderSummary)
+                    .then(function (payload) {
+                        if (state.inflight.summary !== summaryCtrl) return; // stale
+                        renderSummary(payload);
+                    })
                     .catch(function (e) {
+                        if (e && e.name === "AbortError") return;
                         if (e === 401 || e === 403 || e === 405) { window.location.href = "{{ path('logout') }}"; return; }
                         showAlert("Failed to load dashboard summary.", "alert alert-danger");
                     });
 
-                fetch(buildListUrl(opts), { credentials: "same-origin" })
+                var listCtrl = abortable("list");
+                fetch(buildListUrl(opts), { credentials: "same-origin", signal: listCtrl ? listCtrl.signal : undefined })
                     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-                    .then(renderTable)
+                    .then(function (payload) {
+                        if (state.inflight.list !== listCtrl) return; // stale
+                        renderTable(payload);
+                    })
                     .catch(function (e) {
+                        if (e && e.name === "AbortError") return;
                         if (e === 401 || e === 403 || e === 405) { window.location.href = "{{ path('logout') }}"; return; }
                         showAlert("Failed to load dictionaries.", "alert alert-danger");
                     });
@@ -497,11 +521,17 @@
                 state.search = e.target.value;
                 clearTimeout(searchTimer);
                 searchTimer = setTimeout(function () {
-                    // search is client-side filtering (avoids round-trip on every keystroke)
-                    fetch(buildListUrl(), { credentials: "same-origin" })
+                    state.page = 1; // reset to first page when filtering changes
+                    var ctrl = abortable("list");
+                    fetch(buildListUrl(), { credentials: "same-origin", signal: ctrl ? ctrl.signal : undefined })
                         .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-                        .then(renderTable)
-                        .catch(function () {});
+                        .then(function (payload) {
+                            if (state.inflight.list !== ctrl) return;
+                            renderTable(payload);
+                        })
+                        .catch(function (e) {
+                            if (e && e.name === "AbortError") return;
+                        });
                 }, 250);
             });
             document.getElementById("dash-page-size").addEventListener("change", function (e) {
@@ -565,10 +595,17 @@
                     var dict = item.dataset.dict; if (!dict) return;
                     document.getElementById("dash-filter-search").value = dict;
                     state.search = dict;
-                    fetch(buildListUrl(), { credentials: "same-origin" })
+                    state.page = 1;
+                    var ctrl = abortable("list");
+                    fetch(buildListUrl(), { credentials: "same-origin", signal: ctrl ? ctrl.signal : undefined })
                         .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-                        .then(renderTable)
-                        .catch(function () {});
+                        .then(function (payload) {
+                            if (state.inflight.list !== ctrl) return;
+                            renderTable(payload);
+                        })
+                        .catch(function (e) {
+                            if (e && e.name === "AbortError") return;
+                        });
                 });
             });
 

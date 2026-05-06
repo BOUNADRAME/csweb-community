@@ -327,8 +327,18 @@ class DataSettingsController extends AbstractController implements TokenAuthenti
         $result = [];
         try {
             $body = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
-            $id = (int) $body['id'];
-            $dictName = $body['dictName'] ?? '';
+            $id = (int) ($body['id'] ?? 0);
+            $dictName = (string) ($body['dictName'] ?? '');
+
+            // Validate dict name strictly: it is concatenated into a log file
+            // path, and although escapeshellarg protects the exec call itself,
+            // a name like "../../etc/passwd" would write the log outside
+            // var/logs/breakout. Reject anything outside the CSPro identifier
+            // charset.
+            if (!preg_match('/^[A-Z0-9_]{1,64}$/', $dictName)) {
+                $result = ['description' => 'Invalid dictName. Must match: ^[A-Z0-9_]{1,64}$', 'code' => 400];
+                return new Response(json_encode($result, JSON_THROW_ON_ERROR), Response::HTTP_BAD_REQUEST);
+            }
 
             $phpBinary = (new PhpExecutableFinder())->find();
             $consolePath = realpath($this->kernel->getProjectDir() . '/bin/console');
@@ -352,13 +362,19 @@ class DataSettingsController extends AbstractController implements TokenAuthenti
 
             exec($shellCmd);
 
-            // Mark as running (exit_code -1 = in progress)
-            $this->breakoutScheduler->markRun($id, -1, $logFileName);
+            // Mark as running (exit_code -1 = in progress) only when the
+            // request comes from a real schedule entry. Manual triggers from
+            // the dashboard pass id=0 and skip the markRun call to avoid
+            // creating phantom schedule rows.
+            if ($id > 0) {
+                $this->breakoutScheduler->markRun($id, -1, $logFileName);
+            }
 
             $result = ['description' => "Breakout started for $dictName. Log: $logFileName", 'code' => 200];
             return new Response(json_encode($result, JSON_THROW_ON_ERROR), Response::HTTP_OK);
         } catch (\Exception $e) {
-            $result = ['description' => 'Failed to run breakout. ' . $e->getMessage(), 'code' => 500];
+            $this->logger->error('Failed to run breakout', ['context' => (string) $e]);
+            $result = ['description' => 'Failed to run breakout.', 'code' => 500];
             return new Response(json_encode($result, JSON_THROW_ON_ERROR), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
