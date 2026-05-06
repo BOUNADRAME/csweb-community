@@ -88,7 +88,11 @@ class RoleController extends AbstractController implements TokenAuthenticatedCon
         $usersPermission = $request->get('usersPermission');
         $rolesPermission = $request->get('rolesPermission');
         $dictionaryPermissions = $request->get('dictionaryPermissions');
-        $settingsPermission = $request->get('settingsPermissions');
+        // Note: parameter name is "settingsPermission" (singular) — the JS in
+        // roles.twig posts it that way for both add and edit. A previous
+        // version of this method read "settingsPermissions" (plural) which
+        // silently dropped the Settings permission on role creation.
+        $settingsPermission = $request->get('settingsPermission');
         $backupPermission = $request->get('backupPermission');
         $logsPermission = $request->get('logsPermission');
         $dashboardPermission = $request->get('dashboardPermission');

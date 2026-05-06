@@ -216,6 +216,9 @@
                 // clicks pagination, search, filters or refresh in quick succession.
                 inflight: { summary: null, list: null }
             };
+            // path() output is already URL-safe but we keep these in HTML
+            // attributes via string concatenation downstream — escapeHtml the
+            // value at use-site (see renderTable) for defence in depth.
             var URL_SUMMARY      = "{{ path('breakoutDashboardSummary') }}";
             var URL_DICTIONARIES = "{{ path('breakoutDashboardDictionaries') }}";
             var URL_LOGS_PATH    = "{{ path('dataSettings') }}";
@@ -355,15 +358,21 @@
                         var st = statusFor(d);
                         var compPct = d.completion_rate == null ? null : Math.max(0, Math.min(100, d.completion_rate));
                         var compCls = compPct == null ? "" : compPct >= 95 ? "bar-good" : compPct >= 80 ? "bar-warn" : "bar-err";
+                        // Coerce to Number defensively before HTML concatenation
+                        // — protects attribute injection if the API ever returns
+                        // a string in numeric fields.
+                        var processedNum = Number(d.processed_cases || 0);
+                        var totalNum     = Number(d.total_cases || 0);
+                        var exitNum      = d.last_exit_code == null ? null : Number(d.last_exit_code);
                         var compHtml = compPct == null
                             ? '<span class="text-muted">—</span>'
-                            : '<div class="d-flex align-items-center" title="' + (d.processed_cases||0) + ' / ' + (d.total_cases||0) + '">'
+                            : '<div class="d-flex align-items-center" title="' + processedNum + ' / ' + totalNum + '">'
                               + '<div class="mini-bar ' + compCls + '" style="flex:1"><span style="width:' + compPct + '%"></span></div>'
                               + '<small class="ml-2">' + compPct.toFixed(1) + '%</small></div>';
-                        var exitTxt = d.last_exit_code == null ? '<span class="text-muted">—</span>'
-                                    : d.last_exit_code === -1 ? '<span class="text-info">running</span>'
-                                    : d.last_exit_code === 0  ? '<span class="text-success">0</span>'
-                                    : '<span class="text-danger">' + d.last_exit_code + '</span>';
+                        var exitTxt = exitNum == null ? '<span class="text-muted">—</span>'
+                                    : exitNum === -1 ? '<span class="text-info">running</span>'
+                                    : exitNum === 0  ? '<span class="text-success">0</span>'
+                                    : '<span class="text-danger">' + exitNum + '</span>';
                         var pending = d.cases_pending == null ? '<span class="text-muted">—</span>' : fmtNumber(d.cases_pending);
                         return '<tr data-dict="' + escapeHtml(d.dictionary) + '">'
                             +  '<td class="col-status"><span class="status-dot ' + st.cls + '" title="' + escapeHtml(st.label) + '"></span></td>'
@@ -379,7 +388,7 @@
                             +    (d.breakout_configured
                                   ? '<button type="button" class="btn btn-link btn-sm p-1 dash-run-now" title="Run now"><i class="fas fa-play"></i></button>'
                                   : '')
-                            +    '<a href="' + URL_LOGS_PATH + '#tab-logs" class="btn btn-link btn-sm p-1" title="View logs"><i class="fas fa-file-alt"></i></a>'
+                            +    '<a href="' + escapeHtml(URL_LOGS_PATH) + '#tab-logs" class="btn btn-link btn-sm p-1" title="View logs"><i class="fas fa-file-alt"></i></a>'
                             +  '</td>'
                             +  '</tr>';
                     }).join("");
@@ -504,10 +513,16 @@
 
             document.getElementById("dash-filter-status").addEventListener("change", function (e) {
                 state.statusFilter = e.target.value;
-                // Server side currently only filters configured/cron — status is client-side over the loaded page.
-                // This is intentional: the heavy filters stay on the server.
+                state.page = 1;
+                // Server side currently only filters configured/cron — status is
+                // client-side over the loaded page. This is intentional: heavy
+                // filters stay on the server. When the user picks "not_configured"
+                // a cron filter does not make sense, so we drop it and keep the
+                // <select> in sync.
                 if (state.statusFilter === "not_configured") {
-                    state.cronFilter = ""; // implicit
+                    state.cronFilter = "";
+                    var cronSel = document.getElementById("dash-filter-cron");
+                    if (cronSel) cronSel.value = "";
                 }
                 loadAll();
             });

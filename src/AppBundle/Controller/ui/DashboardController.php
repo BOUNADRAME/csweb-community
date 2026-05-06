@@ -18,7 +18,7 @@ class DashboardController extends AbstractController implements TokenAuthenticat
     }
 
     #[Route('/breakout/dashboard', name: 'breakoutDashboard', methods: ['GET'])]
-    public function viewDashboard(Request $request): Response {
+    public function viewDashboard(): Response {
         $this->denyAccessUnlessGranted('ROLE_DASHBOARD_ALL');
         return $this->render('dashboard.twig', []);
     }
@@ -31,7 +31,7 @@ class DashboardController extends AbstractController implements TokenAuthenticat
             $payload = [
                 'summary'      => $this->breakoutStatus->getGlobalSummary($bypass),
                 'topProblems'  => $this->breakoutStatus->getTopProblems(5, $bypass),
-                'generated_at' => date('Y-m-d H:i:s'),
+                'generated_at' => gmdate('Y-m-d\TH:i:s\Z'),
                 'cache'        => $bypass ? 'bypass' : 'hit-or-fresh',
             ];
             return $this->jsonResponse($payload);

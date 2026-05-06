@@ -613,6 +613,12 @@
                         var roleName = document.getElementById("edit-role-name");
                         roleName.value = role["name"];
 
+                        // Permission ids — must stay in sync with
+                        // src/AppBundle/CSPro/User/Role.php :: RolePermissions
+                        // and the cspro_permissions table seed.
+                        //   1=DATA_ALL, 2=APPS_ALL, 3=USERS_ALL, 4=ROLES_ALL,
+                        //   5=REPORTS_ALL, 6=DICT_SYNC_UPLOAD, 7=DICT_SYNC_DOWNLOAD,
+                        //   8=SETTINGS_ALL, 9=BACKUP_ALL, 10=LOGS_ALL, 11=DASHBOARD_ALL
                         var dataPermission = role["rolePermissions"]["permissions"]["1"] === true ? true : false;
                         var reportsPermission = role["rolePermissions"]["permissions"]["5"] === true ? true : false;
                         var appsPermission = role["rolePermissions"]["permissions"]["2"] === true ? true : false;
