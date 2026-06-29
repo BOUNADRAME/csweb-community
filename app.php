@@ -22,6 +22,21 @@ if (PHP_VERSION_ID < 70000) {
 //Request::enableHttpMethodParameterOverride();
 $request = Request::createFromGlobals();
 
+// Behind a reverse proxy (Apache/Nginx + TLS termination) on the same host:
+// trust the immediate proxy so Symfony reads X-Forwarded-Proto/Host/Port and
+// generates absolute URLs with the correct https scheme. Without this, links
+// and XHR endpoints are emitted as http:// and get blocked as mixed content.
+if (($trustedProxies = $_SERVER['TRUSTED_PROXIES'] ?? $request->server->get('REMOTE_ADDR')) !== null) {
+    Request::setTrustedProxies(
+        explode(',', $trustedProxies),
+        Request::HEADER_X_FORWARDED_FOR
+            | Request::HEADER_X_FORWARDED_HOST
+            | Request::HEADER_X_FORWARDED_PORT
+            | Request::HEADER_X_FORWARDED_PROTO
+    );
+    $request = Request::createFromGlobals();
+}
+
 $response = $kernel->handle($request);
 $response->send();
 $kernel->terminate($request, $response);
