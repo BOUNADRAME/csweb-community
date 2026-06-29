@@ -55,6 +55,8 @@ services:
       - BREAKOUT_DB_TYPE=${BREAKOUT_DB_TYPE:-postgresql}
 
       # MySQL Métadonnées CSWeb (TOUJOURS LOCAL)
+      # MYSQL_PORT = port INTERNE au réseau Docker. Le conteneur mysql écoute
+      # toujours sur 3306 ; le mapping hôte (MYSQL_HOST_PORT) ne le change pas.
       - MYSQL_HOST=${MYSQL_HOST:-mysql}
       - MYSQL_PORT=${MYSQL_PORT:-3306}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
@@ -145,7 +147,9 @@ services:
     restart: unless-stopped
 
     ports:
-      - "${MYSQL_PORT:-3306}:3306"
+      # Mapping HÔTE uniquement (accès externe optionnel). Découplé du port
+      # interne pour éviter les conflits avec un mysqld natif sur l'hôte.
+      - "${MYSQL_HOST_PORT:-3306}:3306"
 
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
