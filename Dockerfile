@@ -70,8 +70,12 @@ WORKDIR /var/www/html
 # Copy application files
 COPY . /var/www/html
 
-# Install PHP dependencies (--no-scripts car config.php est genere via /setup)
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+# Install PHP dependencies (--no-scripts car config.php est genere via /setup).
+# Retry then fall back to git sources: GitHub's dist endpoint (codeload) can
+# return transient HTTP 400/429 on anonymous rate limits, which --prefer-source
+# avoids by cloning instead of downloading archives.
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts \
+    || composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-source
 
 # Install frontend dependencies (Bootstrap, FontAwesome, jQuery, etc.)
 RUN npm install -g bower --quiet \
