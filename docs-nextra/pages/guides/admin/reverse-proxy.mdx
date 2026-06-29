@@ -1,0 +1,135 @@
+# Déploiement derrière un reverse proxy (Apache / Nginx)
+
+CSWeb tourne dans un conteneur Docker avec son **propre Apache interne** sur le
+port 80, exposé sur l'hôte via `CSWEB_PORT` (ex. `8095`). En production, on place
+un **reverse proxy** devant pour gérer le domaine et le TLS (HTTPS). Ce proxy peut
+être **Apache2**, **Nginx**, ou un load balancer cloud (AWS ALB, etc.) — CSWeb est
+agnostique.
+
+```
+Internet ──HTTPS:443──▶ Reverse proxy (Apache/Nginx) ──HTTP──▶ conteneur CSWeb
+  (client)              terminaison TLS, domaine          127.0.0.1:CSWEB_PORT
+```
+
+> **TL;DR** — Le proxy doit transmettre les en-têtes `X-Forwarded-Proto: https`
+> et `X-Forwarded-Port: 443`. CSWeb les lit (via `setTrustedProxies` dans
+> `app.php`) pour générer ses URLs en `https://`. Sans ça, les requêtes AJAX
+> partent en `http://` et sont **bloquées par le navigateur (mixed content)** —
+> typiquement l'erreur « Failed to add dictionary. undefined » à l'upload.
+
+---
+
+## Pourquoi ces en-têtes sont indispensables
+
+Le conteneur reçoit le trafic du proxy en **HTTP** (pas HTTPS — la terminaison
+TLS se fait sur le proxy). Sans information, l'application croit donc être en
+`http://` et génère des URLs absolues en clair. Sur une page chargée en HTTPS,
+le navigateur **refuse** ces requêtes HTTP (politique mixed content).
+
+`X-Forwarded-Proto: https` indique à l'app le protocole **réellement vu par le
+client**. CSWeb fait confiance au proxy immédiat (`REMOTE_ADDR`, surchargeable
+via la variable d'environnement `TRUSTED_PROXIES`) et lit alors cet en-tête.
+Ce mécanisme est **standard et identique** quel que soit le proxy.
+
+---
+
+## Pré-requis communs
+
+1. **DNS** : un enregistrement `A` pointant le domaine vers l'IP du serveur.
+2. **Firewall** : ouvrir **uniquement** `80` et `443`. Ne **jamais** exposer
+   `CSWEB_PORT` (ex. 8095) : le proxy y accède en local via `127.0.0.1`.
+3. **Certificat TLS** : Let's Encrypt via `certbot` (plugin `--apache` ou `--nginx`).
+
+---
+
+## Apache2
+
+Un template prêt à l'emploi est fourni :
+`docker/apache/vhost-host/csweb.vhost.template.conf`.
+
+```bash
+# 1. Générer le vhost depuis le template
+sed -e 's/{{DOMAIN}}/csweb.example.org/g' -e 's/{{APP_PORT}}/8095/g' \
+    docker/apache/vhost-host/csweb.vhost.template.conf \
+  | sudo tee /etc/apache2/sites-available/csweb.conf
+
+# 2. Activer les modules + le site
+sudo a2enmod proxy proxy_http headers rewrite ssl
+sudo a2ensite csweb.conf
+sudo apache2ctl configtest && sudo systemctl reload apache2
+
+# 3. Certificat (complète automatiquement le bloc :443)
+sudo certbot --apache -d csweb.example.org
+```
+
+Directives clés (déjà dans le template, bloc `*:443`) :
+
+```apache
+ProxyPreserveHost On
+ProxyPass        / http://127.0.0.1:8095/
+ProxyPassReverse / http://127.0.0.1:8095/
+RequestHeader set X-Forwarded-Proto "https"
+RequestHeader set X-Forwarded-Port  "443"
+```
+
+> ⚠️ Le bloc HTTPS doit annoncer `"https"` / `"443"` — **pas** `"http"` / `"80"`.
+> C'est l'erreur la plus courante : un bloc :443 qui transmet `http` casse les URLs.
+
+---
+
+## Nginx
+
+Template équivalent : `docker/nginx/vhost-host/csweb.nginx.template.conf`.
+
+```bash
+sed -e 's/{{DOMAIN}}/csweb.example.org/g' -e 's/{{APP_PORT}}/8095/g' \
+    docker/nginx/vhost-host/csweb.nginx.template.conf \
+  | sudo tee /etc/nginx/sites-available/csweb.conf
+sudo ln -s /etc/nginx/sites-available/csweb.conf /etc/nginx/sites-enabled/
+sudo certbot --nginx -d csweb.example.org
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Directives clés (déjà dans le template) :
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8095;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Forwarded-Proto https;   # équivaut au RequestHeader Apache
+    proxy_set_header X-Forwarded-Port  443;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Host  $host;
+}
+client_max_body_size 100M;   # aligné sur PHP_UPLOAD_MAX_FILESIZE / PHP_POST_MAX_SIZE
+```
+
+`proxy_set_header X-Forwarded-Proto https` (Nginx) est **strictement équivalent** à
+`RequestHeader set X-Forwarded-Proto "https"` (Apache). L'application réagit de
+façon identique : **aucun changement de code ni de configuration Docker** n'est
+nécessaire pour passer d'un proxy à l'autre.
+
+---
+
+## `API_URL` reste inchangée
+
+`API_URL` (dans `.env` / `src/AppBundle/config.php`) doit rester l'URL **interne
+Docker** avec son port, ex. `http://localhost:8095/api/`. CSWeb retire
+automatiquement le port pour ses appels serveur-à-serveur internes (`localhost`,
+port 80 du conteneur). Vous n'avez **pas** à y mettre le domaine public : le
+reverse proxy et les en-têtes `X-Forwarded-*` gèrent l'exposition publique.
+
+---
+
+## Vérification
+
+Après déploiement, dans l'onglet **Réseau** du navigateur (F12), les requêtes
+AJAX (ex. `dashboard/dictionaries`) doivent partir en **`https://`** et non
+`http://`. Si vous voyez encore `http://` (bloqué) :
+
+| Symptôme | Cause probable | Correctif |
+|---|---|---|
+| Requêtes AJAX en `http://` bloquées | Bloc :443 envoie `X-Forwarded-Proto "http"` | Mettre `"https"` / `"443"` |
+| Pas d'effet après `git pull` | Le code n'est pas dans l'image (build au `COPY`) | `docker compose up -d --build csweb` |
+| Toujours `http://` après rebuild | Cache Symfony | `docker compose exec csweb rm -rf var/cache/prod && docker compose restart csweb` |
+| 8095 accessible de l'extérieur | Port ouvert sur le firewall | Fermer le port ; n'exposer que 80/443 |
