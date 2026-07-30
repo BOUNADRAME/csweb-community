@@ -257,11 +257,17 @@ public function getDataCounts(&$dataSettings) {
     // isolée : sur un déploiement non encore migré la colonne error_message
     // peut manquer -> on ignore silencieusement sans impacter les compteurs.
             try {
-                $statement = $conn->executeQuery('SELECT error_message FROM '.$name_dict.'cspro_jobs WHERE id = (SELECT max(id) from '.$name_dict.'cspro_jobs where status = 3)');
-                if (($row = $statement->fetchAssociative()) !== false && !empty($row['error_message'])) {
-                    $dataSetting['lastError'] = (string) $row['error_message'];
+                // isset($conn) : $conn est défini dans le try précédent ; si
+                // getConnection() lui-même avait levé (base injoignable), $conn
+                // serait indéfini et $conn->executeQuery lèverait un \Error non
+                // attrapé par ce catch \Exception. On garde donc l'accès.
+                if (isset($conn)) {
+                    $statement = $conn->executeQuery('SELECT error_message FROM '.$name_dict.'cspro_jobs WHERE id = (SELECT max(id) from '.$name_dict.'cspro_jobs where status = 3)');
+                    if (($row = $statement->fetchAssociative()) !== false && !empty($row['error_message'])) {
+                        $dataSetting['lastError'] = (string) $row['error_message'];
+                    }
                 }
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 // colonne/table absente ou aucun échec : pas d'erreur à afficher.
             }
         }
