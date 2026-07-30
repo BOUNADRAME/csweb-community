@@ -139,7 +139,7 @@ class MySQLQuestionnaireSerializer {
 
             //update job
             $jobId = $this->jobId;
-            $stm = "UPDATE ".strtolower($this->labelDictionnaire)."_cspro_jobs SET status= :status, cases_processed = :totalCases WHERE id = :jobId";
+            $stm = 'UPDATE '.$this->qi(strtolower($this->labelDictionnaire).'_cspro_jobs').' SET '.$this->qi('status').'= :status, '.$this->qi('cases_processed').' = :totalCases WHERE '.$this->qi('id').' = :jobId';
             $bind['status'] = DictionarySchemaHelper::JOB_STATUS_COMPLETE;
             $bind['jobId'] = $this->jobId;
             $bind['totalCases'] = $caseCount;
@@ -178,8 +178,10 @@ class MySQLQuestionnaireSerializer {
 
     public function getJobInformation() {
         try {
-            $stm = "SELECT id, start_caseid, start_revision, end_caseid, end_revision, cases_to_process FROM ".strtolower($this->labelDictionnaire)."_cspro_jobs "
-                    . " WHERE  id = " . $this->jobId;
+            $jobColumns = ['id', 'start_caseid', 'start_revision', 'end_caseid', 'end_revision', 'cases_to_process'];
+            $quotedJobColumns = implode(', ', array_map(fn($c) => $this->qi($c), $jobColumns));
+            $stm = 'SELECT '.$quotedJobColumns.' FROM '.$this->qi(strtolower($this->labelDictionnaire).'_cspro_jobs')
+                    . ' WHERE '.$this->qi('id').' = ' . (int) $this->jobId;
             $result = $this->targetConnection->fetchAllAssociative($stm);
             unset($this->job);
             if ($result) {
@@ -275,11 +277,11 @@ class MySQLQuestionnaireSerializer {
         $this->targetConnection->beginTransaction();
         try {
             //delete existing cases
-            $stm = 'DELETE FROM '.strtolower($this->labelDictionnaire).'_cases WHERE id in ( ' . $strCaseList . ')';
+            $stm = 'DELETE FROM '.$this->qi(strtolower($this->labelDictionnaire).'_cases').' WHERE '.$this->qi('id').' in ( ' . $strCaseList . ')';
             $count = $this->targetConnection->executeUpdate($stm);
 
             //delete notes for these cases
-            $stm = 'DELETE FROM '.strtolower($this->labelDictionnaire).'_notes WHERE case_id in ( ' . $strCaseList . ')';
+            $stm = 'DELETE FROM '.$this->qi(strtolower($this->labelDictionnaire).'_notes').' WHERE '.$this->qi('case_id').' in ( ' . $strCaseList . ')';
             $this->targetConnection->executeUpdate($stm);
 
             //cascade delete cases from break out tables
@@ -517,8 +519,14 @@ class MySQLQuestionnaireSerializer {
 
     public function serializeCases(): int {
         $caseList = array_keys($this->casesMap);
-        $stm = "INSERT INTO ".strtolower($this->labelDictionnaire)."_cases (id, key, label, last_modified_revision, deleted, verified, partial_save_mode, partial_save_field_name, partial_save_level_key, partial_save_record_occurrence, partial_save_item_occurrence, "
-                . "                 partial_save_subitem_occurrence) VALUES ";
+        // Colonnes de la table _cases. On les quote via la plateforme cible :
+        // 'key' est un mot réservé MySQL (mais pas PostgreSQL), donc la liste
+        // non quotée cassait sur MySQL. Le quoting plateforme règle ça pour les
+        // 3 SGBD sans traiter de colonne au cas par cas.
+        $caseColumns = ['id', 'key', 'label', 'last_modified_revision', 'deleted', 'verified', 'partial_save_mode', 'partial_save_field_name', 'partial_save_level_key', 'partial_save_record_occurrence', 'partial_save_item_occurrence', 'partial_save_subitem_occurrence'];
+        $quotedCaseColumns = implode(', ', array_map(fn($c) => $this->qi($c), $caseColumns));
+        $casesTable = $this->qi(strtolower($this->labelDictionnaire).'_cases');
+        $stm = 'INSERT INTO '.$casesTable.' ('.$quotedCaseColumns.') VALUES ';
         $itemNames = ["guid", "caseids", "label", "revision", "deleted", "verified", "partial_save_mode", "partial_save_field_name", "partial_save_level_key", "partial_save_record_occurrence", "partial_save_item_occurrence", "partial_save_subitem_occurrence"];
         $values = [];
         $singlePlaceholder = '(' . implode(', ', array_fill(0, count($itemNames), '?')) . ')';
@@ -562,8 +570,7 @@ class MySQLQuestionnaireSerializer {
                 foreach($chunkedValues as $chunkedValue){
                     $limited = (count($chunkedValue)/$colonnes);
                     $part_fill = array_slice(array_fill(0, count($this->casesMap), $singlePlaceholder), 0, $limited);
-                    $stm2 = "INSERT INTO ".strtolower($this->labelDictionnaire)."_cases (id, key, label, last_modified_revision, deleted, verified, partial_save_mode, partial_save_field_name, partial_save_level_key, partial_save_record_occurrence, partial_save_item_occurrence, "
-                    . "                 partial_save_subitem_occurrence) VALUES ";
+                    $stm2 = 'INSERT INTO '.$casesTable.' ('.$quotedCaseColumns.') VALUES ';
                             $itemNames = ["guid", "caseids", "label", "revision", "deleted", "verified", "partial_save_mode", "partial_save_field_name", "partial_save_level_key", "partial_save_record_occurrence", "partial_save_item_occurrence",
                                 "partial_save_subitem_occurrence"];
     
@@ -689,9 +696,10 @@ class MySQLQuestionnaireSerializer {
             if ((is_countable($result) ? count($result) : 0) == 0)
                 return 0;
 
-            //add the notes for these cases to  the notes table 
-            $stm = "INSERT INTO ".strtolower($this->labelDictionnaire)."_notes (case_id, field_name, level_key, record_occurrence, item_occurrence, "
-                    . "subitem_occurrence, content, operator_id, modified_time) VALUES ";
+            //add the notes for these cases to  the notes table
+            $noteColumns = ['case_id', 'field_name', 'level_key', 'record_occurrence', 'item_occurrence', 'subitem_occurrence', 'content', 'operator_id', 'modified_time'];
+            $quotedNoteColumns = implode(', ', array_map(fn($c) => $this->qi($c), $noteColumns));
+            $stm = 'INSERT INTO '.$this->qi(strtolower($this->labelDictionnaire).'_notes').' ('.$quotedNoteColumns.') VALUES ';
             $itemNames = ["case_id", "field_name", "level_key", "record_occurrence", "item_occurrence", "subitem_occurrence", "content", "operator_id", "modified_time"];
             $values = [];
             $singlePlaceholder = '(' . implode(', ', array_fill(0, count($itemNames), '?')) . ')';
