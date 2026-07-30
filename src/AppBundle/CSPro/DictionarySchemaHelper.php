@@ -458,6 +458,46 @@ class DictionarySchemaHelper {
     }
 
     /**
+     * Marque un job en échec dans la table <label>_cspro_jobs de la base CIBLE :
+     * status = JOB_STATUS_FAILED et error_message = message lisible.
+     *
+     * - Portable (MySQL/PostgreSQL/SQL Server) : identifiants quotés via la
+     *   plateforme DBAL de la connexion cible, jamais en dur.
+     * - Best-effort : si l'écriture échoue (colonne absente sur un très vieux
+     *   déploiement où la migration n'a pas pu s'appliquer, connexion coupée…),
+     *   on logue en warning et on n'interrompt rien — le message reste dans les
+     *   logs. Ne doit pas masquer l'erreur d'origine.
+     *
+     * @return bool true si le statut a été persisté, false sinon.
+     */
+    public function markJobFailed($jobId, string $errorMessage): bool {
+        if (empty($jobId)) {
+            return false;
+        }
+        try {
+            $dictionaryLabel = strtolower(str_replace(" ", "_", str_replace("_DICT", "", $this->dictionary->getName())));
+            $platform = $this->conn->getDatabasePlatform();
+            $qi = fn(string $id): string => $platform->quoteIdentifier($id);
+
+            $stm = 'UPDATE ' . $qi($dictionaryLabel . '_cspro_jobs')
+                 . ' SET ' . $qi('status') . ' = :status, ' . $qi('error_message') . ' = :errorMessage'
+                 . ' WHERE ' . $qi('id') . ' = :id';
+            $this->conn->executeStatement($stm, [
+                'status'       => self::JOB_STATUS_FAILED,
+                'errorMessage' => $errorMessage,
+                'id'           => $jobId,
+            ]);
+            return true;
+        } catch (\Exception $e) {
+            $this->logger->warning(
+                "Could not persist FAILED status for JobID $jobId, Dictionary: " . $this->dictionaryName,
+                ["context" => (string) $e]
+            );
+            return false;
+        }
+    }
+
+    /**
      * Migration idempotente et portable : garantit que la table
      * <label>_cspro_jobs de la base CIBLE possède la colonne `error_message`
      * (ajoutée pour tracer les échecs de breakout). Les déploiements créés avant
