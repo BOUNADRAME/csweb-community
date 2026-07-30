@@ -456,6 +456,10 @@ public function createDefaultTables()
     $jobsTable->addColumn("`cases_to_process`", "integer", ["unsigned" => true, "notnull" => false, "default" => null]);
     $jobsTable->addColumn("`cases_processed`", "integer", ["unsigned" => true, "notnull" => false, "default" => null]);
     $jobsTable->addColumn("`status`", "integer", ["unsigned" => true, "notnull" => true, "default" => 0]);
+    // Message d'échec lisible (rempli quand status = JOB_STATUS_FAILED). Type
+    // text nullable, sans default : DBAL génère un DDL valide pour MySQL,
+    // PostgreSQL et SQL Server. Nullable => n'affecte aucun INSERT existant.
+    $jobsTable->addColumn("`error_message`", "text", ["notnull" => false, "default" => null]);
     $jobsTable->addColumn("`created_time`", "datetime", ['columnDefinition' => 'timestamp default current_timestamp']);
     $jobsTable->addColumn("`modified_time`", "datetime", ['columnDefinition' => 'timestamp default current_timestamp']);
     $jobsTable->setPrimaryKey(["`id`"]);
