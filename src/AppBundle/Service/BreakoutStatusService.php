@@ -366,10 +366,12 @@ class BreakoutStatusService {
         $totalCases        = $this->countSourceCases($dictName);
         $processedCases    = null;
         $lastProcessedTime = null;
+        $lastError         = null;
 
         if ($configured && $row['schema_password_plain']) {
             $processedCases    = $this->countProcessedCases($row);
             $lastProcessedTime = $this->lastJobTime($row);
+            $lastError         = $this->lastJobError($row);
         }
 
         $casesPending   = ($processedCases !== null) ? max(0, $totalCases - $processedCases) : null;
@@ -396,6 +398,9 @@ class BreakoutStatusService {
             'completion_rate'      => $completionRate,
             'is_up_to_date'        => $isUpToDate,
             'last_processed_time'  => $lastProcessedTime,
+            // Message clair du dernier job en échec (null si aucun). Alimente le
+            // badge/indicateur d'erreur de l'UI sans exposer de stack trace.
+            'last_error'           => $lastError,
         ];
     }
 
@@ -467,6 +472,34 @@ class BreakoutStatusService {
             return $val;
         } catch (\Throwable $e) {
             $this->memoProcessedCount[$key] = null;
+            return null;
+        }
+    }
+
+    /**
+     * Message d'erreur du dernier job en échec (status = 3 / FAILED), lu dans la
+     * table cible <prefix>cspro_jobs. Best-effort : renvoie null si la connexion
+     * échoue, si la colonne error_message n'existe pas encore (déploiement non
+     * migré), ou s'il n'y a aucun job en échec.
+     *
+     * @param array<string,mixed> $row
+     */
+    private function lastJobError(array $row): ?string {
+        $key = (string) ($row['dictionary_name'] ?? '');
+        if (!self::isSafeDictName($key)) {
+            return null;
+        }
+        $conn = $this->getTargetConnection($row);
+        if (!$conn) return null;
+        $prefix = $this->tablePrefix($key);
+        if ($prefix === null) return null;
+        try {
+            $jobRow = $conn->query(
+                "SELECT error_message FROM {$prefix}cspro_jobs WHERE id = (SELECT MAX(id) FROM {$prefix}cspro_jobs WHERE status = 3)"
+            )->fetch(PDO::FETCH_ASSOC);
+            $msg = $jobRow['error_message'] ?? null;
+            return ($msg !== null && $msg !== '') ? (string) $msg : null;
+        } catch (\Throwable $e) {
             return null;
         }
     }

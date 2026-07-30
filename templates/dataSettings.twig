@@ -876,7 +876,13 @@
                                             {% for dataSetting in dataSettings %}
                                                 {%  if dataSetting.targetSchemaName != "" %}
                                                     <tr data-id={{ dataSetting.id}} data-dictname={{ dataSetting.name}} data-dictlabel="{{ dataSetting.label}}">
-                                                        <td>{{ dataSetting.label}}</td>
+                                                        <td>
+                                                            {{ dataSetting.label}}
+                                                            {% if dataSetting.lastError is defined and dataSetting.lastError %}
+                                                                <span class="badge badge-danger ml-1" title="{{ dataSetting.lastError }}"><i class="fas fa-exclamation-triangle"></i> Failed</span>
+                                                                <br><small class="text-danger">{{ dataSetting.lastError }}</small>
+                                                            {% endif %}
+                                                        </td>
                                                         <td>{{ dataSetting.name}}</td>
                                                         <td>{{ dataSetting.targetHostName}} | {{ dataSetting.targetSchemaName}}</td>
                                                         <td>{{ dataSetting.totalCases}}</td>
