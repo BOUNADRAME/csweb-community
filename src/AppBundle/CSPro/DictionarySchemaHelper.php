@@ -30,6 +30,11 @@ class DictionarySchemaHelper {
     public const JOB_STATUS_NOT_STARTED = '0';
     public const JOB_STATUS_IN_PROCESS = '1';
     public const JOB_STATUS_COMPLETE = '2';
+    // Job en échec. Nouvelle valeur : n'affecte pas les lectures existantes
+    // (WHERE status = 2). resetInProcesssJobs() ne réinitialise QUE les jobs
+    // IN_PROCESS, donc un job FAILED n'est PAS rejoué en boucle silencieuse —
+    // il reste visible tant qu'un nouveau run ne le remplace pas.
+    public const JOB_STATUS_FAILED = '3';
 
     private $conn;
     private $config;
@@ -153,11 +158,15 @@ class DictionarySchemaHelper {
             }
             $this->conn = DriverManager::getConnection($this->connectionParams, $this->config);
             if ($checkDictionarySchema && !$this->IsValidSchema()) { //thread never should call using checkDictionarySchema as true
-//drop all the tables that exist. 
+//drop all the tables that exist.
                 $this->cleanDictionarySchema();
                 $processCasesOptions = $this->getProcessCaseOptions();
                 $this->createDictionarySchema($processCasesOptions);
             }
+            // Auto-migration idempotente : ajoute error_message à _cspro_jobs sur
+            // les déploiements créés avant cette colonne. Sans schema_version côté
+            // cible, on détecte par introspection. Ne rebuild jamais le schéma.
+            $this->ensureJobsErrorColumn();
         } catch (\Exception $e) {
             $strMsg = "Failed initializing database: " . $this->connectionParams['dbname'] . " while processsing Dictionary: " . $this->dictionaryName;
             $this->logger->error($strMsg, ["context" => (string) $e]);
@@ -446,6 +455,70 @@ class DictionarySchemaHelper {
             throw $e;
         }
         return $count;
+    }
+
+    /**
+     * Migration idempotente et portable : garantit que la table
+     * <label>_cspro_jobs de la base CIBLE possède la colonne `error_message`
+     * (ajoutée pour tracer les échecs de breakout). Les déploiements créés avant
+     * cette colonne ne l'ont pas ; on l'ajoute à la volée.
+     *
+     * - Portable MySQL / PostgreSQL / SQL Server : le DDL ALTER est généré par la
+     *   plateforme DBAL de la connexion cible (aucun DDL codé en dur).
+     * - Idempotent : on introspecte les colonnes existantes avant tout ALTER.
+     * - Non bloquant : si la table n'existe pas encore (tout premier run, avant
+     *   création du schéma) ou si l'ALTER échoue, on logue en warning et on
+     *   continue — cette migration ne doit JAMAIS empêcher un breakout.
+     * - Ne reconstruit jamais le schéma (pas de drop) : IsValidSchema() ne
+     *   regarde pas les colonnes, donc ajouter celle-ci n'entraîne aucun rebuild.
+     */
+    private function ensureJobsErrorColumn(): void {
+        try {
+            $dictionaryLabel = strtolower(str_replace(" ", "_", str_replace("_DICT", "", $this->dictionary->getName())));
+            $tableName = $dictionaryLabel . '_cspro_jobs';
+
+            // getSchemaManager() : conservé pour cohérence avec le reste de la
+            // classe (cf. cleanDictionarySchema ligne ~211) et compatible DBAL 3.x.
+            $schemaManager = $this->conn->getSchemaManager();
+            if (!$schemaManager->tablesExist([$tableName])) {
+                // Pas encore créée : la définition du schéma inclut déjà la
+                // colonne, rien à migrer.
+                return;
+            }
+
+            // Introspecte la table réelle. Sert à la fois à tester l'existence de
+            // la colonne ET de fromTable pour getAlterTableSQL (évite une
+            // dépréciation DBAL et fiabilise le DDL généré selon la plateforme).
+            $fromTable = $schemaManager->listTableDetails($tableName);
+            if ($fromTable->hasColumn('error_message')) {
+                return; // déjà présente : idempotent
+            }
+
+            // Génère l'ALTER TABLE ... ADD error_message via la plateforme cible.
+            $platform = $this->conn->getDatabasePlatform();
+            $tableDiff = new \Doctrine\DBAL\Schema\TableDiff(
+                $tableName,
+                [
+                    'error_message' => new \Doctrine\DBAL\Schema\Column(
+                        'error_message',
+                        \Doctrine\DBAL\Types\Type::getType('text'),
+                        ['notnull' => false, 'default' => null]
+                    ),
+                ],
+                [], [], [], [], [],
+                $fromTable
+            );
+            foreach ($platform->getAlterTableSQL($tableDiff) as $sql) {
+                $this->conn->executeStatement($sql);
+            }
+            $this->logger->info("Added error_message column to $tableName (breakout failure tracking migration).");
+        } catch (\Exception $e) {
+            // Non bloquant : le breakout doit tourner même si la migration échoue.
+            $this->logger->warning(
+                "Could not ensure error_message column on cspro_jobs for Dictionary: " . $this->dictionaryName,
+                ["context" => (string) $e]
+            );
+        }
     }
 
 
