@@ -50,7 +50,7 @@ class BlobBreakOutWorker extends Command {
             $dictionarySchemaHelper->initialize();
             $processCasesOptions = $dictionarySchemaHelper->getProcessCaseOptions();
             $dictionarySchemaHelper->blobBreakOut($jobId, $processCasesOptions);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             // Message clair pour l'opérateur (base + résumé) et bloc structuré
             // pour le log fichier (message en tête, trace technique en dessous).
             $shortMessage = BreakoutErrorFormatter::shortMessage($e);

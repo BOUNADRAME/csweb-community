@@ -445,9 +445,17 @@ class DictionarySchemaHelper {
         $dictionaryLabel = str_replace(" ", "_", str_replace("_DICT", "", $this->dictionary->getName()));
 
         try {
-            $stm = "UPDATE ".strtolower($dictionaryLabel)."_cspro_jobs SET status= :status WHERE status = :in_process_jobs";
+            // Réinitialise IN_PROCESS **et FAILED** vers NOT_STARTED pour qu'ils
+            // soient rejoués au prochain run. Sur master, un chunk échoué restait
+            // IN_PROCESS et était donc retenté ; avec le nouveau statut FAILED il
+            // faut préserver EXACTEMENT cette sémantique de retry, sinon un échec
+            // transitoire (deadlock, timeout) devient une perte définitive de cas
+            // (createJob avance le watermark au-delà du chunk jamais retraité).
+            // Le marqueur FAILED reste donc visible seulement jusqu'au run suivant.
+            $stm = "UPDATE ".strtolower($dictionaryLabel)."_cspro_jobs SET status= :status WHERE status IN (:in_process_jobs, :failed_jobs)";
             $bind['status'] = self::JOB_STATUS_NOT_STARTED;
             $bind['in_process_jobs'] = self::JOB_STATUS_IN_PROCESS;
+            $bind['failed_jobs'] = self::JOB_STATUS_FAILED;
             $count = $this->conn->executeUpdate($stm, $bind);
         } catch (\Exception $e) {
             $strMsg = "Failed resetting jobs in schema  " . $this->connectionParams['dbname'] . " while processsing Dictionary: " . $this->dictionaryName;
@@ -471,7 +479,12 @@ class DictionarySchemaHelper {
      * @return bool true si le statut a été persisté, false sinon.
      */
     public function markJobFailed($jobId, string $errorMessage): bool {
-        if (empty($jobId)) {
+        // Garde : initialize() peut échouer AVANT que $this->dictionary/$this->conn
+        // soient définis (dictionnaire introuvable, params de connexion invalides).
+        // Sans ce garde, null->getName()/null->getDatabasePlatform() lèverait un
+        // \Error NON attrapé par le catch \Exception ci-dessous ni par le worker
+        // -> fatal. On dégrade proprement : l'échec reste loggué, juste non persisté.
+        if (empty($jobId) || $this->dictionary === null || $this->conn === null) {
             return false;
         }
         try {
@@ -488,7 +501,9 @@ class DictionarySchemaHelper {
                 'id'           => $jobId,
             ]);
             return true;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            // \Throwable (pas seulement \Exception) : ne jamais laisser le
+            // marquage d'échec provoquer un fatal qui masquerait l'erreur réelle.
             $this->logger->warning(
                 "Could not persist FAILED status for JobID $jobId, Dictionary: " . $this->dictionaryName,
                 ["context" => (string) $e]
@@ -520,19 +535,28 @@ class DictionarySchemaHelper {
             // getSchemaManager() : conservé pour cohérence avec le reste de la
             // classe (cf. cleanDictionarySchema ligne ~211) et compatible DBAL 3.x.
             $schemaManager = $this->conn->getSchemaManager();
-            if (!$schemaManager->tablesExist([$tableName])) {
-                // Pas encore créée : la définition du schéma inclut déjà la
+
+            // Chemin rapide (cas nominal : déjà migré) : ne lire QUE les colonnes
+            // (1 requête) plutôt que listTableDetails (colonnes + FK + index).
+            // ensureJobsErrorColumn tourne à chaque run de worker, sur chaque
+            // thread — on garde ce chemin le plus léger possible.
+            try {
+                $existingColumns = $schemaManager->listTableColumns($tableName);
+            } catch (\Throwable $notFound) {
+                // Table pas encore créée : la définition du schéma inclut déjà la
                 // colonne, rien à migrer.
                 return;
             }
+            foreach ($existingColumns as $col) {
+                if (strtolower($col->getName()) === 'error_message') {
+                    return; // déjà présente : idempotent, aucun autre appel DBAL.
+                }
+            }
 
-            // Introspecte la table réelle. Sert à la fois à tester l'existence de
-            // la colonne ET de fromTable pour getAlterTableSQL (évite une
+            // Colonne absente (rare, une seule fois par déploiement). On charge la
+            // table complète comme fromTable pour getAlterTableSQL (évite une
             // dépréciation DBAL et fiabilise le DDL généré selon la plateforme).
             $fromTable = $schemaManager->listTableDetails($tableName);
-            if ($fromTable->hasColumn('error_message')) {
-                return; // déjà présente : idempotent
-            }
 
             // Génère l'ALTER TABLE ... ADD error_message via la plateforme cible.
             $platform = $this->conn->getDatabasePlatform();
