@@ -30,6 +30,7 @@ class MySQLQuestionnaireSerializer {
     private $casesIdMap;
     private $job;
     private $labelDictionnaire;
+    private $targetPlatform; //Doctrine DBAL platform of the target breakout DB (MySQL / PostgreSQL / SQL Server)
     // public function __construct(private Dictionary $dict, private $jobId, private PdoHelper $sourcePdo, private Connection $targetConnection, private LoggerInterface $logger) {
     //     $this->casesMap = [];
     // }
@@ -38,6 +39,20 @@ class MySQLQuestionnaireSerializer {
         $this->casesMap = [];
         // Récupération du label du dictionnaire pour mettre à jour le préfix des tables de report
         $this->labelDictionnaire = str_replace(" ", "_", str_replace("_DICT", "", $dict->getName()));
+        // Le SQL de breakout doit fonctionner pour MySQL, PostgreSQL et SQL Server.
+        // On ne code JAMAIS le caractère de quoting en dur (backtick MySQL vs
+        // double-quote ANSI) : on délègue à la plateforme DBAL de la base cible,
+        // qui applique la bonne convention. C'est aussi celle utilisée à la
+        // création du schéma, donc les identifiants DDL et DML restent cohérents.
+        $this->targetPlatform = $targetConnection->getDatabasePlatform();
+    }
+
+    /**
+     * Quote an identifier (table or column name) using the target database
+     * platform. Portable across MySQL (`id`), PostgreSQL / SQL Server ("id").
+     */
+    private function qi(string $identifier): string {
+        return $this->targetPlatform->quoteIdentifier($identifier);
     }
 
 
@@ -268,7 +283,7 @@ class MySQLQuestionnaireSerializer {
             $this->targetConnection->executeUpdate($stm);
 
             //cascade delete cases from break out tables
-            $stm = 'DELETE FROM "'.strtolower($this->labelDictionnaire).'_level-1" WHERE "case-id" in ( ' . $strCaseList . ')';
+            $stm = 'DELETE FROM '.$this->qi(strtolower($this->labelDictionnaire).'_level-1').' WHERE '.$this->qi('case-id').' in ( ' . $strCaseList . ')';
             $count = $this->targetConnection->executeUpdate($stm);
             $this->logger->debug("Deleted $count cases");
 
@@ -306,7 +321,7 @@ class MySQLQuestionnaireSerializer {
     // }
 
     private function generateLevelInsertStatement(&$nameTypeMap): string {
-        $stm = 'INSERT INTO "'.strtolower($this->labelDictionnaire).'_level-1" (';
+        $stm = 'INSERT INTO '.$this->qi(strtolower($this->labelDictionnaire).'_level-1').' (';
         //TODO: fix for multiple levels
         $iLevel = 0;
         $level = $this->dict->getLevels()[$iLevel];
@@ -316,11 +331,10 @@ class MySQLQuestionnaireSerializer {
         $keys = array_keys($nameTypeMap);
         $quotedItemNames = [];
         foreach ($keys as $key) {
-            // $quotedItemNames[] = MySQLDictionarySchemaGenerator::quoteString($key);
-            $quotedItemNames[] = $key;
+            $quotedItemNames[] = $this->qi($key);
         }
         $itemList = implode(",", $quotedItemNames);
-        $itemList = '"case-id",' . $itemList;
+        $itemList = $this->qi('case-id').',' . $itemList;
 
         $stm .= $itemList . ') VALUES ';
         return $stm;
@@ -357,21 +371,20 @@ class MySQLQuestionnaireSerializer {
 
     private function generateRecordInsertStatement(Record $record, &$nameTypeMap): string {
         $recordName = strtolower($this->labelDictionnaire)."_".strtolower($record->getName());
-        $stm = "INSERT INTO $recordName (";
+        $stm = 'INSERT INTO '.$this->qi($recordName).' (';
 
         $this->getRecordItemsNameType($record, $nameTypeMap);
         $keys = array_keys($nameTypeMap);
         $quotedItemNames = [];
         foreach ($keys as $key) {
-            // $quotedItemNames[] = MySQLDictionarySchemaGenerator::quoteString($key);
-            $quotedItemNames[] = '"' . $key . '"';
+            $quotedItemNames[] = $this->qi($key);
         }
 
         $itemList = implode(",", $quotedItemNames);
 
         $parentLevelName = "level-" . (string) ($record->getLevel()->getLevelNumber() + 1);
         $parentId = $parentLevelName . "-id";
-        $parentId = '"'.$parentId.'"';
+        $parentId = $this->qi($parentId);
 
         if ($record->getMaxRecords() > 1) {
             $itemList = "$parentId, occ, " . $itemList;
@@ -740,7 +753,7 @@ class MySQLQuestionnaireSerializer {
     private function getCaseIdsMap() {
         try {
             // Select all the cases sent by the client that exist on the server
-            $stm = 'SELECT  "level-1-id" as id, "case-id" as guid FROM "'.strtolower($this->labelDictionnaire).'_level-1" WHERE "case-id" in (';
+            $stm = 'SELECT  '.$this->qi('level-1-id').' as id, '.$this->qi('case-id').' as guid FROM '.$this->qi(strtolower($this->labelDictionnaire).'_level-1').' WHERE '.$this->qi('case-id').' in (';
             $strOrderBy = ' ORDER BY  id';
 
             $strCaseList = "'" . implode("','", array_keys($this->casesMap)) . "'";
