@@ -216,7 +216,14 @@ public function getDataCounts(&$dataSettings) {
         $dataSetting['lastProcessedTime'] = "";
 
         if (isset($dataSetting['targetSchemaName'])) {
-            $name_dict = str_replace(" ", "_", str_replace("_DICT", "", $dataSetting['name']))."_";
+            // Préfixe des tables de breakout dans la base CIBLE. Elles sont
+            // toujours créées en minuscules (schema generator + serializer font
+            // strtolower). Sur MySQL sensible à la casse (Linux,
+            // lower_case_table_names=0), oublier le strtolower produit
+            // "DARA_USERS_cases" au lieu de "dara_users_cases" -> erreur 42S02
+            // avalée par le catch plus bas -> processedCases reste à 0 dans l'UI
+            // alors que le breakout a réussi. On aligne sur BreakoutStatusService.
+            $name_dict = strtolower(str_replace(" ", "_", str_replace("_DICT", "", $dataSetting['name'])))."_";
 
             $stm = "SELECT count(*) FROM `" . $dataSetting['name'] . "` WHERE `deleted` = 0";
             $caseCount = (int) $this->pdo->fetchValue($stm);
