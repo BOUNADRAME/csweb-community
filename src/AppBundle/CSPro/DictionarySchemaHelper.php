@@ -30,6 +30,11 @@ class DictionarySchemaHelper {
     public const JOB_STATUS_NOT_STARTED = '0';
     public const JOB_STATUS_IN_PROCESS = '1';
     public const JOB_STATUS_COMPLETE = '2';
+    // Job en échec. Nouvelle valeur : n'affecte pas les lectures existantes
+    // (WHERE status = 2). resetInProcesssJobs() ne réinitialise QUE les jobs
+    // IN_PROCESS, donc un job FAILED n'est PAS rejoué en boucle silencieuse —
+    // il reste visible tant qu'un nouveau run ne le remplace pas.
+    public const JOB_STATUS_FAILED = '3';
 
     private $conn;
     private $config;
@@ -153,11 +158,15 @@ class DictionarySchemaHelper {
             }
             $this->conn = DriverManager::getConnection($this->connectionParams, $this->config);
             if ($checkDictionarySchema && !$this->IsValidSchema()) { //thread never should call using checkDictionarySchema as true
-//drop all the tables that exist. 
+//drop all the tables that exist.
                 $this->cleanDictionarySchema();
                 $processCasesOptions = $this->getProcessCaseOptions();
                 $this->createDictionarySchema($processCasesOptions);
             }
+            // Auto-migration idempotente : ajoute error_message à _cspro_jobs sur
+            // les déploiements créés avant cette colonne. Sans schema_version côté
+            // cible, on détecte par introspection. Ne rebuild jamais le schéma.
+            $this->ensureJobsErrorColumn();
         } catch (\Exception $e) {
             $strMsg = "Failed initializing database: " . $this->connectionParams['dbname'] . " while processsing Dictionary: " . $this->dictionaryName;
             $this->logger->error($strMsg, ["context" => (string) $e]);
@@ -436,9 +445,17 @@ class DictionarySchemaHelper {
         $dictionaryLabel = str_replace(" ", "_", str_replace("_DICT", "", $this->dictionary->getName()));
 
         try {
-            $stm = "UPDATE ".strtolower($dictionaryLabel)."_cspro_jobs SET status= :status WHERE status = :in_process_jobs";
+            // Réinitialise IN_PROCESS **et FAILED** vers NOT_STARTED pour qu'ils
+            // soient rejoués au prochain run. Sur master, un chunk échoué restait
+            // IN_PROCESS et était donc retenté ; avec le nouveau statut FAILED il
+            // faut préserver EXACTEMENT cette sémantique de retry, sinon un échec
+            // transitoire (deadlock, timeout) devient une perte définitive de cas
+            // (createJob avance le watermark au-delà du chunk jamais retraité).
+            // Le marqueur FAILED reste donc visible seulement jusqu'au run suivant.
+            $stm = "UPDATE ".strtolower($dictionaryLabel)."_cspro_jobs SET status= :status WHERE status IN (:in_process_jobs, :failed_jobs)";
             $bind['status'] = self::JOB_STATUS_NOT_STARTED;
             $bind['in_process_jobs'] = self::JOB_STATUS_IN_PROCESS;
+            $bind['failed_jobs'] = self::JOB_STATUS_FAILED;
             $count = $this->conn->executeUpdate($stm, $bind);
         } catch (\Exception $e) {
             $strMsg = "Failed resetting jobs in schema  " . $this->connectionParams['dbname'] . " while processsing Dictionary: " . $this->dictionaryName;
@@ -446,6 +463,126 @@ class DictionarySchemaHelper {
             throw $e;
         }
         return $count;
+    }
+
+    /**
+     * Marque un job en échec dans la table <label>_cspro_jobs de la base CIBLE :
+     * status = JOB_STATUS_FAILED et error_message = message lisible.
+     *
+     * - Portable (MySQL/PostgreSQL/SQL Server) : identifiants quotés via la
+     *   plateforme DBAL de la connexion cible, jamais en dur.
+     * - Best-effort : si l'écriture échoue (colonne absente sur un très vieux
+     *   déploiement où la migration n'a pas pu s'appliquer, connexion coupée…),
+     *   on logue en warning et on n'interrompt rien — le message reste dans les
+     *   logs. Ne doit pas masquer l'erreur d'origine.
+     *
+     * @return bool true si le statut a été persisté, false sinon.
+     */
+    public function markJobFailed($jobId, string $errorMessage): bool {
+        // Garde : initialize() peut échouer AVANT que $this->dictionary/$this->conn
+        // soient définis (dictionnaire introuvable, params de connexion invalides).
+        // Sans ce garde, null->getName()/null->getDatabasePlatform() lèverait un
+        // \Error NON attrapé par le catch \Exception ci-dessous ni par le worker
+        // -> fatal. On dégrade proprement : l'échec reste loggué, juste non persisté.
+        if (empty($jobId) || $this->dictionary === null || $this->conn === null) {
+            return false;
+        }
+        try {
+            $dictionaryLabel = strtolower(str_replace(" ", "_", str_replace("_DICT", "", $this->dictionary->getName())));
+            $platform = $this->conn->getDatabasePlatform();
+            $qi = fn(string $id): string => $platform->quoteIdentifier($id);
+
+            $stm = 'UPDATE ' . $qi($dictionaryLabel . '_cspro_jobs')
+                 . ' SET ' . $qi('status') . ' = :status, ' . $qi('error_message') . ' = :errorMessage'
+                 . ' WHERE ' . $qi('id') . ' = :id';
+            $this->conn->executeStatement($stm, [
+                'status'       => self::JOB_STATUS_FAILED,
+                'errorMessage' => $errorMessage,
+                'id'           => $jobId,
+            ]);
+            return true;
+        } catch (\Throwable $e) {
+            // \Throwable (pas seulement \Exception) : ne jamais laisser le
+            // marquage d'échec provoquer un fatal qui masquerait l'erreur réelle.
+            $this->logger->warning(
+                "Could not persist FAILED status for JobID $jobId, Dictionary: " . $this->dictionaryName,
+                ["context" => (string) $e]
+            );
+            return false;
+        }
+    }
+
+    /**
+     * Migration idempotente et portable : garantit que la table
+     * <label>_cspro_jobs de la base CIBLE possède la colonne `error_message`
+     * (ajoutée pour tracer les échecs de breakout). Les déploiements créés avant
+     * cette colonne ne l'ont pas ; on l'ajoute à la volée.
+     *
+     * - Portable MySQL / PostgreSQL / SQL Server : le DDL ALTER est généré par la
+     *   plateforme DBAL de la connexion cible (aucun DDL codé en dur).
+     * - Idempotent : on introspecte les colonnes existantes avant tout ALTER.
+     * - Non bloquant : si la table n'existe pas encore (tout premier run, avant
+     *   création du schéma) ou si l'ALTER échoue, on logue en warning et on
+     *   continue — cette migration ne doit JAMAIS empêcher un breakout.
+     * - Ne reconstruit jamais le schéma (pas de drop) : IsValidSchema() ne
+     *   regarde pas les colonnes, donc ajouter celle-ci n'entraîne aucun rebuild.
+     */
+    private function ensureJobsErrorColumn(): void {
+        try {
+            $dictionaryLabel = strtolower(str_replace(" ", "_", str_replace("_DICT", "", $this->dictionary->getName())));
+            $tableName = $dictionaryLabel . '_cspro_jobs';
+
+            // getSchemaManager() : conservé pour cohérence avec le reste de la
+            // classe (cf. cleanDictionarySchema ligne ~211) et compatible DBAL 3.x.
+            $schemaManager = $this->conn->getSchemaManager();
+
+            // Chemin rapide (cas nominal : déjà migré) : ne lire QUE les colonnes
+            // (1 requête) plutôt que listTableDetails (colonnes + FK + index).
+            // ensureJobsErrorColumn tourne à chaque run de worker, sur chaque
+            // thread — on garde ce chemin le plus léger possible.
+            try {
+                $existingColumns = $schemaManager->listTableColumns($tableName);
+            } catch (\Throwable $notFound) {
+                // Table pas encore créée : la définition du schéma inclut déjà la
+                // colonne, rien à migrer.
+                return;
+            }
+            foreach ($existingColumns as $col) {
+                if (strtolower($col->getName()) === 'error_message') {
+                    return; // déjà présente : idempotent, aucun autre appel DBAL.
+                }
+            }
+
+            // Colonne absente (rare, une seule fois par déploiement). On charge la
+            // table complète comme fromTable pour getAlterTableSQL (évite une
+            // dépréciation DBAL et fiabilise le DDL généré selon la plateforme).
+            $fromTable = $schemaManager->listTableDetails($tableName);
+
+            // Génère l'ALTER TABLE ... ADD error_message via la plateforme cible.
+            $platform = $this->conn->getDatabasePlatform();
+            $tableDiff = new \Doctrine\DBAL\Schema\TableDiff(
+                $tableName,
+                [
+                    'error_message' => new \Doctrine\DBAL\Schema\Column(
+                        'error_message',
+                        \Doctrine\DBAL\Types\Type::getType('text'),
+                        ['notnull' => false, 'default' => null]
+                    ),
+                ],
+                [], [], [], [], [],
+                $fromTable
+            );
+            foreach ($platform->getAlterTableSQL($tableDiff) as $sql) {
+                $this->conn->executeStatement($sql);
+            }
+            $this->logger->info("Added error_message column to $tableName (breakout failure tracking migration).");
+        } catch (\Exception $e) {
+            // Non bloquant : le breakout doit tourner même si la migration échoue.
+            $this->logger->warning(
+                "Could not ensure error_message column on cspro_jobs for Dictionary: " . $this->dictionaryName,
+                ["context" => (string) $e]
+            );
+        }
     }
 
 

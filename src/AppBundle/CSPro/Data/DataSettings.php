@@ -214,6 +214,7 @@ public function getDataCounts(&$dataSettings) {
         $dataSetting['totalCases'] = "";
         $dataSetting['processedCases'] = "";
         $dataSetting['lastProcessedTime'] = "";
+        $dataSetting['lastError'] = "";
 
         if (isset($dataSetting['targetSchemaName'])) {
             // Préfixe des tables de breakout dans la base CIBLE. Elles sont
@@ -250,6 +251,24 @@ public function getDataCounts(&$dataSettings) {
                 if (strpos((string) $e, 'SQLSTATE[42S02]') == FALSE) {
                     $this->logger->error('Failed getting case counts and last processed time', ["context" => (string) $e]);
                 }
+            }
+
+    // Message clair du dernier job en échec (status = FAILED = 3). Requête
+    // isolée : sur un déploiement non encore migré la colonne error_message
+    // peut manquer -> on ignore silencieusement sans impacter les compteurs.
+            try {
+                // isset($conn) : $conn est défini dans le try précédent ; si
+                // getConnection() lui-même avait levé (base injoignable), $conn
+                // serait indéfini et $conn->executeQuery lèverait un \Error non
+                // attrapé par ce catch \Exception. On garde donc l'accès.
+                if (isset($conn)) {
+                    $statement = $conn->executeQuery('SELECT error_message FROM '.$name_dict.'cspro_jobs WHERE id = (SELECT max(id) from '.$name_dict.'cspro_jobs where status = 3)');
+                    if (($row = $statement->fetchAssociative()) !== false && !empty($row['error_message'])) {
+                        $dataSetting['lastError'] = (string) $row['error_message'];
+                    }
+                }
+            } catch (\Throwable $e) {
+                // colonne/table absente ou aucun échec : pas d'erreur à afficher.
             }
         }
     }

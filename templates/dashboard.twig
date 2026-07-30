@@ -374,10 +374,17 @@
                                     : exitNum === 0  ? '<span class="text-success">0</span>'
                                     : '<span class="text-danger">' + exitNum + '</span>';
                         var pending = d.cases_pending == null ? '<span class="text-muted">—</span>' : fmtNumber(d.cases_pending);
+                        // Indicateur d'échec : badge rouge avec le message clair
+                        // du dernier job en erreur (au survol). Affiché seulement
+                        // si last_error est présent.
+                        var errBadge = d.last_error
+                            ? ' <span class="badge badge-danger" title="' + escapeHtml(d.last_error) + '"><i class="fas fa-exclamation-triangle"></i> Failed</span>'
+                            : '';
                         return '<tr data-dict="' + escapeHtml(d.dictionary) + '">'
                             +  '<td class="col-status"><span class="status-dot ' + st.cls + '" title="' + escapeHtml(st.label) + '"></span></td>'
-                            +  '<td><strong>' + escapeHtml(d.dictionary) + '</strong>'
+                            +  '<td><strong>' + escapeHtml(d.dictionary) + '</strong>' + errBadge
                             +    (d.label && d.label !== d.dictionary ? '<br><small class="text-muted">' + escapeHtml(d.label) + '</small>' : '')
+                            +    (d.last_error ? '<br><small class="text-danger">' + escapeHtml(d.last_error) + '</small>' : '')
                             +  '</td>'
                             +  '<td class="col-pct">' + compHtml + '</td>'
                             +  '<td>' + pending + '</td>'
