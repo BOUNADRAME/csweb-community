@@ -82,12 +82,20 @@ RUN npm install -g bower --quiet \
     && bower install --allow-root
 
 # Set base permissions
+#
+# CSWeb 8.1 widened the writability check in setup/prereqs.php from
+# (var, app/config, src/AppBundle) to (var, files, files_csweb, app/config,
+# src/). files_csweb ships as an empty directory in the upstream archive, so
+# git does not carry it and it has to be created here, or /setup fails its
+# requirements check with no indication of which one.
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html \
     && mkdir -p /var/www/html/files \
+    && mkdir -p /var/www/html/files_csweb \
     && mkdir -p /var/www/html/var/cache \
     && mkdir -p /var/www/html/var/logs \
-    && chmod -R 775 /var/www/html/files \
+    && chmod -R 775 /var/www/html/files /var/www/html/files_csweb \
+    && chown -R www-data:www-data /var/www/html/files /var/www/html/files_csweb \
     && chmod -R 777 /var/www/html/var
 
 # Configure cron for breakout scheduler + backup (runs every minute)
