@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\CSPro;
 
-use AppBundle\CSPro\CSProMySQLFormatter;
+use App\CSPro\CSProMySQLFormatter;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 

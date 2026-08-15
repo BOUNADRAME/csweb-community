@@ -20,15 +20,15 @@ require_once __DIR__ . '/../vendor/autoload.php';
         <meta name="description" content="">
         <meta name="author" content="">
 
-        <link rel='icon' href='/dist/img/favicon.ico' type='image/x-icon'/ >
+        <link rel='icon' href='../dist/img/favicon.ico' type='image/x-icon'/ >
 
               <title>CSWeb: Requirements</title>
 
         <!-- Bootstrap Core CSS -->
-        <link href="/bower_components/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="../bower_components/bootstrap/css/bootstrap.min.css" rel="stylesheet">
 
-        <!-- FontAwesome 5 Free -->
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" type="text/css">
+        <!-- Custom Fonts -->
+        <link href="../bower_components/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
 
         <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
         <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
@@ -100,10 +100,10 @@ require_once __DIR__ . '/../vendor/autoload.php';
         }
 
         function directoriesWriteable() {
-            $dirs = array('var', 'app/config', 'src/AppBundle');
+            $dirs = array('var', 'files', 'files_csweb', 'app/config', 'src/');
 
             foreach ($dirs as $d) {
-                $fullPath = realpath(__DIR__ . '/../../') . DIRECTORY_SEPARATOR . $d;
+                $fullPath = realpath(__DIR__ . '/..') . DIRECTORY_SEPARATOR . $d;
                 if (!is_writable($fullPath))
                     return false;
             }
@@ -111,7 +111,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
         }
 
         $tests = array(
-            'PHP version 8.0 or above' => version_compare(PHP_VERSION, '8.0') >= 0,
+            'PHP version 8.1 or above' => version_compare(PHP_VERSION, '8.1') >= 0,
             'PHP file_info extension' => function_exists('finfo_open'),
             'PHP pdo extension' => extension_loaded('pdo'),
             'PHP dom extension' => extension_loaded('dom'),
@@ -122,7 +122,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
             'CA bundle (for PHP < 5.6 and no curl)' => canFindGuzzleCABundle(),
             'enable_post_data_reading on in php.ini' => enabledInIniFile('enable_post_data_reading'),
             'post-max-size >= 8M in php.ini' => sizeStringToMegaBytes(ini_get('post_max_size')) >= 8 || sizeStringToMegaBytes(ini_get('post_max_size')) === 0,
-                //'var, app/config directories are writeable' => is_writable(realpath(__DIR__.'/..').DIRECTORY_SEPARATOR.'var'.DIRECTORY_SEPARATOR),
+            'var, app/config, files, files_csweb, src/ directories are writeable' => directoriesWriteable(),
         );
 
         $showRawPostWarning = false;
@@ -163,11 +163,11 @@ foreach ($tests as $label => $result) {
                                 echo '<div class="alert alert-warning" role="alert">You are running PHP 5.6. If you are unable to login to CSWeb after the setup, you have to set always_populate_raw_post_data = -1 in your php.ini file.</div>';
                             }
                             echo '<div class="alert alert-success" role="alert">Your server meets all the requirements. Click next to begin configuration.</div>';
-                            echo '<a href="configure.php" class="btn btn-primary pull-right"">Next</a>';
+                            echo '<a href="configure.php" class="btn btn-primary float-right"">Next</a>';
                             echo '<div style="padding-bottom: 50px"></div>';
                         } else {
                             echo '<div class="alert alert-danger" role="alert">Your server is missing one or more required settings. Please correct the issue(s) and click "Try Again".</div>';
-                            echo '<form action="" method="get"><input type="submit" class="btn btn-primary pull-right" value="Try Again"></form>';
+                            echo '<form action="" method="get"><input type="submit" class="btn btn-primary float-right" value="Try Again"></form>';
                             echo '<div style="padding-bottom: 50px"></div>';
                         }
                         ?>

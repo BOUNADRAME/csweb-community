@@ -2,8 +2,8 @@
 
 namespace Tests\Unit\CSPro;
 
-use AppBundle\CSPro\FileManager;
-use AppBundle\CSPro\FileInfo;
+use App\CSPro\FileManager;
+use App\CSPro\FileInfo;
 use PHPUnit\Framework\TestCase;
 
 class FileManagerTest extends TestCase

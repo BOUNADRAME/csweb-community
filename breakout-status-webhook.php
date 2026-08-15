@@ -34,7 +34,7 @@ requireMethod(['GET']);
 requireBearerToken();
 
 // Load CSWeb DB config
-$configFile = __DIR__ . '/src/AppBundle/config.php';
+$configFile = __DIR__ . '/src/config.php';
 if (!file_exists($configFile)) {
     respondError('server_misconfigured', 'CSWeb config.php not found at: ' . $configFile, 500);
 }

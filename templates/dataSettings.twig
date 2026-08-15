@@ -37,24 +37,18 @@
     </style>
 {% endblock %}
 {% block navSettings %}
-    {% if is_granted('ROLE_SETTINGS_ALL') == true %}
+    {% if is_granted('ROLE_LOGIN') and (is_granted('ROLE_SETTINGS') or is_granted('ROLE_SETTINGS.READ'))  %}
         <li id="settings-nav-item" class="nav-item active">
             <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseSettings"
                aria-expanded="true" aria-controls="collapseSettings">
                 <i class="fas fa-fw fa-cog"></i>
                 <span>Settings</span>
             </a>
-            <div id="collapseSettings" class="collapse show" aria-labelledby="headingSettings" data-parent="#side-menu">
+            <div id="collapseSettings" class="collapse show" aria-labelledby="headingTwo" data-parent="#side-menu">
                 <div class="bg-white collapse-inner rounded">
                     <a class="collapse-item active" href="{{ path('dataSettings') }}">
-                        <i class="fas fa-fw fa-database"></i>
+                        <i class="fas fa-fw fa-user"></i>
                         Data</a>
-                    <a class="collapse-item" href="{{ path('backup') }}">
-                        <i class="fas fa-fw fa-hdd"></i>
-                        Backup</a>
-                    <a class="collapse-item" href="{{ path('applicationLogs') }}">
-                        <i class="fas fa-fw fa-clipboard-list"></i>
-                        Logs</a>
                 </div>
             </div>
         </li>
@@ -71,13 +65,6 @@
                 </div>
                 <!-- /.modal-header -->
                 <div class="modal-body">
-                    {% if connectionMode == 'tunnel' and tunnelInfo %}
-                    <div class="alert alert-info py-2" role="alert">
-                        <i class="fas fa-network-wired"></i>
-                        <strong>Tunnel mode active.</strong>
-                        Hostname / port fields are stored for display, but CSWeb routes the actual connection through the SSH tunnel to <code>{{ tunnelInfo.host }}</code>.
-                    </div>
-                    {% endif %}
                     <form class="form-horizontal" id="add-config-form" role="form">
                         <!-- form-group row -->
                         <div class="form-group row has-feedback">
@@ -103,30 +90,10 @@
                         </div>
                         <!-- form-group row -->
                         <div class="form-group row has-feedback">
-                            <label class="col-sm-4 control-label" for="db-type">Database type</label>
-                            <div class="col-sm-8">
-                                <select class="form-control" name="dbType" id="db-type">
-                                    <option value="postgresql">PostgreSQL</option>
-                                    <option value="mysql">MySQL</option>
-                                    <option value="sqlserver">SQL Server</option>
-                                </select>
-                                <div class="help-block with-errors"></div>
-                            </div>
-                        </div>
-                        <!-- form-group row -->
-                        <div class="form-group row has-feedback">
                             <label class="col-sm-4 control-label" for="host-name">Hostname</label>
                             <div class="col-sm-8">
                                 <input type="text" class="form-control" name="targetHostName" id="host-name" placeholder="Hostname of database server (e.g. localhost)."
                                        data-required-error="Hostname is required" required>
-                                <div class="help-block with-errors"></div>
-                            </div>
-                        </div>
-                        <!-- form-group row -->
-                        <div class="form-group row has-feedback">
-                            <label class="col-sm-4 control-label" for="port">Port</label>
-                            <div class="col-sm-8">
-                                <input type="number" class="form-control" name="targetPort" id="port" placeholder="Leave blank for default (PostgreSQL: 5432, MySQL: 3306, SQL Server: 1433)" min="1" max="65535">
                                 <div class="help-block with-errors"></div>
                             </div>
                         </div>
@@ -265,10 +232,10 @@
                             <!-- form-group row -->
                         </div>
                         <!-- map-options -->
-                        <div class="modal-footer">
+                        <div class="modal-footer modal-footer-spacing-and-alignment">
                             <button type="submit" class="btn btn-primary" id="add-button">Add</button>
                             <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
-                        </div>  
+                        </div>
                         <!-- form-group row -->
                     </form>
                     <!-- form-horizontal -->
@@ -291,13 +258,6 @@
                 </div>
                 <!-- /.modal-header -->
                 <div class="modal-body">
-                    {% if connectionMode == 'tunnel' and tunnelInfo %}
-                    <div class="alert alert-info py-2" role="alert">
-                        <i class="fas fa-network-wired"></i>
-                        <strong>Tunnel mode active.</strong>
-                        Hostname / port fields are stored for display, but CSWeb routes the actual connection through the SSH tunnel to <code>{{ tunnelInfo.host }}</code>.
-                    </div>
-                    {% endif %}
                     <form class="form-horizontal" id="edit-config-form" role="form">
                         <div id="view-additional-config-json">
                             <pre id="additional-config-json-text-holder">
@@ -323,30 +283,10 @@
                             </div>
                             <!-- form-group row -->
                             <div class="form-group row has-feedback">
-                                <label class="col-sm-4 control-label" for="edit-db-type">Database type</label>
-                                <div class="col-sm-8">
-                                    <select class="form-control" name="edit-dbType" id="edit-db-type">
-                                        <option value="postgresql">PostgreSQL</option>
-                                        <option value="mysql">MySQL</option>
-                                        <option value="sqlserver">SQL Server</option>
-                                    </select>
-                                    <div class="help-block with-errors"></div>
-                                </div>
-                            </div>
-                            <!-- form-group row -->
-                            <div class="form-group row has-feedback">
                                 <label class="col-sm-4 control-label" for="host-name">Hostname</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control" name="edit-targetHostName" id="edit-host-name" placeholder="Hostname of database server (e.g. localhost)."
                                            data-required-error="Host name is required" required>
-                                    <div class="help-block with-errors"></div>
-                                </div>
-                            </div>
-                            <!-- form-group row -->
-                            <div class="form-group row has-feedback">
-                                <label class="col-sm-4 control-label" for="edit-port">Port</label>
-                                <div class="col-sm-8">
-                                    <input type="number" class="form-control" name="edit-targetPort" id="edit-port" placeholder="Leave blank for default (PostgreSQL: 5432, MySQL: 3306, SQL Server: 1433)" min="1" max="65535">
                                     <div class="help-block with-errors"></div>
                                 </div>
                             </div>
@@ -488,7 +428,7 @@
                             <button type="submit" class="btn btn-primary" id="update-button">Update</button>
                             <button type="button" class="btn btn-danger" id="edit-cancel-button" data-dismiss="modal">Cancel</button>
                             <button type="button" class="btn btn-primary hidden" id="view-additional-config-cancel-button">Cancel</button>
-                        </div>  
+                        </div>
                         <!-- modal-footer -->
                     </form>
                     <!-- form-horizontal -->
@@ -520,269 +460,6 @@
         </div>
         <!-- /.modal-dialog -->
     </div>
-    <!-- Add Schedule Modal -->
-    <div id="add-schedule-modal" class="modal fade" role="dialog" aria-labelledby="add-schedule-modal-label">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title" id="add-schedule-modal-label">Add Schedule</h4>
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <form class="form-horizontal" id="add-schedule-form" role="form">
-                        <div class="form-group row">
-                            <label class="col-sm-4 control-label" for="schedule-dictionary">Dictionary</label>
-                            <div class="col-sm-8">
-                                <select class="form-control" id="schedule-dictionary" required></select>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-4 control-label" for="schedule-cron">Cron expression</label>
-                            <div class="col-sm-8">
-                                <input type="text" class="form-control" id="schedule-cron" value="0 2 * * *" placeholder="e.g. 0 2 * * *" required>
-                                <small class="form-text text-muted">min hour day month weekday</small>
-                                <div class="mt-2">
-                                    <small class="text-muted d-block mb-1">Examples (click to use):</small>
-                                    <span class="badge badge-info cron-example mr-1 mb-1" style="cursor:pointer" data-cron="*/30 * * * *" data-target="#schedule-cron">Every 30 min</span>
-                                    <span class="badge badge-info cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 * * * *" data-target="#schedule-cron">Every hour</span>
-                                    <span class="badge badge-info cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 2 * * *" data-target="#schedule-cron">Daily 02:00</span>
-                                    <span class="badge badge-info cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 8 * * *" data-target="#schedule-cron">Daily 08:00</span>
-                                    <span class="badge badge-info cron-example mr-1 mb-1" style="cursor:pointer" data-cron="30 1 * * *" data-target="#schedule-cron">Daily 01:30</span>
-                                    <span class="badge badge-info cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 0 * * 1-5" data-target="#schedule-cron">Weekdays 00:00</span>
-                                    <span class="badge badge-info cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 12 1 * *" data-target="#schedule-cron">1st of month 12:00</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-4 control-label" for="schedule-enabled">Enabled</label>
-                            <div class="col-sm-8">
-                                <input type="checkbox" id="schedule-enabled" checked>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="submit" class="btn btn-primary" id="save-schedule-button">Save</button>
-                            <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Edit Schedule Modal -->
-    <div id="edit-schedule-modal" class="modal fade" role="dialog" aria-labelledby="edit-schedule-modal-label">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title" id="edit-schedule-modal-label">Edit Schedule</h4>
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <form class="form-horizontal" id="edit-schedule-form" role="form">
-                        <input type="hidden" id="edit-schedule-id">
-                        <div class="form-group row">
-                            <label class="col-sm-4 control-label">Dictionary</label>
-                            <div class="col-sm-8">
-                                <input type="text" class="form-control" id="edit-schedule-dictionary" disabled>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-4 control-label" for="edit-schedule-cron">Cron expression</label>
-                            <div class="col-sm-8">
-                                <input type="text" class="form-control" id="edit-schedule-cron" required>
-                                <small class="form-text text-muted">min hour day month weekday</small>
-                                <div class="mt-2">
-                                    <small class="text-muted d-block mb-1">Examples (click to use):</small>
-                                    <span class="badge badge-info cron-example mr-1 mb-1" style="cursor:pointer" data-cron="*/30 * * * *" data-target="#edit-schedule-cron">Every 30 min</span>
-                                    <span class="badge badge-info cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 * * * *" data-target="#edit-schedule-cron">Every hour</span>
-                                    <span class="badge badge-info cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 2 * * *" data-target="#edit-schedule-cron">Daily 02:00</span>
-                                    <span class="badge badge-info cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 8 * * *" data-target="#edit-schedule-cron">Daily 08:00</span>
-                                    <span class="badge badge-info cron-example mr-1 mb-1" style="cursor:pointer" data-cron="30 1 * * *" data-target="#edit-schedule-cron">Daily 01:30</span>
-                                    <span class="badge badge-info cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 0 * * 1-5" data-target="#edit-schedule-cron">Weekdays 00:00</span>
-                                    <span class="badge badge-info cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 12 1 * *" data-target="#edit-schedule-cron">1st of month 12:00</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-4 control-label" for="edit-schedule-enabled">Enabled</label>
-                            <div class="col-sm-8">
-                                <input type="checkbox" id="edit-schedule-enabled">
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="submit" class="btn btn-primary" id="update-schedule-button">Update</button>
-                            <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- View Log Modal (Pro) -->
-    <div id="view-log-modal" class="modal fade" role="dialog" aria-labelledby="view-log-modal-label" data-backdrop="static">
-        <div class="modal-dialog cspro-log-modal-dialog">
-            <div class="modal-content cspro-log-modal-content">
-                <div class="modal-header py-2 flex-column align-items-start">
-                    <div class="d-flex w-100 justify-content-between align-items-center">
-                        <h5 class="modal-title mb-0" id="view-log-modal-label"><i class="fas fa-file-alt"></i> <span id="view-log-filename"></span></h5>
-                        <button type="button" class="close" data-dismiss="modal">&times;</button>
-                    </div>
-                    <div class="cspro-log-meta mt-1" id="view-log-meta">
-                        <span class="badge badge-secondary" id="view-log-dict"></span>
-                        <span class="badge" id="view-log-type"></span>
-                        <small class="text-muted ml-2" id="view-log-date"></small>
-                        <small class="text-muted ml-2" id="view-log-size"></small>
-                        <small class="text-muted ml-2" id="view-log-lines"></small>
-                    </div>
-                </div>
-                <div class="px-3 py-2 border-bottom bg-light">
-                    <div class="btn-group btn-group-sm">
-                        <button type="button" class="btn btn-outline-secondary" id="log-copy-btn" title="Copy to clipboard"><i class="fas fa-copy"></i> Copy</button>
-                        <button type="button" class="btn btn-outline-secondary" id="log-download-btn" title="Download file"><i class="fas fa-download"></i> Download</button>
-                    </div>
-                    <div class="btn-group btn-group-sm ml-2">
-                        <button type="button" class="btn btn-outline-secondary" id="log-wrap-btn" title="Toggle word wrap"><i class="fas fa-align-left"></i> Wrap</button>
-                    </div>
-                    <div class="btn-group btn-group-sm ml-2">
-                        <button type="button" class="btn btn-outline-secondary" id="log-scroll-top-btn" title="Scroll to top"><i class="fas fa-arrow-up"></i></button>
-                        <button type="button" class="btn btn-outline-secondary" id="log-scroll-bottom-btn" title="Scroll to bottom"><i class="fas fa-arrow-down"></i></button>
-                    </div>
-                </div>
-                <div class="modal-body">
-                    <div class="cspro-log-loading" id="view-log-loading">
-                        <div class="text-center">
-                            <div class="spinner-border text-light" role="status"></div>
-                            <div class="text-light mt-2">Loading log content&hellip;</div>
-                        </div>
-                    </div>
-                    <div class="cspro-log-wrapper" id="view-log-wrapper">
-                        <table class="cspro-log-table" id="view-log-table">
-                            <tbody id="view-log-body"></tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="modal-footer py-2">
-                    <small class="text-muted mr-auto" id="view-log-status"></small>
-                    <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Run Now Confirmation Modal -->
-    <div id="run-now-modal" class="modal fade" role="dialog" aria-labelledby="run-now-modal-label">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title" id="run-now-modal-label"><i class="fas fa-rocket"></i> Run Breakout Now</h4>
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p id="run-now-text">Are you sure you want to run the breakout now?</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" id="confirm-run-now">Yes, Run Now</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Delete Schedule Modal -->
-    <div id="delete-schedule-modal" class="modal fade" role="dialog" aria-labelledby="delete-schedule-modal-label">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title" id="delete-schedule-modal-label">Delete Schedule</h4>
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p id="delete-schedule-text">Are you sure you want to delete this schedule?</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" id="confirm-delete-schedule">Yes</button>
-                    <button type="button" class="btn btn-primary" data-dismiss="modal">No</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Delete Log Confirmation Modal -->
-    <div id="delete-log-modal" class="modal fade" role="dialog" aria-labelledby="delete-log-modal-label">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title" id="delete-log-modal-label"><i class="fas fa-trash-alt text-danger"></i> Delete Log File</h4>
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p>Are you sure you want to permanently delete this log file?</p>
-                    <p class="mb-0"><code id="delete-log-filename"></code></p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" id="confirm-delete-log"><i class="fas fa-trash-alt"></i> Delete</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Bulk Delete Logs Confirmation Modal -->
-    <div id="delete-logs-bulk-modal" class="modal fade" role="dialog" aria-labelledby="delete-logs-bulk-modal-label">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title" id="delete-logs-bulk-modal-label"><i class="fas fa-trash-alt text-danger"></i> Delete Selected Log Files</h4>
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p>Are you sure you want to permanently delete <strong id="bulk-delete-count"></strong> selected log file(s)?</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" id="confirm-delete-logs-bulk"><i class="fas fa-trash-alt"></i> Delete All Selected</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Purge All Logs Confirmation Modal -->
-    <div id="purge-all-logs-modal" class="modal fade" role="dialog" aria-labelledby="purge-all-logs-modal-label">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title" id="purge-all-logs-modal-label"><i class="fas fa-dumpster-fire text-danger"></i> Purge Breakout Logs</h4>
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p>This will permanently delete <strong id="purge-all-scope-label">all breakout log files</strong>.</p>
-                    <p class="mb-0 text-danger"><i class="fas fa-exclamation-triangle"></i> This action cannot be undone.</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" id="confirm-purge-all-logs"><i class="fas fa-dumpster-fire"></i> Purge</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Delete Application Log Confirmation Modal -->
-    <div id="delete-applog-modal" class="modal fade" role="dialog" aria-labelledby="delete-applog-modal-label">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title" id="delete-applog-modal-label"><i class="fas fa-trash-alt text-danger"></i> Delete Application Log</h4>
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p>Are you sure you want to permanently delete this application log file?</p>
-                    <p class="mb-0"><code id="delete-applog-filename"></code></p>
-                    <small class="text-muted" id="delete-applog-meta"></small>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" id="confirm-delete-applog"><i class="fas fa-trash-alt"></i> Delete</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
 {% endblock %}
 {# modal #}
 {% block helps %}
@@ -801,206 +478,72 @@
         <!-- /.col-12 -->
     </div>
     <!-- /.row -->
-
-    {% if connectionMode == 'tunnel' and tunnelInfo %}
-    <div class="row">
-        <div class="col-12">
-            <div class="alert alert-info d-flex align-items-center" role="alert" style="border-left:4px solid #36b9cc;">
-                <i class="fas fa-network-wired fa-lg mr-3"></i>
-                <div class="flex-grow-1">
-                    <strong>Tunnel mode active.</strong>
-                    All breakout connections are routed through SSH to
-                    <code>{{ tunnelInfo.host }}</code> →
-                    <code>{{ tunnelInfo.remoteHost }}:{{ tunnelInfo.remotePort }}</code>
-                    (local port <code>{{ tunnelInfo.localPort }}</code>).
-                    <br>
-                    <small class="text-muted">
-                        The hostname / port you set below are stored as-is for display, but CSWeb rewrites them to <code>127.0.0.1:{{ tunnelInfo.localPort }}</code> at connection time.
-                        Switch back to <code>direct</code> mode in <code>.env</code> (<code>BREAKOUT_CONNECTION_MODE=direct</code>) to disable.
-                    </small>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
+    {% set canManageSettings = is_granted('ROLE_SETTINGS') or is_granted('ROLE_SETTINGS.WRITE') %}
     <div class="row">
         <div class="col-12">
             <div class="card shadow mb-4">
-                <div class="card-header p-0">
-                    <ul class="nav nav-tabs card-header-tabs cspro-tabs" role="tablist">
-                        <li class="nav-item">
-                            <a class="nav-link active" id="tab-link-data-config" data-toggle="tab" href="#tab-data-config" role="tab" aria-controls="tab-data-config" aria-selected="true">
-                                <i class="fas fa-database"></i> Data Configuration
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" id="tab-link-scheduler" data-toggle="tab" href="#tab-scheduler" role="tab" aria-controls="tab-scheduler" aria-selected="false">
-                                <i class="fas fa-clock"></i> Breakout Scheduler
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" id="tab-link-logs" data-toggle="tab" href="#tab-logs" role="tab" aria-controls="tab-logs" aria-selected="false">
-                                <i class="fas fa-file-alt"></i> Breakout Logs
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" id="tab-link-applog" data-toggle="tab" href="#tab-applog" role="tab" aria-controls="tab-applog" aria-selected="false">
-                                <i class="fas fa-scroll"></i> Application Log
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-                <div class="card-body p-0">
-                    <div class="tab-content">
-                        {# ── Tab 1 : Data Configuration ── #}
-                        <div class="tab-pane fade show active" id="tab-data-config" role="tabpanel" aria-labelledby="tab-link-data-config">
-                            <div class="cspro-tab-toolbar">
-                                <button type="button" class="btn btn-primary btn-xs" id="configure-dictionary-button">Add Configuration</button>
-                            </div>
-                            <div class="p-3 pt-0">
-                                <div class="table-responsive">
-                                    <table id="data-config-table" class="table table-striped table-bordered table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th class="col-4">Data Label</th>
-                                                <th class="col-auto">Data Name</th>
-                                                <th class="col-3">Target Schema</th>
-                                                <th class="col-auto">Total Cases</th>
-                                                <th class="col-auto">Processed Cases</th>
-                                                <th class="col-2">Last Processed Time</th>
-                                                <th class="col-auto">Edit</th>
-                                                <th class="col-auto">Delete</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for dataSetting in dataSettings %}
-                                                {%  if dataSetting.targetSchemaName != "" %}
-                                                    <tr data-id={{ dataSetting.id}} data-dictname={{ dataSetting.name}} data-dictlabel="{{ dataSetting.label}}">
-                                                        <td>
-                                                            {{ dataSetting.label}}
-                                                            {% if dataSetting.lastError is defined and dataSetting.lastError %}
-                                                                <span class="badge badge-danger ml-1" title="{{ dataSetting.lastError }}"><i class="fas fa-exclamation-triangle"></i> Failed</span>
-                                                                <br><small class="text-danger">{{ dataSetting.lastError }}</small>
-                                                            {% endif %}
-                                                        </td>
-                                                        <td>{{ dataSetting.name}}</td>
-                                                        <td>{{ dataSetting.targetHostName}} | {{ dataSetting.targetSchemaName}}</td>
-                                                        <td>{{ dataSetting.totalCases}}</td>
-                                                        <td>{{ dataSetting.processedCases}}</td>
-                                                        <td>{{ dataSetting.lastProcessedTime}}</td>
-                                                        <td style="text-align: center"><a href="javascript:;" class="edit-button-class"><i class="fas fa-pencil-alt fa-fw"></i></a></td>
-                                                        <td style="text-align: center"><a href="javascript:;" class="delete-button-class"><i class="fas fa-trash-alt fa-fw"></i></a></td>
-                                                    </tr>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                        {# ── Tab 2 : Breakout Scheduler ── #}
-                        <div class="tab-pane fade" id="tab-scheduler" role="tabpanel" aria-labelledby="tab-link-scheduler">
-                            <div class="cspro-tab-toolbar">
-                                <button type="button" class="btn btn-secondary btn-xs mr-2" id="refresh-schedules-btn"><i class="fas fa-sync-alt"></i> Refresh</button>
-                                <button type="button" class="btn btn-primary btn-xs" id="add-schedule-button">Add Schedule</button>
-                            </div>
-                            <div class="p-3 pt-0">
-                                <div class="table-responsive">
-                                    <table id="scheduler-table" class="table table-striped table-bordered table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Dictionary</th>
-                                                <th>Schedule (Cron)</th>
-                                                <th>Status</th>
-                                                <th>Last Run</th>
-                                                <th>Next Run</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="scheduler-table-body">
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                        {# ── Tab 3 : Breakout Logs ── #}
-                        <div class="tab-pane fade" id="tab-logs" role="tabpanel" aria-labelledby="tab-link-logs">
-                            <div class="cspro-tab-toolbar">
-                                <button type="button" class="btn btn-secondary btn-xs" id="refresh-logs-btn"><i class="fas fa-sync-alt"></i> Refresh</button>
-                                <button type="button" class="btn btn-danger btn-xs ml-2" id="delete-selected-logs-btn" disabled><i class="fas fa-trash-alt"></i> Delete Selected</button>
-                                <button type="button" class="btn btn-outline-danger btn-xs ml-2" id="purge-all-logs-btn"><i class="fas fa-dumpster-fire"></i> Purge All</button>
-                            </div>
-                            <div class="row no-gutters cspro-logs-container">
-                                <!-- Sidebar: Dictionaries -->
-                                <div class="col-md-3 cspro-logs-sidebar">
-                                    <div class="p-2">
-                                        <input type="text" class="form-control form-control-sm" id="logs-dict-search" placeholder="Search dictionaries&hellip;">
-                                    </div>
-                                    <div class="list-group list-group-flush cspro-logs-dict-list" id="logs-dict-list">
-                                        <!-- Populated by JS -->
-                                    </div>
-                                </div>
-                                <!-- Main: Logs Table -->
-                                <div class="col-md-9">
-                                    <div class="p-3">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h6 class="m-0" id="logs-panel-title">All Dictionaries</h6>
-                                            <small class="text-muted" id="logs-panel-summary"></small>
-                                        </div>
-                                        <div class="table-responsive">
-                                            <table id="breakout-logs-table" class="table table-sm table-striped table-bordered table-hover" style="width:100%">
-                                                <thead>
-                                                    <tr>
-                                                        <th><input type="checkbox" id="selectAllLogsCheckbox" title="Select all"></th>
-                                                        <th>Dictionary</th>
-                                                        <th>Filename</th>
-                                                        <th>Type</th>
-                                                        <th>Date</th>
-                                                        <th>Size</th>
-                                                        <th>Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="breakout-logs-body">
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {# ── Tab 4 : Application Log ── #}
-                        <div class="tab-pane fade" id="tab-applog" role="tabpanel" aria-labelledby="tab-link-applog">
-                            <div class="cspro-tab-toolbar">
-                                <button type="button" class="btn btn-secondary btn-xs mr-2" id="refresh-applog-btn"><i class="fas fa-sync-alt"></i> Refresh</button>
-                                <button type="button" class="btn btn-danger btn-xs mr-2" id="delete-applog-btn" style="display:none"><i class="fas fa-trash-alt"></i> Delete</button>
-                                <button type="button" class="btn btn-primary btn-xs" id="load-applog-btn" style="display:none"><i class="fas fa-eye"></i> View Full Log</button>
-                            </div>
-                            <div class="p-3 pt-0">
-                                <div id="applog-info" class="text-center text-muted py-4">
-                                    <i class="fas fa-spinner fa-spin"></i> Checking log file…
-                                </div>
-                                <div id="applog-viewer" style="display:none">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <div>
-                                            <h6 class="m-0 d-inline"><i class="fas fa-scroll text-primary"></i> <span id="applog-filename"></span></h6>
-                                            <small class="text-muted ml-2" id="applog-meta"></small>
-                                        </div>
-                                        <div id="applog-tools" style="display:none">
-                                            <button type="button" class="btn btn-outline-secondary btn-xs mr-1" id="toggle-applog-wrap" title="Toggle word wrap"><i class="fas fa-align-left"></i> Wrap</button>
-                                            <button type="button" class="btn btn-outline-secondary btn-xs" id="copy-applog-btn" title="Copy to clipboard"><i class="fas fa-copy"></i> Copy</button>
-                                        </div>
-                                    </div>
-                                    <div class="cspro-log-wrapper" id="applog-wrapper" style="max-height:500px; display:none">
-                                        <table class="cspro-log-table"><tbody id="applog-body"></tbody></table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                <!-- ALW - Create margin above panel heading -->
+                <div class="card-header py-2" style="flex-wrap: wrap;display: flex;justify-content: space-between;">
+                    <div><i class="fas fa-database fa-fw"></i> Data Configuration</div>
+                    <div class="btn-toolbar float-right">
+                        <button type="button" class="btn btn-primary btn-sm float-right" id="configure-dictionary-button" {% if not canManageSettings %}disabled{% endif %}>Add Configuration</button>
                     </div>
                 </div>
+                <!-- /.panel-heading -->
+                <div class="card-body">
+                <div class="table-responsive">
+                    <table id="data-config-table"  class="table table-striped table-bordered table-hover">
+                        <thead>
+                            <tr>
+                                <th class="col-4">Data Label</th>
+                                <th class="col-auto">Data Name</th>
+                                <th class="col-3">Target Schema</th>
+                                <th class="col-auto">Total Cases</th>
+                                <th class="col-auto">Processed Cases</th>
+                                <th class="col-2">Last Processed Time</th>
+                                <th class="col-auto">Edit</th>
+                                <th class="col-auto">Delete</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dataSetting in dataSettings %}
+                                {%  if dataSetting.targetSchemaName != "" %}
+                                    <tr data-id={{ dataSetting.id}} data-dictname={{ dataSetting.name}} data-dictlabel="{{ dataSetting.label}}">
+                                        <td>{{ dataSetting.label}}</td>
+                                        <td>{{ dataSetting.name}}</td>
+                                        <td>{{ dataSetting.targetHostName}} | {{ dataSetting.targetSchemaName}}</td>
+                                        <td>{{ dataSetting.totalCases}}</td>
+                                        <td>{{ dataSetting.processedCases}}</td>
+                                        <td>{{ dataSetting.lastProcessedTime}}</td>
+                                        <td style="text-align: center">
+                                            {% if canManageSettings %}
+                                                <a href="javascript:;" class="edit-button-class"><i class="fas fa-pencil-alt fa-fw"></i></a>
+                                            {% else %}
+                                                <a href="javascript:;" class="isDisabled" style="color:grey; cursor:not-allowed; pointer-events: none;"><i class="fas fa-pencil-alt fa-fw"></i></a>
+                                            {% endif %}
+                                        </td>
+                                        <td style="text-align: center">
+                                            {% if canManageSettings %}
+                                                <a href="javascript:;" class="delete-button-class"><i class="fas fa-trash-alt fa-fw"></i></a>
+                                            {% else %}
+                                                <a href="javascript:;" class="isDisabled" style="color:grey; cursor:not-allowed; pointer-events: none;"><i class="fas fa-trash-alt fa-fw"></i></a>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+
+                        </tbody>
+                    </table>
+                </div>
+                </div>
+                <!-- /.table-responsive -->
             </div>
+            <!-- /.panel -->
         </div>
+        <!-- /.col-12 -->
     </div>
+    <!-- /.row -->
 {% endblock %}
 {# content #}
 {% block scripts %}
@@ -1252,7 +795,7 @@
             $(document).ready(function () {
                 // Spinner functionality
                 var $body = $("body");
-                
+
                 $(document).ajaxStart(function (event, request, settings) {
                     $body.addClass("loading");
                 });
@@ -1387,7 +930,7 @@
                     buttonList.setAttribute('class', 'text-center');
                     var clearButton = document.createElement('button');
                     clearButton.setAttribute('type', 'button');
-                    clearButton.setAttribute('class', 'btn btn-default btn-xs clear close-dropdown');
+                    clearButton.setAttribute('class', 'btn btn-default btn-sm clear close-dropdown');
                     clearButton.setAttribute('value', 'Clear');
                     clearButton.appendChild(document.createTextNode('clear'));
                     buttonList.appendChild(clearButton);
@@ -1622,7 +1165,7 @@
                 else {
                     $('#basemap-key').removeAttr('required');
                 }
-                
+
             }
             else {
                 document.getElementById('map-options').classList.add('hidden');
@@ -1676,7 +1219,7 @@
                 clearFormGroupError($("#map-enable").closest('.form-group'));
                 $("#add-config-modal").modal("show");
             });
-                
+
             function styleDifferences(a, b) {
                 var as = getComputedStyle(a, null);
                 var bs = getComputedStyle(b, null);
@@ -1727,7 +1270,7 @@
                     var $modal = $("#add-config-modal");
                     var dataSetting = {};
                     // get the data from your modal
-                    $modal.find("input, select").each(function () {
+                    $modal.find("input").each(function () {
                         if ($(this).attr("name"))
                             dataSetting[$(this).attr("name")] = $(this).val();
                     });
@@ -1826,7 +1369,7 @@
                     initBootstrapValidator: initBootstrapValidator
                 };
             })();
-            //Edit config functionality 
+            //Edit config functionality
             $('#data-config-table tbody').on('click', '.edit-button-class', function (event) {
                 var tr = $(event.target).closest("tr");
                 var dataSettings
@@ -1839,8 +1382,6 @@
                     if (dataSettings[i].id == dictionaryId) {
                         console.log(dataSettings[i]);
                         $("#edit-host-name").val(dataSettings[i].targetHostName);
-                        $("#edit-port").val(dataSettings[i].targetPort || "");
-                        $("#edit-db-type").val(dataSettings[i].dbType || "postgresql");
                         $("#edit-target-db-name").val(dataSettings[i].targetSchemaName);
                         $("#edit-source-data").val(dataSettings[i].label);
                         $("#edit-configId").val(dictionaryId);
@@ -1922,7 +1463,7 @@
                     var $modal = $("#edit-config-modal");
                     var dataSetting = {};
                     // get the data from your modal
-                    $modal.find('input, select').each(function () {
+                    $modal.find('input').each(function () {
                         if ($(this).attr("name")) {
                             var attribName = $(this).attr("name");
                             attribName = attribName.substr(attribName.indexOf('-') + 1);
@@ -2036,271 +1577,6 @@
                 };
             })();
 
-            // Scheduler functionality
-            (function () {
-                var deleteScheduleId = null;
-
-                function loadSchedules() {
-                    $.ajax({
-                        type: "GET",
-                        url: "{{ path('schedulerList') }}",
-                        dataType: "json",
-                        success: function (data) {
-                            var tbody = $("#scheduler-table-body");
-                            tbody.empty();
-                            if (data.schedules && data.schedules.length > 0) {
-                                data.schedules.forEach(function (s) {
-                                    var statusBadge = s.enabled == 1
-                                        ? '<span class="badge badge-success">Active</span>'
-                                        : '<span class="badge badge-secondary">Inactive</span>';
-                                    var toggleIcon = s.enabled == 1
-                                        ? '<i class="fas fa-toggle-on fa-fw text-success" title="Disable"></i>'
-                                        : '<i class="fas fa-toggle-off fa-fw text-muted" title="Enable"></i>';
-                                    var row = '<tr>'
-                                        + '<td>' + s.label + ' (' + s.name + ')</td>'
-                                        + '<td><code>' + s.cron_expression + '</code></td>'
-                                        + '<td>' + statusBadge + '</td>'
-                                        + '<td>' + (s.last_run || '-') + '</td>'
-                                        + '<td>' + (s.next_run || '-') + '</td>'
-                                        + '<td>'
-                                        + '<a href="javascript:;" class="schedule-toggle-btn mr-2" data-id="' + s.id + '">' + toggleIcon + '</a>'
-                                        + '<a href="javascript:;" class="schedule-run-btn mr-2" data-id="' + s.id + '" data-name="' + s.name + '"><i class="fas fa-rocket fa-fw" title="Run Now"></i></a>'
-                                        + '<a href="javascript:;" class="schedule-edit-btn mr-2" data-id="' + s.id + '" data-label="' + s.label + ' (' + s.name + ')" data-cron="' + s.cron_expression + '" data-enabled="' + s.enabled + '"><i class="fas fa-pencil-alt fa-fw" title="Edit"></i></a>'
-                                        + '<a href="javascript:;" class="schedule-delete-btn" data-id="' + s.id + '" data-label="' + s.label + ' (' + s.name + ')"><i class="fas fa-trash-alt fa-fw" title="Delete"></i></a>'
-                                        + '</td></tr>';
-                                    tbody.append(row);
-                                });
-                            } else {
-                                tbody.append('<tr><td colspan="6" class="text-center text-muted">No schedules configured</td></tr>');
-                            }
-                        },
-                        error: function (response) {
-                            if (response.status === 200 || response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            }
-                        }
-                    });
-                }
-
-                $(document).ready(function () {
-                    loadSchedules();
-                });
-
-                $("#refresh-schedules-btn").on("click", function () {
-                    loadSchedules();
-                });
-
-                $("#add-schedule-button").on("click", function () {
-                    $.ajax({
-                        type: "GET",
-                        url: "{{ path('schedulerList') }}",
-                        dataType: "json",
-                        success: function (data) {
-                            var select = $("#schedule-dictionary");
-                            select.empty();
-                            if (data.unscheduledDictionaries && data.unscheduledDictionaries.length > 0) {
-                                data.unscheduledDictionaries.forEach(function (d) {
-                                    select.append('<option value="' + d.id + '">' + d.label + ' (' + d.name + ')</option>');
-                                });
-                                $("#schedule-cron").val("0 2 * * *");
-                                $("#schedule-enabled").prop("checked", true);
-                                $("#add-schedule-modal").modal("show");
-                            } else {
-                                showAlert("No more dictionaries available to schedule.", "alert alert-danger");
-                            }
-                        },
-                        error: function (response) {
-                            if (response.status === 200 || response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            }
-                        }
-                    });
-                });
-
-                $("#add-schedule-form").on("submit", function (event) {
-                    event.preventDefault();
-                    var payload = {
-                        dictionaryId: $("#schedule-dictionary").val(),
-                        cronExpression: $("#schedule-cron").val(),
-                        enabled: $("#schedule-enabled").is(":checked")
-                    };
-                    $.ajax({
-                        type: "POST",
-                        url: "{{ path('schedulerAdd') }}",
-                        data: JSON.stringify(payload),
-                        contentType: "application/json; charset=utf-8",
-                        dataType: "json",
-                        success: function (response) {
-                            $("#add-schedule-modal").modal("hide");
-                            if (response.code === 200) {
-                                showAlert("Schedule added successfully.", "alert alert-success");
-                                loadSchedules();
-                            } else {
-                                showAlert(response.description, "alert alert-danger");
-                            }
-                        },
-                        error: function (response) {
-                            $("#add-schedule-modal").modal("hide");
-                            if (response.status === 200 || response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            } else {
-                                var errResponse = JSON.parse(response.responseText);
-                                showAlert(errResponse.description || response.responseText, "alert alert-danger");
-                            }
-                        }
-                    });
-                });
-
-                $(document).on("click", ".schedule-toggle-btn", function () {
-                    var id = $(this).data("id");
-                    $.ajax({
-                        type: "PUT",
-                        url: "{{ path('schedulerToggle') }}",
-                        data: JSON.stringify({id: id}),
-                        contentType: "application/json; charset=utf-8",
-                        dataType: "json",
-                        success: function (response) {
-                            if (response.code === 200) {
-                                loadSchedules();
-                            } else {
-                                showAlert(response.description, "alert alert-danger");
-                            }
-                        },
-                        error: function (response) {
-                            if (response.status === 200 || response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            }
-                        }
-                    });
-                });
-
-                $(document).on("click", ".schedule-edit-btn", function () {
-                    var btn = $(this);
-                    $("#edit-schedule-id").val(btn.data("id"));
-                    $("#edit-schedule-dictionary").val(btn.data("label"));
-                    $("#edit-schedule-cron").val(btn.data("cron"));
-                    $("#edit-schedule-enabled").prop("checked", btn.data("enabled") == 1);
-                    $("#edit-schedule-modal").modal("show");
-                });
-
-                $("#edit-schedule-form").on("submit", function (event) {
-                    event.preventDefault();
-                    var payload = {
-                        id: $("#edit-schedule-id").val(),
-                        cronExpression: $("#edit-schedule-cron").val(),
-                        enabled: $("#edit-schedule-enabled").is(":checked")
-                    };
-                    $.ajax({
-                        type: "PUT",
-                        url: "{{ path('schedulerUpdate') }}",
-                        data: JSON.stringify(payload),
-                        contentType: "application/json; charset=utf-8",
-                        dataType: "json",
-                        success: function (response) {
-                            $("#edit-schedule-modal").modal("hide");
-                            if (response.code === 200) {
-                                showAlert("Schedule updated successfully.", "alert alert-success");
-                                loadSchedules();
-                            } else {
-                                showAlert(response.description, "alert alert-danger");
-                            }
-                        },
-                        error: function (response) {
-                            $("#edit-schedule-modal").modal("hide");
-                            if (response.status === 200 || response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            } else {
-                                var errResponse = JSON.parse(response.responseText);
-                                showAlert(errResponse.description || response.responseText, "alert alert-danger");
-                            }
-                        }
-                    });
-                });
-
-                // Run Now — open confirmation modal
-                var runNowBtn = null;
-                $(document).on("click", ".schedule-run-btn", function () {
-                    runNowBtn = $(this);
-                    var dictName = runNowBtn.data("name");
-                    $("#run-now-text").text('Run breakout now for "' + dictName + '"?');
-                    $("#run-now-modal").modal("show");
-                });
-
-                $("#confirm-run-now").on("click", function () {
-                    $("#run-now-modal").modal("hide");
-                    if (!runNowBtn) return;
-                    var id = runNowBtn.data("id");
-                    var dictName = runNowBtn.data("name");
-                    runNowBtn.find("i").removeClass("fa-rocket").addClass("fa-spinner fa-spin");
-                    $.ajax({
-                        type: "POST",
-                        url: "{{ path('schedulerRunNow') }}",
-                        data: JSON.stringify({id: id, dictName: dictName}),
-                        contentType: "application/json; charset=utf-8",
-                        dataType: "json",
-                        success: function (response) {
-                            if (response.code === 200) {
-                                showAlert(response.description, "alert alert-success");
-                                loadSchedules();
-                            } else {
-                                showAlert(response.description, "alert alert-danger");
-                            }
-                            runNowBtn.find("i").removeClass("fa-spinner fa-spin").addClass("fa-rocket");
-                        },
-                        error: function (response) {
-                            runNowBtn.find("i").removeClass("fa-spinner fa-spin").addClass("fa-rocket");
-                            if (response.status === 200 || response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            } else {
-                                var errResponse = JSON.parse(response.responseText);
-                                showAlert(errResponse.description || response.responseText, "alert alert-danger");
-                            }
-                        }
-                    });
-                });
-
-                // Cron example click to prefill
-                $(document).on("click", ".cron-example", function () {
-                    var target = $(this).data("target");
-                    var cronValue = $(this).data("cron");
-                    $(target).val(cronValue);
-                });
-
-                $(document).on("click", ".schedule-delete-btn", function () {
-                    deleteScheduleId = $(this).data("id");
-                    var label = $(this).data("label");
-                    $("#delete-schedule-text").text('Are you sure you want to delete the schedule for "' + label + '"?');
-                    $("#delete-schedule-modal").modal("show");
-                });
-
-                $("#confirm-delete-schedule").on("click", function () {
-                    $("#delete-schedule-modal").modal("hide");
-                    if (!deleteScheduleId) return;
-                    $.ajax({
-                        type: "DELETE",
-                        url: "{{ path('schedulerDelete', {id: '__ID__'}) }}".replace('__ID__', deleteScheduleId),
-                        dataType: "json",
-                        success: function (response) {
-                            if (response.code === 200) {
-                                showAlert("Schedule deleted.", "alert alert-success");
-                                loadSchedules();
-                            } else {
-                                showAlert(response.description, "alert alert-danger");
-                            }
-                        },
-                        error: function (response) {
-                            if (response.status === 200 || response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            } else {
-                                var errResponse = JSON.parse(response.responseText);
-                                showAlert(errResponse.description || response.responseText, "alert alert-danger");
-                            }
-                        }
-                    });
-                    deleteScheduleId = null;
-                });
-            })();
-
             // Delete config functionality
             (function () {
                 var tr;
@@ -2344,649 +1620,7 @@
                 });
             })();
 
-            // Breakout Logs Viewer (v2 — master-detail + pro modal)
-            (function () {
-                var logsTable = null;
-                var allLogs = [];
-                var allDictionaries = [];
-                var selectedDict = "";
-                var currentLogContent = "";
 
-                function escapeHtml(str) {
-                    var div = document.createElement("div");
-                    div.appendChild(document.createTextNode(str));
-                    return div.innerHTML;
-                }
-
-                function formatSize(bytes) {
-                    if (bytes === 0) return "0 B";
-                    var k = 1024;
-                    var sizes = ["B", "KB", "MB", "GB"];
-                    var i = Math.floor(Math.log(bytes) / Math.log(k));
-                    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-                }
-
-                // --- Sidebar ---
-
-                function buildDictCounts() {
-                    var counts = {};
-                    for (var i = 0; i < allLogs.length; i++) {
-                        var d = allLogs[i].dictName;
-                        counts[d] = (counts[d] || 0) + 1;
-                    }
-                    return counts;
-                }
-
-                function renderDictList() {
-                    var counts = buildDictCounts();
-                    var html = '<a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center' +
-                        (selectedDict === "" ? " active" : "") + '" data-dict="">' +
-                        'All Dictionaries <span class="badge badge-pill ' +
-                        (selectedDict === "" ? "badge-light" : "badge-primary") + '">' + allLogs.length + '</span></a>';
-                    for (var i = 0; i < allDictionaries.length; i++) {
-                        var d = allDictionaries[i];
-                        var isActive = (selectedDict === d);
-                        var cnt = counts[d] || 0;
-                        html += '<a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center' +
-                            (isActive ? " active" : "") + '" data-dict="' + escapeHtml(d) + '">' +
-                            escapeHtml(d) + ' <span class="badge badge-pill ' +
-                            (isActive ? "badge-light" : "badge-primary") + '">' + cnt + '</span></a>';
-                    }
-                    $("#logs-dict-list").html(html);
-                }
-
-                // --- Logs Table ---
-
-                function renderLogsTable() {
-                    if (logsTable) {
-                        logsTable.destroy();
-                        logsTable = null;
-                    }
-
-                    var filtered = selectedDict === "" ? allLogs : allLogs.filter(function (l) {
-                        return l.dictName === selectedDict;
-                    });
-
-                    // Update panel header
-                    $("#logs-panel-title").text(selectedDict === "" ? "All Dictionaries" : escapeHtml(selectedDict));
-                    $("#logs-panel-summary").text(filtered.length + " log file" + (filtered.length !== 1 ? "s" : ""));
-
-                    var tbody = $("#breakout-logs-body");
-                    tbody.empty();
-                    var rows = "";
-                    for (var i = 0; i < filtered.length; i++) {
-                        var log = filtered[i];
-                        var badge = log.type === "manual"
-                            ? '<span class="badge badge-warning">Manual</span>'
-                            : '<span class="badge badge-primary">Scheduled</span>';
-                        rows += '<tr>' +
-                            '<td><input type="checkbox" class="log-select" value="' + escapeHtml(log.filename) + '"></td>' +
-                            '<td>' + escapeHtml(log.dictName) + '</td>' +
-                            '<td><small>' + escapeHtml(log.filename) + '</small></td>' +
-                            '<td>' + badge + '</td>' +
-                            '<td>' + escapeHtml(log.date) + '</td>' +
-                            '<td>' + formatSize(log.size) + '</td>' +
-                            '<td>' +
-                                '<button class="btn btn-xs btn-info view-log-btn mr-1" data-file="' + escapeHtml(log.filename) + '" data-dict="' + escapeHtml(log.dictName) + '" data-type="' + escapeHtml(log.type) + '" data-date="' + escapeHtml(log.date) + '" data-size="' + log.size + '" title="View"><i class="fas fa-eye"></i></button>' +
-                                '<button class="btn btn-xs btn-success download-log-btn mr-1" data-file="' + escapeHtml(log.filename) + '" title="Download"><i class="fas fa-download"></i></button>' +
-                                '<button class="btn btn-xs btn-danger delete-log-btn" data-file="' + escapeHtml(log.filename) + '" title="Delete"><i class="fas fa-trash-alt"></i></button>' +
-                            '</td>' +
-                            '</tr>';
-                    }
-                    tbody.html(rows);
-
-                    logsTable = $("#breakout-logs-table").DataTable({
-                        order: [[4, "desc"]],
-                        pageLength: 15,
-                        lengthMenu: [15, 25, 50, 100],
-                        columnDefs: [{ orderable: false, targets: [0, 6] }],
-                        language: { emptyTable: "No breakout log files found." }
-                    });
-
-                    // Reset selection state after table rebuild
-                    $("#selectAllLogsCheckbox").prop("checked", false).prop("indeterminate", false);
-                    updateBulkDeleteBtn();
-                }
-
-                // --- Load all logs (single API call) ---
-
-                function loadAllLogs() {
-                    $.ajax({
-                        type: "GET",
-                        url: "{{ path('breakoutLogsList') }}",
-                        dataType: "json",
-                        success: function (data) {
-                            allLogs = data.logs || [];
-                            allDictionaries = data.dictionaries || [];
-                            renderDictList();
-                            renderLogsTable();
-                        },
-                        error: function (response) {
-                            if (response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            } else {
-                                showAlert("Failed to load breakout logs.", "alert alert-danger");
-                            }
-                        }
-                    });
-                }
-
-                // Initial load
-                loadAllLogs();
-
-                // Refresh
-                $("#refresh-logs-btn").on("click", function () {
-                    selectedDict = "";
-                    $("#logs-dict-search").val("");
-                    loadAllLogs();
-                });
-
-                // --- Sidebar interactions ---
-
-                // Click dictionary
-                $(document).on("click", "#logs-dict-list .list-group-item", function (e) {
-                    e.preventDefault();
-                    selectedDict = $(this).data("dict") || "";
-                    renderDictList();
-                    renderLogsTable();
-                });
-
-                // Search dictionaries (re-render filtered list)
-                $("#logs-dict-search").on("input", function () {
-                    var q = $(this).val().toLowerCase();
-                    var counts = buildDictCounts();
-                    var html = '<a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center' +
-                        (selectedDict === "" ? " active" : "") + '" data-dict="">' +
-                        'All Dictionaries <span class="badge badge-pill ' +
-                        (selectedDict === "" ? "badge-light" : "badge-primary") + '">' + allLogs.length + '</span></a>';
-                    for (var i = 0; i < allDictionaries.length; i++) {
-                        var d = allDictionaries[i];
-                        if (q && d.toLowerCase().indexOf(q) === -1) continue;
-                        var isActive = (selectedDict === d);
-                        var cnt = counts[d] || 0;
-                        html += '<a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center' +
-                            (isActive ? " active" : "") + '" data-dict="' + escapeHtml(d) + '">' +
-                            escapeHtml(d) + ' <span class="badge badge-pill ' +
-                            (isActive ? "badge-light" : "badge-primary") + '">' + cnt + '</span></a>';
-                    }
-                    $("#logs-dict-list").html(html);
-                });
-
-                // --- Pro Modal ---
-
-                $(document).on("click", ".view-log-btn", function () {
-                    var btn = $(this);
-                    var filename = btn.data("file");
-                    var dict = btn.data("dict") || "";
-                    var type = btn.data("type") || "";
-                    var date = btn.data("date") || "";
-                    var size = btn.data("size") || 0;
-
-                    // Populate header metadata
-                    $("#view-log-filename").text(filename);
-                    $("#view-log-dict").text(dict);
-                    var $typeBadge = $("#view-log-type");
-                    if (type === "manual") {
-                        $typeBadge.text("Manual").removeClass("badge-primary").addClass("badge-warning");
-                    } else {
-                        $typeBadge.text("Scheduled").removeClass("badge-warning").addClass("badge-primary");
-                    }
-                    $("#view-log-date").text(date);
-                    $("#view-log-size").text(formatSize(size));
-                    $("#view-log-lines").text("");
-                    $("#view-log-status").text("");
-
-                    // Reset state
-                    currentLogContent = "";
-                    $("#view-log-body").empty();
-                    $("#view-log-loading").show();
-                    $("#view-log-wrapper").removeClass("cspro-log-wrap");
-                    $("#log-wrap-btn").removeClass("active");
-                    $("#view-log-modal").data("file", filename);
-                    $("#view-log-modal").modal("show");
-
-                    $.ajax({
-                        type: "GET",
-                        url: "{{ path('breakoutLogContent') }}?file=" + encodeURIComponent(filename),
-                        dataType: "text",
-                        success: function (content) {
-                            currentLogContent = content;
-                            var lines = content.split("\n");
-                            // Build line-numbered table via string concatenation (perf)
-                            var html = "";
-                            for (var i = 0; i < lines.length; i++) {
-                                html += '<tr><td class="cspro-log-line-num">' + (i + 1) +
-                                    '</td><td class="cspro-log-line-text"><pre>' +
-                                    escapeHtml(lines[i]) + '</pre></td></tr>';
-                            }
-                            $("#view-log-body").html(html);
-                            $("#view-log-lines").text(lines.length + " lines");
-                            $("#view-log-status").text("Loaded " + lines.length + " lines");
-                            $("#view-log-loading").hide();
-                        },
-                        error: function () {
-                            $("#view-log-body").html('<tr><td colspan="2" class="text-center text-danger p-4">Failed to load log content.</td></tr>');
-                            $("#view-log-loading").hide();
-                            $("#view-log-status").text("Error loading content");
-                        }
-                    });
-                });
-
-                // --- Toolbar buttons ---
-
-                // Copy to clipboard
-                $("#log-copy-btn").on("click", function () {
-                    if (!currentLogContent) return;
-                    var $btn = $(this);
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(currentLogContent).then(function () {
-                            $btn.html('<i class="fas fa-check"></i> Copied');
-                            setTimeout(function () { $btn.html('<i class="fas fa-copy"></i> Copy'); }, 2000);
-                        });
-                    } else {
-                        // Fallback
-                        var ta = document.createElement("textarea");
-                        ta.value = currentLogContent;
-                        ta.style.position = "fixed";
-                        ta.style.left = "-9999px";
-                        document.body.appendChild(ta);
-                        ta.select();
-                        document.execCommand("copy");
-                        document.body.removeChild(ta);
-                        $btn.html('<i class="fas fa-check"></i> Copied');
-                        setTimeout(function () { $btn.html('<i class="fas fa-copy"></i> Copy'); }, 2000);
-                    }
-                });
-
-                // Download from modal
-                $("#log-download-btn").on("click", function () {
-                    var filename = $("#view-log-modal").data("file");
-                    if (filename) {
-                        window.open("{{ path('breakoutLogContent') }}?file=" + encodeURIComponent(filename), "_blank");
-                    }
-                });
-
-                // Download from table
-                $(document).on("click", ".download-log-btn", function () {
-                    var filename = $(this).data("file");
-                    window.open("{{ path('breakoutLogContent') }}?file=" + encodeURIComponent(filename), "_blank");
-                });
-
-                // Word wrap toggle
-                $("#log-wrap-btn").on("click", function () {
-                    $(this).toggleClass("active");
-                    $("#view-log-wrapper").toggleClass("cspro-log-wrap");
-                });
-
-                // Scroll top / bottom
-                $("#log-scroll-top-btn").on("click", function () {
-                    $("#view-log-wrapper").scrollTop(0);
-                });
-                $("#log-scroll-bottom-btn").on("click", function () {
-                    var el = $("#view-log-wrapper")[0];
-                    el.scrollTop = el.scrollHeight;
-                });
-
-                // --- Delete log ---
-
-                $(document).on("click", ".delete-log-btn", function () {
-                    var filename = $(this).data("file");
-                    $("#delete-log-filename").text(filename);
-                    $("#delete-log-modal").data("file", filename).modal("show");
-                });
-
-                $("#confirm-delete-log").on("click", function () {
-                    var filename = $("#delete-log-modal").data("file");
-                    if (!filename) return;
-                    var $btn = $(this);
-                    $btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Deleting…');
-                    $.ajax({
-                        type: "DELETE",
-                        url: "{{ path('breakoutLogDelete') }}",
-                        contentType: "application/json",
-                        data: JSON.stringify({ file: filename }),
-                        dataType: "json",
-                        success: function (data) {
-                            $("#delete-log-modal").modal("hide");
-                            showAlert(data.description || "Log deleted.", "alert alert-success");
-                            loadAllLogs();
-                        },
-                        error: function (response) {
-                            $("#delete-log-modal").modal("hide");
-                            if (response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            } else {
-                                var msg = "Failed to delete log.";
-                                try { msg = JSON.parse(response.responseText).description || msg; } catch (e) {}
-                                showAlert(msg, "alert alert-danger");
-                            }
-                        },
-                        complete: function () {
-                            $btn.prop("disabled", false).html('<i class="fas fa-trash-alt"></i> Delete');
-                        }
-                    });
-                });
-
-                // --- Bulk selection & delete ---
-
-                function updateBulkDeleteBtn() {
-                    var selCount = $(".log-select:checked").length;
-                    var $btn = $("#delete-selected-logs-btn");
-                    if (selCount > 0) {
-                        $btn.prop("disabled", false).html('<i class="fas fa-trash-alt"></i> Delete Selected (' + selCount + ')');
-                    } else {
-                        $btn.prop("disabled", true).html('<i class="fas fa-trash-alt"></i> Delete Selected');
-                    }
-                }
-
-                function updateSelectAllCheckbox() {
-                    var total = $(".log-select").length;
-                    var checked = $(".log-select:checked").length;
-                    var cb = $("#selectAllLogsCheckbox")[0];
-                    if (total === 0) {
-                        cb.checked = false;
-                        cb.indeterminate = false;
-                    } else if (checked === total) {
-                        cb.checked = true;
-                        cb.indeterminate = false;
-                    } else if (checked > 0) {
-                        cb.checked = false;
-                        cb.indeterminate = true;
-                    } else {
-                        cb.checked = false;
-                        cb.indeterminate = false;
-                    }
-                }
-
-                $(document).on("change", ".log-select", function () {
-                    updateSelectAllCheckbox();
-                    updateBulkDeleteBtn();
-                });
-
-                $("#selectAllLogsCheckbox").on("click", function () {
-                    var isChecked = $(this).is(":checked");
-                    $(".log-select").prop("checked", isChecked);
-                    updateBulkDeleteBtn();
-                });
-
-                $("#delete-selected-logs-btn").on("click", function () {
-                    var selected = $(".log-select:checked");
-                    if (selected.length === 0) return;
-                    $("#bulk-delete-count").text(selected.length);
-                    $("#delete-logs-bulk-modal").modal("show");
-                });
-
-                $("#confirm-delete-logs-bulk").on("click", function () {
-                    var files = [];
-                    $(".log-select:checked").each(function () {
-                        files.push($(this).val());
-                    });
-                    if (files.length === 0) return;
-                    var $btn = $(this);
-                    $btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Deleting…');
-                    $.ajax({
-                        type: "POST",
-                        url: "{{ path('breakoutLogDeleteBulk') }}",
-                        contentType: "application/json",
-                        data: JSON.stringify({ files: files }),
-                        dataType: "json",
-                        success: function (data) {
-                            $("#delete-logs-bulk-modal").modal("hide");
-                            showAlert(data.description || "Logs deleted.", "alert alert-success");
-                            loadAllLogs();
-                        },
-                        error: function (response) {
-                            $("#delete-logs-bulk-modal").modal("hide");
-                            if (response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            } else {
-                                var msg = "Bulk delete failed.";
-                                try { msg = JSON.parse(response.responseText).description || msg; } catch (e) {}
-                                showAlert(msg, "alert alert-danger");
-                            }
-                        },
-                        complete: function () {
-                            $btn.prop("disabled", false).html('<i class="fas fa-trash-alt"></i> Delete All Selected');
-                        }
-                    });
-                });
-
-                // --- Purge All ---
-                $("#purge-all-logs-btn").on("click", function () {
-                    var scopedLogs = selectedDict === ""
-                        ? allLogs
-                        : allLogs.filter(function (l) { return l.dictName === selectedDict; });
-                    if (scopedLogs.length === 0) {
-                        showAlert("No breakout log files to purge.", "alert alert-info");
-                        return;
-                    }
-                    var label = selectedDict === ""
-                        ? "all " + scopedLogs.length + " breakout log file(s)"
-                        : scopedLogs.length + " log file(s) for dictionary \"" + escapeHtml(selectedDict) + "\"";
-                    $("#purge-all-scope-label").html(label);
-                    $("#purge-all-logs-modal").modal("show");
-                });
-
-                $("#confirm-purge-all-logs").on("click", function () {
-                    var $btn = $(this);
-                    $btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Purging…');
-                    $.ajax({
-                        type: "POST",
-                        url: "{{ path('breakoutLogPurgeAll') }}",
-                        contentType: "application/json",
-                        data: JSON.stringify({ dict: selectedDict }),
-                        dataType: "json",
-                        success: function (data) {
-                            $("#purge-all-logs-modal").modal("hide");
-                            showAlert(data.description || "Logs purged.", "alert alert-success");
-                            loadAllLogs();
-                        },
-                        error: function (response) {
-                            $("#purge-all-logs-modal").modal("hide");
-                            if (response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            } else {
-                                var msg = "Purge failed.";
-                                try { msg = JSON.parse(response.responseText).description || msg; } catch (e) {}
-                                showAlert(msg, "alert alert-danger");
-                            }
-                        },
-                        complete: function () {
-                            $btn.prop("disabled", false).html('<i class="fas fa-dumpster-fire"></i> Purge');
-                        }
-                    });
-                });
-            })();
-
-            // =================================================================
-            // Application Log (ui.log)
-            // =================================================================
-            (function () {
-                var appLogFilename = "";
-                var appLogLines = 0;
-                var appLogSize = 0;
-                var appLogRawContent = "";
-
-                function formatSize(b) {
-                    if (b < 1024) return b + ' B';
-                    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
-                    return (b / 1048576).toFixed(1) + ' MB';
-                }
-
-                function escapeHtml(str) {
-                    var div = document.createElement("div");
-                    div.appendChild(document.createTextNode(str));
-                    return div.innerHTML;
-                }
-
-                function loadAppLogInfo() {
-                    $("#applog-info").html('<i class="fas fa-spinner fa-spin"></i> Checking log file…').show();
-                    $("#applog-viewer").hide();
-                    $("#applog-wrapper").hide();
-                    $("#load-applog-btn").hide();
-                    $("#delete-applog-btn").hide();
-                    $.ajax({
-                        type: "GET",
-                        url: "{{ path('appLogInfo') }}",
-                        dataType: "json",
-                        global: false,
-                        success: function (data) {
-                            if (!data.exists) {
-                                $("#applog-info").html('<i class="fas fa-exclamation-circle text-warning"></i> No application log file found (ui.log).').show();
-                                return;
-                            }
-                            appLogFilename = data.filename;
-                            appLogLines = data.lines;
-                            appLogSize = data.size;
-                            $("#applog-info").hide();
-                            $("#applog-filename").text(data.filename);
-                            $("#applog-meta").text(data.lines + " lines — " + formatSize(data.size) + " — modified " + data.modified);
-                            $("#applog-viewer").show();
-                            $("#load-applog-btn").show();
-                            $("#delete-applog-btn").show();
-                        },
-                        error: function (response) {
-                            if (response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            } else {
-                                $("#applog-info").html('<i class="fas fa-exclamation-triangle text-danger"></i> Failed to check log file.').show();
-                            }
-                        }
-                    });
-                }
-
-                function loadAppLogContent() {
-                    var $btn = $("#load-applog-btn");
-                    $btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Loading…');
-                    $.ajax({
-                        type: "GET",
-                        url: "{{ path('appLogInfo') }}?full=1",
-                        dataType: "json",
-                        global: false,
-                        success: function (data) {
-                            if (!data.content) {
-                                $("#applog-wrapper").show();
-                                $("#applog-body").html('<tr><td class="text-center text-muted p-4">Log file is empty.</td></tr>');
-                                $btn.hide();
-                                return;
-                            }
-                            appLogRawContent = data.content;
-                            var lines = data.content.split("\n");
-                            var html = "";
-                            for (var i = 0; i < lines.length; i++) {
-                                html += '<tr><td class="cspro-log-line-num">' + (i + 1) +
-                                    '</td><td class="cspro-log-line-text"><pre>' +
-                                    escapeHtml(lines[i]) + '</pre></td></tr>';
-                            }
-                            $("#applog-body").html(html);
-                            $("#applog-wrapper").show();
-                            $("#applog-tools").show();
-                            $btn.hide();
-                            // Scroll to bottom
-                            var el = $("#applog-wrapper")[0];
-                            el.scrollTop = el.scrollHeight;
-                        },
-                        error: function (response) {
-                            if (response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            } else {
-                                $("#applog-wrapper").show();
-                                $("#applog-body").html('<tr><td class="text-center text-danger p-4">Failed to load log content.</td></tr>');
-                            }
-                        },
-                        complete: function () {
-                            $btn.prop("disabled", false).html('<i class="fas fa-eye"></i> View Full Log');
-                        }
-                    });
-                }
-
-                // Load info when tab is shown
-                $('a[data-toggle="tab"][href="#tab-applog"]').on("shown.bs.tab", function () {
-                    loadAppLogInfo();
-                });
-
-                $("#refresh-applog-btn").on("click", function () {
-                    $("#applog-wrapper").hide();
-                    $("#applog-tools").hide();
-                    $("#applog-body").empty();
-                    appLogRawContent = "";
-                    loadAppLogInfo();
-                });
-
-                $("#load-applog-btn").on("click", function () {
-                    loadAppLogContent();
-                });
-
-                // Toggle word wrap
-                $("#toggle-applog-wrap").on("click", function () {
-                    var $wrapper = $("#applog-wrapper");
-                    $wrapper.toggleClass("cspro-log-wrap");
-                    var isWrapped = $wrapper.hasClass("cspro-log-wrap");
-                    $(this).toggleClass("btn-outline-secondary", !isWrapped)
-                           .toggleClass("btn-secondary", isWrapped);
-                });
-
-                // Copy log content to clipboard
-                $("#copy-applog-btn").on("click", function () {
-                    var $btn = $(this);
-                    if (!appLogRawContent) return;
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(appLogRawContent).then(function () {
-                            $btn.html('<i class="fas fa-check"></i> Copied!');
-                            setTimeout(function () { $btn.html('<i class="fas fa-copy"></i> Copy'); }, 2000);
-                        });
-                    } else {
-                        var ta = document.createElement("textarea");
-                        ta.value = appLogRawContent;
-                        ta.style.position = "fixed";
-                        ta.style.opacity = "0";
-                        document.body.appendChild(ta);
-                        ta.select();
-                        document.execCommand("copy");
-                        document.body.removeChild(ta);
-                        $btn.html('<i class="fas fa-check"></i> Copied!');
-                        setTimeout(function () { $btn.html('<i class="fas fa-copy"></i> Copy'); }, 2000);
-                    }
-                });
-
-                // Delete application log
-                $("#delete-applog-btn").on("click", function () {
-                    $("#delete-applog-filename").text(appLogFilename);
-                    $("#delete-applog-meta").text(appLogLines + " lines — " + formatSize(appLogSize));
-                    $("#delete-applog-modal").modal("show");
-                });
-
-                $("#confirm-delete-applog").on("click", function () {
-                    var $btn = $(this);
-                    $btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Deleting…');
-                    $.ajax({
-                        type: "DELETE",
-                        url: "{{ path('appLogDelete') }}",
-                        dataType: "json",
-                        global: false,
-                        success: function (data) {
-                            $("#delete-applog-modal").modal("hide");
-                            showAlert(data.description || "Application log deleted.", "alert alert-success");
-                            $("#applog-wrapper").hide();
-                            $("#applog-body").empty();
-                            loadAppLogInfo();
-                        },
-                        error: function (response) {
-                            $("#delete-applog-modal").modal("hide");
-                            if (response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            } else {
-                                var msg = "Failed to delete application log.";
-                                try { msg = JSON.parse(response.responseText).description || msg; } catch (e) {}
-                                showAlert(msg, "alert alert-danger");
-                            }
-                        },
-                        complete: function () {
-                            $btn.prop("disabled", false).html('<i class="fas fa-trash-alt"></i> Delete');
-                        }
-                    });
-                });
-            })();
 
     </script>
 {% endblock %}

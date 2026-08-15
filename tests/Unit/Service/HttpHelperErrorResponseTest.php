@@ -3,9 +3,9 @@
 namespace Tests\Unit\Service;
 
 // HttpHelperErrorResponse shares a file with HttpHelper (not PSR-4 autoloadable)
-require_once __DIR__ . '/../../../src/AppBundle/Service/HttpHelper.php';
+require_once __DIR__ . '/../../../src/Service/HttpHelper.php';
 
-use AppBundle\Service\HttpHelperErrorResponse;
+use App\Service\HttpHelperErrorResponse;
 use PHPUnit\Framework\TestCase;
 
 class HttpHelperErrorResponseTest extends TestCase

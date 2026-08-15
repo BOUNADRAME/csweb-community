@@ -1,8 +1,9 @@
 <?php
 
-include_once __DIR__ . '/../../../src/AppBundle/config.php';
-include_once __DIR__ . '/../../../src/AppBundle/version.php';
+include_once __DIR__ . '/../../../src/config.php';
+include_once __DIR__ . '/../../../src/version.php';
 
+$container->setParameter('secret', CSWEB_APP_SECRET);
 $container->setParameter('database_port', 3306);
 $container->setParameter('database_host', DBHOST);
 $container->setParameter('database_name', DBNAME);
@@ -11,12 +12,7 @@ $password = DBPASS;
 $password = str_replace("%", "%%", $password); //escape % character if any in the password
 $container->setParameter('database_password', $password);
 $container->setParameter('cspro_rest_api_url', API_URL);
-// Internal API URL for server-side calls (HttpHelper): use port 80 inside Docker
-$internalApiUrl = API_URL;
-if (file_exists('/.dockerenv') || getenv('BREAKOUT_MODE') !== false) {
-    $internalApiUrl = preg_replace('#://([^:/]+)(:\d+)?/#', '://$1/', $internalApiUrl);
-}
-$container->setParameter('cspro_internal_api_url', $internalApiUrl);
+$container->setParameter('csweb_internal_files_folder', INTERNAL_FILES_FOLDER);
 $container->setParameter('csweb_api_files_folder', FILES_FOLDER);
 $container->setParameter('csweb_api_default_timezone', DEFAULT_TIMEZONE);
 $container->setParameter('csweb_max_script_execution_time', MAX_EXECUTION_TIME);
@@ -43,7 +39,7 @@ switch (strtolower(CSWEB_LOG_LEVEL)) {
     case 'warning':
         $container->setParameter('csweb_db_log_level', Monolog\Logger::WARNING);
         break;
-    default: 
+    default:
         $container->setParameter('csweb_db_log_level', Monolog\Logger::ERROR);
 }
 $container->setParameter('csweb_process_cases_log_level', CSWEB_PROCESS_CASES_LOG_LEVEL);

@@ -24,7 +24,7 @@ chmod -R 775 /var/www/html/files
 # ============================================================================
 # Persist config.php across container recreations
 # ============================================================================
-CONFIG_SRC="/var/www/html/src/AppBundle/config.php"
+CONFIG_SRC="/var/www/html/src/config.php"
 CONFIG_PERSIST="/var/www/html/config-persist/config.php"
 
 mkdir -p /var/www/html/config-persist
@@ -45,7 +45,7 @@ fi
 chown -R www-data:www-data /var/www/html/config-persist
 
 # Clear Symfony cache if config.php exists (app is configured)
-if [ -f /var/www/html/src/AppBundle/config.php ]; then
+if [ -f /var/www/html/src/config.php ]; then
     echo "[CSWeb] config.php found, clearing Symfony cache..."
     rm -rf /var/www/html/var/cache/*
     su -s /bin/bash www-data -c "php /var/www/html/bin/console cache:warmup --env=prod --no-debug" 2>/dev/null || true
@@ -56,7 +56,7 @@ if [ -f /var/www/html/src/AppBundle/config.php ]; then
     # Remove UNIQUE constraint on schema_name (required for multi-dictionary breakout)
     echo "[CSWeb] Checking schema_name constraint..."
     php -r "
-        require '/var/www/html/src/AppBundle/config.php';
+        require '/var/www/html/src/config.php';
         try {
             \$port = defined('DBPORT') ? DBPORT : '3306';
             \$pdo = new PDO('mysql:host=' . DBHOST . ';dbname=' . DBNAME . ';port=' . \$port, DBUSER, DBPASS);
@@ -76,7 +76,7 @@ if [ -f /var/www/html/src/AppBundle/config.php ]; then
     # Register dashboard_all permission (id 11) — idempotent
     echo "[CSWeb] Checking dashboard_all permission..."
     php -r "
-        require '/var/www/html/src/AppBundle/config.php';
+        require '/var/www/html/src/config.php';
         try {
             \$port = defined('DBPORT') ? DBPORT : '3306';
             \$pdo = new PDO('mysql:host=' . DBHOST . ';dbname=' . DBNAME . ';port=' . \$port, DBUSER, DBPASS);

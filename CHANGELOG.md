@@ -4,14 +4,20 @@ All notable changes to **CSWeb Community Platform** are documented here.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-Major versions are aligned with the upstream **CSWeb** distribution
+Versions are aligned with the upstream **CSWeb** distribution
 maintained by the U.S. Census Bureau ([csprousers.org](https://csprousers.org)).
-Minor and patch versions follow the Community fork's own pace.
+Patch versions follow the Community fork's own pace.
 
 ## Branching strategy
 
-- `master` — next major in development (currently future v9)
-- `8.x` — v8 maintenance branch, security and bugfix backports
+- `master` — next version in development
+- `8.1.x` — v8.1 line, based on upstream CSWeb 8.1 (Beta)
+- `8.x` — v8.0 line, based on upstream CSWeb 8.0 (Current)
+
+`8.x` and `8.1.x` sit on **different upstream trees** and are not
+upgrade-compatible: the upstream script refuses the 8.0 → 8.1 jump, and
+CSPro 8.0 and earlier cannot synchronize with CSWeb 8.1. Both lines are
+therefore maintained in parallel.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.
 
@@ -20,6 +26,40 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.
 ## [Unreleased]
 
 _Nothing yet._
+
+---
+
+## [8.1.0-beta.1] - Unreleased (branch `8.1.x`)
+
+First port of the Community layer onto the upstream CSWeb 8.1.2 base.
+**Beta: not validated against a real CSPro 8.1 synchronization yet.**
+
+### Changed
+
+- Rebased on upstream CSWeb 8.1.2 (was CSWeb 8.0.x)
+- Namespace `AppBundle\` → `App\`, source tree `src/AppBundle/` → `src/`,
+  following the upstream 8.1 layout change
+- Upstream now targets Symfony 6.4 (was 5.4), Monolog 3, DBAL ^3.9
+
+### Fixed
+
+- `src/version.php`: missing semicolon on the `CSPRO_VERSION` define
+  (present in the upstream 8.1.2 release)
+
+### Added
+
+- `CSWEB_COMMUNITY_VERSION` constant, tracking the fork version
+  independently of `CSPRO_VERSION`
+
+### Ported
+
+Community layer carried over from 8.0.x (17 PHP classes, 3 templates):
+breakout status service, multi-database driver detection, breakout
+database configuration and connection resolver, backup and scheduler
+commands, configuration and driver check commands, dashboard, backup and
+application-logs controllers with their templates, rate limiter and
+security-headers subscribers, backup/breakout schedulers and error
+formatter.
 
 ---
 

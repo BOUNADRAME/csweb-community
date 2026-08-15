@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\CSPro;
 
-use AppBundle\CSPro\CSProResponse;
+use App\CSPro\CSProResponse;
 use PHPUnit\Framework\TestCase;
 
 class CSProResponseTest extends TestCase

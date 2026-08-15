@@ -7,15 +7,15 @@
     <meta name="description" content="">
     <meta name="author" content="">
 
-	<link rel='icon' href='/dist/img/favicon.ico' type='image/x-icon'/ >
+	<link rel='icon' href='../dist/img/favicon.ico' type='image/x-icon'/ >
 
 	<title>CSWeb: Setup</title>
 
     <!-- Bootstrap Core CSS -->
-    <link href="/bower_components/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../bower_components/bootstrap/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- Custom Fonts -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="../bower_components/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
 
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
@@ -35,8 +35,8 @@
 
 <br/>
 
-<div class="alert alert-success" role="alert">Setup Complete!</div>'
-<a href="../" class="btn btn-primary pull-right">Login</a>
+<div class="alert alert-success" role="alert">Setup Complete!</div>
+<a href="../" class="btn btn-primary float-right">Login</a>
 </div>
 
 </body>

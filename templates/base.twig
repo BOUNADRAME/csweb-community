@@ -3,25 +3,36 @@
 <html lang="en">
 
     <head>
-
+        {# CSP also set in .htaccess for Apache. Keep both in sync. #}
+        <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com;
+        style-src 'self' 'unsafe-inline' https://unpkg.com;
+        img-src 'self' data: blob: https://unpkg.com https://*.tile.openstreetmap.org https://*.openstreetmap.org http://*.arcgisonline.com https://*.arcgisonline.com https://*.arcgis.com https://api.mapbox.com https://*.mapbox.com;
+        connect-src 'self' https://unpkg.com https://*.tile.openstreetmap.org https://*.openstreetmap.org http://*.arcgisonline.com https://*.arcgisonline.com https://*.arcgis.com https://api.mapbox.com https://*.mapbox.com https://events.mapbox.com;
+        object-src 'none';
+        form-action 'self';
+        base-uri 'self';">
+        
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="description" content="">
         <meta name="author" content="">
-
+        <meta name="csrf-token" content="{{ csrf_token('csweb_dashboard_token') }}">
+        
         <link rel='icon' href={{asset('dist/img/favicon.ico')}} type='image/x-icon'/>
 
         <title>CSWeb</title>
 
         <!-- DataTables CSS -->
-        <link href={{asset('bower_components/datatables/media/css/dataTables.bootstrap4.min.css')}} rel="stylesheet">
+        <link href={{asset('bower_components/datatables/dataTables.bootstrap4.min.css')}} rel="stylesheet">
 
         <!-- Custom CSS -->
         <link href={{asset('dist/css/sb-admin-2.css')}} rel="stylesheet">
 
         <!-- Custom Fonts -->
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" type="text/css">
+        <link href={{asset('bower_components/fontawesome-free/css/all.min.css')}} rel="stylesheet" type="text/css">
 
         <!-- ALW - Custom CSS -->
         <link href={{asset('dist/css/cspro-styles.css')}} rel="stylesheet">
@@ -33,9 +44,6 @@
         <div id="wrapper">
 
             <ul class="navbar-nav navbar-cspro sidebar sidebar-dark accordion" id="side-menu">
-                <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
-                    <i class="fas fa-bars"></i>
-                </button>
                 <a class="sidebar-brand d-flex align-items-center justify-content-center navbar-cspro" href="{{ path('dashboard') }}">
                     <img src={{asset('dist/img/logo_silver.png')}} class="icon" >
                     <p class="navbar navbar-version">CSWeb {{ csproVersion }}</p>
@@ -45,7 +53,7 @@
 
                 <!-- /.navbar-header -->
 
-                {% if is_granted('ROLE_DATA_ALL') == true %}
+                {% if is_granted('ROLE_LOGIN') %}
                     <li id="data-nav-item" class="nav-item">
                         <a class="nav-link" href="{{ path('dashboard') }}">
                             <i class="fas fa-fw fa-database"></i>
@@ -53,9 +61,9 @@
                     </li>
                 {% endif %}
                 {% block nav %}
-                    {% if is_granted('ROLE_REPORTS_ALL') == true %}
+                    {% if is_granted('ROLE_LOGIN') and (is_granted('ROLE_REPORTS') or is_granted('ROLE_REPORTS.READ')) %}
                         <li id="sync-report-nav-item" class="nav-item">
-                            <a class="nav-link collapsed" href="{{ path('sync-report') }}" 
+                            <a class="nav-link collapsed" href="{{ path('sync-report') }}"
                                data-toggle="collapse" onclick={window.location.href="{{ path('sync-report') }}";}>
                                 <i class="fas fa-fw fa-table"></i>
                                 <span>Sync Report</span>
@@ -70,62 +78,42 @@
                     {% endif %}
                 {% endblock %}
                 {# nav #}
-                {% if is_granted('ROLE_APPS_ALL') == true %}
+                {% if is_granted('ROLE_LOGIN') and (is_granted('ROLE_APPS') or is_granted('ROLE_APPS.READ')) %}
                     <li id="apps-nav-item" class="nav-item">
                         <a class="nav-link" href="{{ path('apps') }}">
                             <i class="fas fa-fw fa-desktop"></i>
                             <span>Apps</span></a>
                     </li>
+                {% endif %}
+                {% if is_granted('ROLE_LOGIN') and (is_granted('ROLE_FILES') or is_granted('ROLE_FILES.READ')) %}
                     <li id="files-nav-item" class="nav-item">
                         <a class="nav-link" href="{{ path('files') }}">
                             <i class="fas fa-fw fa-file"></i>
                             <span>Files</span></a>
                     </li>
                 {% endif %}
-                {% if is_granted('ROLE_USERS_ALL') == true %}
+                {% if is_granted('ROLE_LOGIN') and (is_granted('ROLE_USERS') or is_granted('ROLE_USERS.READ'))%}
                     <li id="users-nav-item" class="nav-item">
                         <a class="nav-link" href="{{ path('users') }}">
                             <i class="fas fa-fw fa-users"></i>
                             <span>Users</span></a>
                     </li>
                 {% endif %}
-                {% if is_granted('ROLE_ROLES_ALL') == true %}
+                {% if is_granted('ROLE_LOGIN') and (is_granted('ROLE_ROLES') or is_granted('ROLE_ROLES.READ')) %}
                     <li id="roles-nav-item" class="nav-item">
                         <a class="nav-link" href="{{ path('roles') }}">
                             <i class="fas fa-fw fa-user"></i>
                             <span>Roles</span></a>
                     </li>
                 {% endif %}
-                {% if is_granted('ROLE_DASHBOARD_ALL') == true %}
-                    {% set inDashboard = app.request.attributes.get('_route') == 'breakoutDashboard' %}
-                    <li id="dashboard-nav-item" class="nav-item {{ inDashboard ? 'active' : '' }}">
-                        <a class="nav-link" href="{{ path('breakoutDashboard') }}">
-                            <i class="fas fa-fw fa-tachometer-alt"></i>
-                            <span>Breakout Health</span></a>
-                    </li>
-                {% endif %}
                 {% block navSettings %}
-                {% if is_granted('ROLE_SETTINGS_ALL') == true %}
-                {% set inSettings = app.request.attributes.get('_route') in ['dataSettings', 'backup', 'applicationLogs'] %}
+                {% if is_granted('ROLE_LOGIN') and (is_granted('ROLE_SETTINGS') or is_granted('ROLE_SETTINGS.READ')) %}
                     <li id="settings-nav-item" class="nav-item">
-                        <a class="nav-link {{ inSettings ? '' : 'collapsed' }}" href="javascript:void(0)" data-toggle="collapse" data-target="#collapseSettings"
-                           aria-expanded="{{ inSettings ? 'true' : 'false' }}" aria-controls="collapseSettings">
+                        <a class="nav-link collapsed" href="{{ path('dataSettings') }}"
+                           data-toggle="collapse" onclick={window.location.href="{{ path('dataSettings') }}";}>
                             <i class="fas fa-fw fa-cog"></i>
-                            <span>Settings</span>
+                        <span>Settings</span>
                         </a>
-                        <div id="collapseSettings" class="collapse {{ inSettings ? 'show' : '' }}" aria-labelledby="headingSettings">
-                            <div class="bg-white collapse-inner rounded">
-                                <a class="collapse-item" href="{{ path('dataSettings') }}">
-                                    <i class="fas fa-fw fa-database"></i>
-                                    Data</a>
-                                <a class="collapse-item" href="{{ path('backup') }}">
-                                    <i class="fas fa-fw fa-hdd"></i>
-                                    Backup</a>
-                                <a class="collapse-item" href="{{ path('applicationLogs') }}">
-                                    <i class="fas fa-fw fa-clipboard-list"></i>
-                                    Logs</a>
-                            </div>
-                        </div>
                     </li>
                 {% endif %}
                 {% endblock %}
@@ -166,17 +154,24 @@
     <!-- /#wrapper -->
 
     <!-- jQuery -->
-    <script src={{asset('bower_components/jquery/dist/jquery.min.js')}}></script>
+    <script src={{asset('bower_components/jquery/jquery.min.js')}}></script>
+    <script>
+        $.ajaxSetup({
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            }
+        });
+    </script>
 
-    <!-- Bootstrap 4 JavaScript -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap Core JavaScript -->
+    <script src={{asset('bower_components/bootstrap/js/bootstrap.bundle.min.js')}}></script>
 
-    <!-- jQuery Easing -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
+    <!-- Core plugin JavaScript-->
+    <script src={{asset('bower_components/jquery-easing/jquery.easing.min.js')}}></script>
 
     <!-- DataTables JavaScript -->
-    <script src={{asset('bower_components/datatables/media/js/jquery.dataTables.min.js')}}></script>
-    <script src={{asset('bower_components/datatables/media/js/dataTables.bootstrap4.min.js')}}></script>
+    <script src={{asset('bower_components/datatables/jquery.dataTables.min.js')}}></script>
+    <script src={{asset('bower_components/datatables/dataTables.bootstrap4.min.js')}}></script>
 
     <!-- Custom Theme JavaScript -->
     <script src={{asset('dist/js/sb-admin-2.min.js')}}></script>
@@ -193,7 +188,7 @@
             }
 
             $(document).ready(function () {
-
+             
                 // Delete app functionality
                 (function () {
                     var tr;
@@ -228,9 +223,17 @@
                             error: function (response) {
                                 if (response.status === 405) {
                                     window.location.href = "{{ path('logout') }}";
-                                } else {
-                                    var alertMsg = "Failed to delete application " + appName;
-                                    showAlert(alertMsg, "alert alert-danger");
+                                }
+                                else {
+                                    var message = "Failed to delete application " + appName;
+                                    try {
+                                        var errResponse = JSON.parse(response.responseText);
+                                        message = errResponse.message || errResponse.error || response.responseText;
+                                    } catch(e) {
+                                        // Not valid JSON, use raw response or default message
+                                        message = response.responseText || "Unknown error occurred. Failed to delete application " + appName;
+                                    }
+                                    ui.showAlert(message, "alert alert-danger");
                                 }
                             },
                             failure: function (errMsg) {
@@ -251,7 +254,7 @@
 
             });
         </script>
-    {% endblock %} 
+    {% endblock %}
     {# script #}
 
     <div id="mainSpinner" class="spinner"><!-- Place at bottom of page --></div>
