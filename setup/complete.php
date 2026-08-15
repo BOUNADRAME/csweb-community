@@ -1,3 +1,28 @@
+<?php
+// Community layer: install the Community schema as soon as upstream setup has
+// finished.
+//
+// docker-entrypoint.sh runs the same command on boot, but only when
+// src/config.php already exists. On a fresh stack the container starts before
+// anyone has been through /setup, so that call is skipped and nothing runs it
+// again afterwards: the port / db_type columns stay missing and every visit to
+// /dataSettings fails with "Unknown column 'cspro_dictionaries_schema.port'".
+//
+// Running it here closes that window. The installer is idempotent, so the boot
+// call and this one cannot conflict.
+if (is_file(__DIR__ . '/../src/config.php')) {
+    $console = __DIR__ . '/../bin/console';
+    if (is_file($console)) {
+        $command = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($console)
+                 . ' csweb:community:install-schema --env=prod --no-debug 2>&1';
+        exec($command, $communityInstallOutput, $communityInstallStatus);
+        if ($communityInstallStatus !== 0) {
+            error_log('[CSWeb] Community schema install failed after setup: '
+                . implode(' | ', $communityInstallOutput));
+        }
+    }
+}
+?>
 <!DOCTYPE html>
 <html>
 <head>
