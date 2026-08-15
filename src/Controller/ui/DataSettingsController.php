@@ -193,6 +193,22 @@ class DataSettingsController extends AbstractController implements TokenAuthenti
             return "Hostname must not contain spaces.";
         }
 
+        // --- Community layer: per-dictionary target engine and port ---
+        // Reject an unknown db_type rather than letting resolveDriver() fall
+        // back to PostgreSQL for a typo, which would fail at connection time
+        // with a confusing error.
+        $dbType = strtolower(trim((string) ($dataSetting['dbType'] ?? 'postgresql')));
+        if ($dbType !== '' && !in_array($dbType, ['postgresql', 'mysql', 'sqlserver'], true)) {
+            return "Database type must be one of: PostgreSQL, MySQL, SQL Server.";
+        }
+
+        $port = $dataSetting['targetPort'] ?? '';
+        if (trim((string) $port) !== '') {
+            if (!ctype_digit(trim((string) $port)) || (int) $port < 1 || (int) $port > 65535) {
+                return "Port must be a number between 1 and 65535, or left empty for the driver default.";
+            }
+        }
+
         // --- mapInfo structure validation (only when map is enabled) ---
         $mapInfo = $dataSetting['mapInfo'] ?? null;
         if (!is_array($mapInfo)) {

@@ -52,6 +52,10 @@ class Role {
         self::addPermissionsFromJson($roleData, 'reports', $result->rolePermissions);
         self::addPermissionsFromJson($roleData, 'users', $result->rolePermissions);
         self::addPermissionsFromJson($roleData, 'roles', $result->rolePermissions);
+        // Community layer: breakout dashboard, backup and application logs
+        self::addPermissionsFromJson($roleData, 'dashboard', $result->rolePermissions);
+        self::addPermissionsFromJson($roleData, 'backup', $result->rolePermissions);
+        self::addPermissionsFromJson($roleData, 'logs', $result->rolePermissions);
 
         self::addDictionaryPermissionsFromJson($roleData['dictionaries'], $result->rolePermissions);
         //
@@ -83,6 +87,11 @@ class Role {
             'reports' => [],
             'users' => [],
             'roles' => [],
+            // Community layer: declared up front so the keys are always present
+            // in the payload, even for a role holding none of these.
+            'dashboard' => [],
+            'backup' => [],
+            'logs' => [],
             'login' => !empty($this->rolePermissions->getPermission(RolePermissions::LOGIN_ALL)),
             'dictionaries' => []
         ];
@@ -99,7 +108,10 @@ class Role {
     }
 
     public static function addPermissionsFromJson(array $rolePermissionsData, string $key, RolePermissions $rolePermissions): void {
-        $permissions = $rolePermissionsData[$key];
+        // Community layer: `?? null` guards a payload that predates a key —
+        // a role saved before the dashboard/backup/logs keys existed, or an
+        // API client that omits them. The loop below already tolerates null.
+        $permissions = $rolePermissionsData[$key] ?? null;
         foreach ($permissions ?? [] as $value) {
             if (isset(RolePermissions::STRING_PERMISSION_MAP[$value])) {
                 $permType = RolePermissions::STRING_PERMISSION_MAP[$value];

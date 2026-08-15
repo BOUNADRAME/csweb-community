@@ -92,6 +92,28 @@ no upstream file modified:
   id 11 with the installer command. **Id 11 means `apps.read` in the 8.1
   schema**, so the old statement would have silently corrupted permissions
 
+### Added — Community settings in the admin UI
+
+- Roles screen: `dashboard`, `backup` and `logs` rows, appended to the
+  upstream `permissions` array in `dist/js/roles.js` — the whole table is
+  generated from that array, so the rows, their checkboxes and the JSON
+  payload all follow. `Role::fromJSON()/toJSON()` and the three
+  `RolePermissions` maps gained the matching keys.
+- Data configuration screen: **Database type** (PostgreSQL / MySQL /
+  SQL Server) and **Port** fields on both the add and edit forms, with
+  server-side validation. The backend already read `dbType` and
+  `targetPort`; they were simply not reachable from the UI.
+
+### Fixed
+
+- `dist/js/roles.js`, `css/roles.css` and four other upstream assets were
+  missing from the branch: `templates/roles.twig` references roles.js, so
+  the roles screen would have been inert.
+- `Role::addPermissionsFromJson()` read `$data[$key]` with no null guard,
+  emitting a warning for a role saved before a key existed.
+- The data-configuration modals collected `find("input")` only, so a
+  `<select>` was never sent. Now `find("input, select")`.
+
 ### Ported
 
 Community layer carried over from 8.0.x (17 PHP classes, 3 templates):

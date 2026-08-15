@@ -97,6 +97,28 @@
                                 <div class="help-block with-errors"></div>
                             </div>
                         </div>
+                        {# Community layer: the breakout target may be PostgreSQL
+                           or SQL Server, on a non-default port. Upstream assumes
+                           MySQL on the default port. #}
+                        <div class="form-group row has-feedback">
+                            <label class="col-sm-4 control-label" for="db-type">Database type</label>
+                            <div class="col-sm-8">
+                                <select class="form-control" name="dbType" id="db-type">
+                                    <option value="postgresql" selected>PostgreSQL</option>
+                                    <option value="mysql">MySQL / MariaDB</option>
+                                    <option value="sqlserver">SQL Server</option>
+                                </select>
+                                <div class="help-block with-errors"></div>
+                            </div>
+                        </div>
+                        <div class="form-group row has-feedback">
+                            <label class="col-sm-4 control-label" for="target-port">Port</label>
+                            <div class="col-sm-8">
+                                <input type="number" class="form-control" name="targetPort" id="target-port" min="1" max="65535"
+                                       placeholder="Leave empty for the driver default (5432 / 3306 / 1433).">
+                                <div class="help-block with-errors"></div>
+                            </div>
+                        </div>
                         <!-- form-group row -->
                         <div class="form-group row has-feedback">
                             <label class="col-sm-4 control-label" for="db-user-name">Database username</label>
@@ -287,6 +309,26 @@
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control" name="edit-targetHostName" id="edit-host-name" placeholder="Hostname of database server (e.g. localhost)."
                                            data-required-error="Host name is required" required>
+                                    <div class="help-block with-errors"></div>
+                                </div>
+                            </div>
+                            {# Community layer: see the add-configuration form. #}
+                            <div class="form-group row has-feedback">
+                                <label class="col-sm-4 control-label" for="edit-db-type">Database type</label>
+                                <div class="col-sm-8">
+                                    <select class="form-control" name="edit-dbType" id="edit-db-type">
+                                        <option value="postgresql">PostgreSQL</option>
+                                        <option value="mysql">MySQL / MariaDB</option>
+                                        <option value="sqlserver">SQL Server</option>
+                                    </select>
+                                    <div class="help-block with-errors"></div>
+                                </div>
+                            </div>
+                            <div class="form-group row has-feedback">
+                                <label class="col-sm-4 control-label" for="edit-target-port">Port</label>
+                                <div class="col-sm-8">
+                                    <input type="number" class="form-control" name="edit-targetPort" id="edit-target-port" min="1" max="65535"
+                                           placeholder="Leave empty for the driver default (5432 / 3306 / 1433).">
                                     <div class="help-block with-errors"></div>
                                 </div>
                             </div>
@@ -1270,7 +1312,9 @@
                     var $modal = $("#add-config-modal");
                     var dataSetting = {};
                     // get the data from your modal
-                    $modal.find("input").each(function () {
+                    // Community layer: "select" is included alongside "input" so
+                    // the Database type dropdown is collected like the rest.
+                    $modal.find("input, select").each(function () {
                         if ($(this).attr("name"))
                             dataSetting[$(this).attr("name")] = $(this).val();
                     });
@@ -1382,6 +1426,11 @@
                     if (dataSettings[i].id == dictionaryId) {
                         console.log(dataSettings[i]);
                         $("#edit-host-name").val(dataSettings[i].targetHostName);
+                        // Community layer: prefill the per-dictionary target
+                        // engine and port. Falls back to postgresql / empty for
+                        // a row created before these columns existed.
+                        $("#edit-db-type").val(dataSettings[i].dbType || "postgresql");
+                        $("#edit-target-port").val(dataSettings[i].targetPort || "");
                         $("#edit-target-db-name").val(dataSettings[i].targetSchemaName);
                         $("#edit-source-data").val(dataSettings[i].label);
                         $("#edit-configId").val(dictionaryId);
@@ -1463,7 +1512,9 @@
                     var $modal = $("#edit-config-modal");
                     var dataSetting = {};
                     // get the data from your modal
-                    $modal.find('input').each(function () {
+                    // Community layer: "select" is included alongside "input" so
+                    // the Database type dropdown is collected like the rest.
+                    $modal.find('input, select').each(function () {
                         if ($(this).attr("name")) {
                             var attribName = $(this).attr("name");
                             attribName = attribName.substr(attribName.indexOf('-') + 1);

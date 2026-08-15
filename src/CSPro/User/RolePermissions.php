@@ -11,6 +11,9 @@ use App\Security\ParadataVoter;
 use App\Security\SettingsVoter;
 use App\Security\MessagesVoter;
 use App\Security\RolesVoter;
+use App\Security\DashboardVoter;
+use App\Security\BackupVoter;
+use App\Security\LogsVoter;
 
 class RolePermissions {
 
@@ -48,6 +51,17 @@ class RolePermissions {
     public const MESSAGES_WRITE = 82;
     public const FILES_READ = 91;
     public const FILES_WRITE = 92;
+    // Community layer: ids from 110 up, mirroring the upstream grouping by tens.
+    // Kept in sync with App\CSPro\Community\CommunityPermissions.
+    public const DASHBOARD_ALL = 110;
+    public const DASHBOARD_READ = 111;
+    public const DASHBOARD_WRITE = 112;
+    public const BACKUP_ALL = 120;
+    public const BACKUP_READ = 121;
+    public const BACKUP_WRITE = 122;
+    public const LOGS_ALL = 130;
+    public const LOGS_READ = 131;
+    public const LOGS_WRITE = 132;
 
     public $permissions;
     public $dictionaryPermissions;
@@ -91,6 +105,19 @@ class RolePermissions {
         self::LOGIN_ALL => [
         // No granular LOGIN permissions defined, but placeholder in case you add later
         ],
+        // Community layer
+        self::DASHBOARD_ALL => [
+            self::DASHBOARD_READ,
+            self::DASHBOARD_WRITE,
+        ],
+        self::BACKUP_ALL => [
+            self::BACKUP_READ,
+            self::BACKUP_WRITE,
+        ],
+        self::LOGS_ALL => [
+            self::LOGS_READ,
+            self::LOGS_WRITE,
+        ],
     ];
     public const PERMISSION_STRING_MAP = [
         self::DATA_ALL => ['key' => 'data', 'value' => DictionaryVoter::DATA_ALL],
@@ -122,6 +149,16 @@ class RolePermissions {
         self::ROLES_ALL => ['key' => 'roles', 'value' => RolesVoter::ROLES_ALL],
         self::ROLES_READ => ['key' => 'roles', 'value' => RolesVoter::ROLES_READ],
         self::ROLES_WRITE => ['key' => 'roles', 'value' => RolesVoter::ROLES_WRITE],
+        // Community layer: breakout dashboard, backup and application logs
+        self::DASHBOARD_ALL => ['key' => 'dashboard', 'value' => DashboardVoter::DASHBOARD_ALL],
+        self::DASHBOARD_READ => ['key' => 'dashboard', 'value' => DashboardVoter::DASHBOARD_READ],
+        self::DASHBOARD_WRITE => ['key' => 'dashboard', 'value' => DashboardVoter::DASHBOARD_WRITE],
+        self::BACKUP_ALL => ['key' => 'backup', 'value' => BackupVoter::BACKUP_ALL],
+        self::BACKUP_READ => ['key' => 'backup', 'value' => BackupVoter::BACKUP_READ],
+        self::BACKUP_WRITE => ['key' => 'backup', 'value' => BackupVoter::BACKUP_WRITE],
+        self::LOGS_ALL => ['key' => 'logs', 'value' => LogsVoter::LOGS_ALL],
+        self::LOGS_READ => ['key' => 'logs', 'value' => LogsVoter::LOGS_READ],
+        self::LOGS_WRITE => ['key' => 'logs', 'value' => LogsVoter::LOGS_WRITE],
     ];
     public const STRING_PERMISSION_MAP = [
         // Apps permissions
@@ -167,6 +204,16 @@ class RolePermissions {
         UserVoter::USERS_ALL => self::USERS_ALL,
         UserVoter::USERS_READ => self::USERS_READ,
         UserVoter::USERS_WRITE => self::USERS_WRITE,
+        // Community layer: breakout dashboard, backup and application logs
+        DashboardVoter::DASHBOARD_ALL => self::DASHBOARD_ALL,
+        DashboardVoter::DASHBOARD_READ => self::DASHBOARD_READ,
+        DashboardVoter::DASHBOARD_WRITE => self::DASHBOARD_WRITE,
+        BackupVoter::BACKUP_ALL => self::BACKUP_ALL,
+        BackupVoter::BACKUP_READ => self::BACKUP_READ,
+        BackupVoter::BACKUP_WRITE => self::BACKUP_WRITE,
+        LogsVoter::LOGS_ALL => self::LOGS_ALL,
+        LogsVoter::LOGS_READ => self::LOGS_READ,
+        LogsVoter::LOGS_WRITE => self::LOGS_WRITE,
     ];
 
     public function __construct() {
