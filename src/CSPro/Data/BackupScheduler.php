@@ -42,13 +42,15 @@ EOT;
             if (!$row || (int) $row['cnt'] === 0) {
                 $this->pdo->exec("INSERT INTO `cspro_backup_config` (`enabled`, `cron_expression`, `retention_days`) VALUES (0, '0 2 * * *', 30)");
             }
-            try {
-                $ver = $this->pdo->fetchOne("SELECT `value` FROM `cspro_config` WHERE `name` = 'schema_version'");
-                if ($ver && (int) $ver['value'] < 9) {
-                    $this->pdo->exec("UPDATE `cspro_config` SET `value` = 9 WHERE `name` = 'schema_version'");
-                }
-            } catch (\Exception $ignore) {
-            }
+            // NOTE: the 8.0 line also bumped cspro_config.schema_version to 9
+            // here, because on that line the upstream counter carried the
+            // Community migrations too. On 8.1 that is actively harmful:
+            // upstream sits at SCHEMA_VERSION 8, and CSProSchemaValidator
+            // rejects every API request when the stored value does not match,
+            // with "The database schema version does not match the version of
+            // the CSWeb code". The Community schema is tracked separately under
+            // cspro_config.community_schema_version by CommunitySchemaInstaller,
+            // so the upstream counter must be left alone.
             $this->logger->info('BackupScheduler: auto-created cspro_backup_config table');
         }
 

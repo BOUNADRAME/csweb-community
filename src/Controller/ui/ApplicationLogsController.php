@@ -33,15 +33,23 @@ class ApplicationLogsController extends AbstractController implements TokenAuthe
             $draw = (int) $request->query->get('draw', 1);
             $start = (int) $request->query->get('start', 0);
             $length = (int) $request->query->get('length', 25);
-            $searchValue = trim($request->query->get('search')['value'] ?? '');
+            // DataTables sends `search` and `order` as arrays. Symfony 6.4's
+            // InputBag::get() throws on a non-scalar value — on 5.4 it merely
+            // returned the array — so these must go through all(), which is the
+            // supported accessor for array parameters. Reading them with get()
+            // aborts the request and leaves the table spinning on "Loading..."
+            // behind a "search contains a non-scalar value" warning.
+            $searchParam = $request->query->all('search');
+            $searchValue = trim($searchParam['value'] ?? '');
             $channel = trim($request->query->get('channel', ''));
             $level = trim($request->query->get('level', ''));
             $dateFrom = trim($request->query->get('dateFrom', ''));
             $dateTo = trim($request->query->get('dateTo', ''));
 
             // Order
-            $orderCol = (int) ($request->query->get('order')[0]['column'] ?? 0);
-            $orderDir = strtolower($request->query->get('order')[0]['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
+            $orderParam = $request->query->all('order');
+            $orderCol = (int) ($orderParam[0]['column'] ?? 0);
+            $orderDir = strtolower($orderParam[0]['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
             $columns = ['id', 'channel', 'level_name', 'message', 'created_time'];
             $orderColumn = $columns[$orderCol] ?? 'id';
 
