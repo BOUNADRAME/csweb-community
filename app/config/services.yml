@@ -59,7 +59,10 @@ services:
     App\Service\HttpHelper:
         public: true
         arguments:
-            $baseUri: '%cspro_rest_api_url%'
+            # Community layer: CSWeb calling its own API — must use the
+            # container-side address, not the public one advertised to CSPro
+            # clients. Falls back to the public URL when they are the same.
+            $baseUri: '%cspro_internal_api_url%'
     
     App\Service\OAuthHelper:
         public: true

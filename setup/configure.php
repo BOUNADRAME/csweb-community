@@ -613,7 +613,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         } else {
             createDatabase($databaseName, $host, $databaseUsername, $databasePassword, $adminPassword);
             writeApiConfigFile($databaseName, $host, $databaseUsername, $databasePassword, $adminPassword, $filesDirectory, $interalFilesDirectory, $serverDeviceId, $timezone, $maxExecutionTime, $apiUrl);
-            testApiUrl($apiUrl, 'admin', $adminPassword);
+            // Community layer: probe the API on the address reachable from
+            // *here* — this code runs inside the container, where the public
+            // URL's published port does not exist. The value saved in
+            // config.php stays the public one, since that is what CSPro
+            // clients receive.
+            $internalApiUrl = getenv('CSWEB_INTERNAL_API_URL');
+            $probeUrl = is_string($internalApiUrl) && trim($internalApiUrl) !== ''
+                ? trim($internalApiUrl)
+                : $apiUrl;
+            testApiUrl($probeUrl, 'admin', $adminPassword);
             header('Location: complete.php');
         }
     } catch (PDOException $e) {

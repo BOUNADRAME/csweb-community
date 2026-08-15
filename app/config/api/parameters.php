@@ -11,7 +11,25 @@ $container->setParameter('database_user', DBUSER);
 $password = DBPASS;
 $password = str_replace("%", "%%", $password); //escape % character if any in the password
 $container->setParameter('database_password', $password);
+// cspro_rest_api_url is the PUBLIC address: it is written into the .pff sync
+// spec as SyncService= and into the cspro:/// links on the Data screen, both of
+// which are consumed by CSPro on a tablet or a workstation. It must therefore
+// be the address those clients can reach — a hostname or IP, with the published
+// port when there is one.
 $container->setParameter('cspro_rest_api_url', API_URL);
+
+// Community layer: separate address for CSWeb calling its own API.
+//
+// Behind Docker the public URL is not reachable from inside the container: the
+// published port is host-side only, and a public hostname may not resolve.
+// CSWEB_INTERNAL_API_URL provides the container-side address; when it is unset
+// the public URL is reused, which is correct for a bare-metal install where
+// both are the same.
+$internalApiUrl = getenv('CSWEB_INTERNAL_API_URL');
+$container->setParameter(
+    'cspro_internal_api_url',
+    is_string($internalApiUrl) && trim($internalApiUrl) !== '' ? trim($internalApiUrl) : API_URL
+);
 $container->setParameter('csweb_internal_files_folder', INTERNAL_FILES_FOLDER);
 $container->setParameter('csweb_api_files_folder', FILES_FOLDER);
 $container->setParameter('csweb_api_default_timezone', DEFAULT_TIMEZONE);

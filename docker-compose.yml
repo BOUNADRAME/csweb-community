@@ -105,11 +105,14 @@ services:
       - BREAKOUT_WEBHOOK_TOKEN=${BREAKOUT_WEBHOOK_TOKEN}
       # Filesystem root used by webhooks to locate var/logs etc.
       - CSWEB_ROOT=${CSWEB_ROOT:-/var/www/html}
-      # Optional override for the URL CSWeb uses to reach its own API. Empty by
-      # default: setup/configure.php then derives it from the request, which is
-      # correct both locally and behind a domain. Set it only when the two
-      # differ (reverse proxy on another host).
+      # PUBLIC API address, written into the .pff sync spec and the cspro:///
+      # links — this is what tablets and workstations connect to, so it needs
+      # the reachable host and the published port. Empty by default: setup
+      # derives it from the browser's request, which already carries both.
       - API_URL=${API_URL:-}
+      # Address CSWeb uses to call its own API from inside the container, where
+      # the published port does not exist. Keep the internal port (80).
+      - CSWEB_INTERNAL_API_URL=${CSWEB_INTERNAL_API_URL:-http://localhost/api/}
 
       # Breakout target connection mode (direct | tunnel)
       - BREAKOUT_CONNECTION_MODE=${BREAKOUT_CONNECTION_MODE:-direct}
