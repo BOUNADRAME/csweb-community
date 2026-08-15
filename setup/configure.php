@@ -50,6 +50,19 @@ $maxExecutionTime = 300;
 
 $apiUrl = getProtocol() . '://' . $_SERVER['SERVER_NAME'] . getPort() . parentDirectory(parentDirectory($_SERVER['REQUEST_URI'])) . '/api/';
 
+// Community layer: upstream derives the API URL from the browser's request,
+// which is the host-side address (localhost:8095). CSWeb calls this URL from
+// *inside* the container, where Apache listens on port 80 and the published
+// port does not exist, so the derived value fails with
+// "cURL error 7: Failed to connect to localhost port 8095".
+// Honour API_URL from the environment when it is set — docker-compose passes
+// the container-side value — and fall back to the upstream derivation
+// otherwise, so a bare-metal install is unaffected.
+$apiUrlFromEnv = getenv('API_URL');
+if (is_string($apiUrlFromEnv) && trim($apiUrlFromEnv) !== '') {
+    $apiUrl = trim($apiUrlFromEnv);
+}
+
 function validateParameters($databaseName, $host, $databaseUsername, $databasePassword, $adminPassword, $filesDirectory, $apiUrl, $timezone, $maxExecutionTime) {
     if (strlen($databaseName) < 1) {
         throw new Exception('Database name cannot be blank');
