@@ -47,8 +47,21 @@
             <div id="collapseSettings" class="collapse show" aria-labelledby="headingTwo" data-parent="#side-menu">
                 <div class="bg-white collapse-inner rounded">
                     <a class="collapse-item active" href="{{ path('dataSettings') }}">
-                        <i class="fas fa-fw fa-user"></i>
+                        <i class="fas fa-fw fa-database"></i>
                         Data</a>
+                    {# Community layer: same three entries as backup.twig and
+                       applicationLogs.twig, so the Settings submenu holds the
+                       same items whichever of its pages is open. #}
+                    {% if is_granted('ROLE_BACKUP') or is_granted('ROLE_BACKUP.READ') %}
+                        <a class="collapse-item" href="{{ path('backup') }}">
+                            <i class="fas fa-fw fa-hdd"></i>
+                            Backup</a>
+                    {% endif %}
+                    {% if is_granted('ROLE_LOGS') or is_granted('ROLE_LOGS.READ') %}
+                        <a class="collapse-item" href="{{ path('applicationLogs') }}">
+                            <i class="fas fa-fw fa-clipboard-list"></i>
+                            Logs</a>
+                    {% endif %}
                 </div>
             </div>
         </li>

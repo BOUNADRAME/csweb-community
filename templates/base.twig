@@ -109,17 +109,41 @@
                 {% block navSettings %}
                 {% if is_granted('ROLE_LOGIN') and (is_granted('ROLE_SETTINGS') or is_granted('ROLE_SETTINGS.READ')) %}
                     <li id="settings-nav-item" class="nav-item">
-                        <a class="nav-link collapsed" href="{{ path('dataSettings') }}"
-                           data-toggle="collapse" onclick={window.location.href="{{ path('dataSettings') }}";}>
+                        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseSettings"
+                           aria-expanded="false" aria-controls="collapseSettings">
                             <i class="fas fa-fw fa-cog"></i>
                         <span>Settings</span>
                         </a>
+                        {# Community layer: upstream links Settings straight to
+                           Data from here, and only builds a submenu on the
+                           Settings pages themselves. Backup and Logs belong in
+                           that same group, so the collapsible menu is available
+                           from every page rather than appearing only once you
+                           are already inside Settings. #}
+                        <div id="collapseSettings" class="collapse" aria-labelledby="headingSettings" data-parent="#side-menu">
+                            <div class="bg-white collapse-inner rounded">
+                                <a class="collapse-item" href="{{ path('dataSettings') }}">
+                                    <i class="fas fa-fw fa-database"></i>
+                                    Data</a>
+                                {% if is_granted('ROLE_BACKUP') or is_granted('ROLE_BACKUP.READ') %}
+                                    <a class="collapse-item" href="{{ path('backup') }}">
+                                        <i class="fas fa-fw fa-hdd"></i>
+                                        Backup</a>
+                                {% endif %}
+                                {% if is_granted('ROLE_LOGS') or is_granted('ROLE_LOGS.READ') %}
+                                    <a class="collapse-item" href="{{ path('applicationLogs') }}">
+                                        <i class="fas fa-fw fa-clipboard-list"></i>
+                                        Logs</a>
+                                {% endif %}
+                            </div>
+                        </div>
                     </li>
                 {% endif %}
                 {% endblock %}
-                {# Community layer: breakout health, backup and application logs.
-                   Appended after the upstream entries so the vanilla nav is
-                   left exactly as shipped. #}
+                {# Community layer: breakout health. Backup and Logs live in the
+                   Settings submenu above, next to Data, rather than as
+                   top-level entries — they are settings screens, and listing
+                   them twice was confusing. #}
                 {% block navCommunity %}
                 {% if is_granted('ROLE_LOGIN') and (is_granted('ROLE_DASHBOARD') or is_granted('ROLE_DASHBOARD.READ')) %}
                     {% set inDashboard = app.request.attributes.get('_route') == 'breakoutDashboard' %}
@@ -127,22 +151,6 @@
                         <a class="nav-link" href="{{ path('breakoutDashboard') }}">
                             <i class="fas fa-fw fa-tachometer-alt"></i>
                             <span>Breakout Health</span></a>
-                    </li>
-                {% endif %}
-                {% if is_granted('ROLE_LOGIN') and (is_granted('ROLE_BACKUP') or is_granted('ROLE_BACKUP.READ')) %}
-                    {% set inBackup = app.request.attributes.get('_route') == 'backup' %}
-                    <li id="backup-nav-item" class="nav-item {{ inBackup ? 'active' : '' }}">
-                        <a class="nav-link" href="{{ path('backup') }}">
-                            <i class="fas fa-fw fa-hdd"></i>
-                            <span>Backup</span></a>
-                    </li>
-                {% endif %}
-                {% if is_granted('ROLE_LOGIN') and (is_granted('ROLE_LOGS') or is_granted('ROLE_LOGS.READ')) %}
-                    {% set inLogs = app.request.attributes.get('_route') == 'applicationLogs' %}
-                    <li id="logs-nav-item" class="nav-item {{ inLogs ? 'active' : '' }}">
-                        <a class="nav-link" href="{{ path('applicationLogs') }}">
-                            <i class="fas fa-fw fa-clipboard-list"></i>
-                            <span>Logs</span></a>
                     </li>
                 {% endif %}
                 {% endblock %}
