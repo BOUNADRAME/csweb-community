@@ -13,12 +13,32 @@
 if (is_file(__DIR__ . '/../src/config.php')) {
     $console = __DIR__ . '/../bin/console';
     if (is_file($console)) {
-        $command = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($console)
-                 . ' csweb:community:install-schema --env=prod --no-debug 2>&1';
-        exec($command, $communityInstallOutput, $communityInstallStatus);
-        if ($communityInstallStatus !== 0) {
-            error_log('[CSWeb] Community schema install failed after setup: '
-                . implode(' | ', $communityInstallOutput));
+        // PHP_BINARY is the CLI path only under the CLI SAPI. Under Apache with
+        // mod_php it is empty, which produced an empty command and
+        // "sh: 1: : Permission denied" — the installer silently never ran, so
+        // the Community permissions were missing and the sidebar showed
+        // neither Breakout Health nor Backup/Logs. The admin role is built-in
+        // and cannot be edited afterwards, so these grants have to land here.
+        $phpBinary = PHP_BINARY;
+        if ($phpBinary === '' || !is_executable($phpBinary) || PHP_SAPI !== 'cli') {
+            foreach (['/usr/local/bin/php', '/usr/bin/php', '/usr/local/sbin/php'] as $candidate) {
+                if (is_executable($candidate)) {
+                    $phpBinary = $candidate;
+                    break;
+                }
+            }
+        }
+
+        if ($phpBinary === '' || !is_executable($phpBinary)) {
+            error_log('[CSWeb] Community schema install skipped: no PHP CLI binary found.');
+        } else {
+            $command = escapeshellarg($phpBinary) . ' ' . escapeshellarg($console)
+                     . ' csweb:community:install-schema --env=prod --no-debug 2>&1';
+            exec($command, $communityInstallOutput, $communityInstallStatus);
+            if ($communityInstallStatus !== 0) {
+                error_log('[CSWeb] Community schema install failed after setup: '
+                    . implode(' | ', $communityInstallOutput));
+            }
         }
     }
 
