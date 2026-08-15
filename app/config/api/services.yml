@@ -70,7 +70,13 @@ services:
         arguments:
             $level: "%csweb_db_log_level%"
 
-     #ApiKeyUserProvider 
+    # Community layer: same explicit wiring as the UI kernel — the API kernel
+    # autoregisters src/* too, so it hits the same unresolvable $cacheDir.
+    App\EventSubscriber\RateLimiterSubscriber:
+        arguments:
+            $cacheDir: '%kernel.cache_dir%'
+
+     #ApiKeyUserProvider
     App\Security\ApiKeyUserProvider:
         public: true
    

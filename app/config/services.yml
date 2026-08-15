@@ -83,7 +83,15 @@ services:
         public: true
         arguments:
             $level: "%csweb_db_log_level%"
-    #ApiKeyUserProvider 
+    # Community layer: the rate limiter stores its counters under the cache
+    # directory. $cacheDir is a plain string, which autowiring cannot resolve on
+    # its own, so it has to be passed explicitly — without this the container
+    # fails to compile and every page returns HTTP 500.
+    App\EventSubscriber\RateLimiterSubscriber:
+        arguments:
+            $cacheDir: '%kernel.cache_dir%'
+
+    #ApiKeyUserProvider
     api_key_user_provider:
         class: App\Security\ApiKeyUserProvider
         public: true
