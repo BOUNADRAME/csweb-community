@@ -5,11 +5,21 @@
       "version": "8.0.1",
       "label": "CSWeb 8.0.1",
       "status": "current",
-      "branch": "master",
+      "branch": "8.x",
       "php": ">=8.1",
       "symfony": "5.4",
       "docsUrl": "/",
-      "githubUrl": "https://github.com/BOUNADRAME/csweb-community"
+      "githubUrl": "https://github.com/BOUNADRAME/csweb-community/tree/8.x"
+    },
+    {
+      "version": "8.1.0",
+      "label": "CSWeb 8.1.0",
+      "status": "beta",
+      "branch": "8.1.x",
+      "php": ">=8.1",
+      "symfony": "5.4",
+      "docsUrl": "/getting-started/choose-version",
+      "githubUrl": "https://github.com/BOUNADRAME/csweb-community/tree/8.1.x"
     }
   ]
 }

@@ -43,12 +43,43 @@ VALUES ('api_user', 'hashed_password', 'api@example.com', 'API');
 
 ## Rôles
 
-| Rôle | Permissions |
-|------|-------------|
-| **Administrator** | Accès complet (users, dictionaries, config) |
-| **API** | Accès API OAuth2 uniquement |
-| **Readonly** | Lecture seule (cases, reports) |
-| **Supervisor** | Vérification cases, pas de modification config |
+CSWeb repose sur deux rôles de base, auxquels s'ajoutent des permissions granulaires
+attribuables individuellement.
+
+### Rôles de base
+
+| Rôle | Identifiant interne | Permissions |
+|------|---------------------|-------------|
+| **Administrator** | `ROLE_ADMIN` | Accès complet (utilisateurs, dictionnaires, configuration, rôles) |
+| **Standard User** | `ROLE_STANDARD_USER` | Accès aux applications et aux données selon les permissions accordées |
+
+### Permissions granulaires
+
+Chaque rôle se compose de permissions activables séparément depuis
+**Administration → Roles** :
+
+| Permission | Portée |
+|---|---|
+| `ROLE_APPS_ALL` | Applications (déploiement, téléchargement, mise à jour) |
+| `ROLE_DATA_ALL` | Données et cases |
+| `ROLE_USERS_ALL` | Gestion des utilisateurs |
+| `ROLE_ROLES_ALL` | Gestion des rôles |
+| `ROLE_SETTINGS_ALL` | Paramètres du serveur |
+| `ROLE_DASHBOARD_ALL` | Tableau de bord |
+| `ROLE_REPORTS_ALL` | Rapports |
+| `ROLE_LOGS_ALL` | Journaux applicatifs |
+| `ROLE_BACKUP_ALL` | Sauvegarde et restauration |
+
+<Callout type="info">
+**8.1 uniquement** — CSWeb 8.1 revoit le système de rôles pour offrir un contrôle plus
+granulaire, et introduit un rôle **Developer** dédié au déploiement d'applications.
+Le rôle **Standard User** y perd le droit de créer des packages de déploiement : il
+peut toujours télécharger et mettre à jour des applications, mais le déploiement passe
+désormais par le rôle Developer.
+
+Si vous exploitez des rôles personnalisés en 8.0, auditez-les avant tout passage en
+8.1 — voir [Choisir 8.0 ou 8.1](/getting-started/choose-version).
+</Callout>
 
 ## Reset Password
 
