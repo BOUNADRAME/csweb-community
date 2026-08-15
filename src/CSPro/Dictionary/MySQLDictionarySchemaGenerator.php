@@ -29,9 +29,22 @@ class MySQLDictionarySchemaGenerator {
     public const COLUMN_TYPE_TEXT = 'text';
 
     private $schema;
+    /**
+     * Community layer: per-dictionary table prefix. Upstream assumes one
+     * dictionary per target schema and creates bare `cases`, `notes`,
+     * `cspro_jobs`, ... The Community fork supports selective breakout, where
+     * several dictionaries share one target schema, so every table is prefixed
+     * with the dictionary name.
+     *
+     * Must stay byte-identical to the prefix computed by
+     * MySQLQuestionnaireSerializer, or the DDL and the DML target different
+     * tables.
+     */
+    private $nomSchama;
 
     public function __construct(private LoggerInterface $logger) {
         $this->schema = null;
+        $this->nomSchama = null;
     }
 
     public static function generateColumnType(Item $item): string {
@@ -43,6 +56,10 @@ class MySQLDictionarySchemaGenerator {
     }
 
     public function generateDictionary(Dictionary $dictionary, $processCasesOptions) {
+
+        // Community layer: derive the per-dictionary table prefix used by every
+        // createTable() call below.
+        $this->nomSchama = str_replace(" ", "_", strtolower(str_replace("_DICT", "", $dictionary->getName())));
 
         DictionarySchemaHelper::updateProcessCasesOptions($dictionary, $processCasesOptions, $this->logger);
         $this->schema = new Schema();
@@ -78,7 +95,7 @@ class MySQLDictionarySchemaGenerator {
         $parentId = $parentLevelName . "-id";
 
         //create a table using DBAL 
-        $levelIdTable = $this->schema->createTable(static::quoteString($levelName));
+        $levelIdTable = $this->schema->createTable(static::quoteString($this->nomSchama . '_' . $levelName));
         $levelIdTable->addOption('charset', 'utf8mb4');
         $levelIdTable->addOption('collation', 'utf8mb4_unicode_ci');
         //add columns 
@@ -102,7 +119,7 @@ class MySQLDictionarySchemaGenerator {
         }
 
         if ($parentLevel) {
-            $levelIdTable->addForeignKeyConstraint(static::quoteString($parentLevelName), [static::quoteString($parentId)], [static::quoteString($parentId)], ["onDelete" => "CASCADE"]);
+            $levelIdTable->addForeignKeyConstraint(static::quoteString($this->nomSchama . '_' . $parentLevelName), [static::quoteString($parentId)], [static::quoteString($parentId)], ["onDelete" => "CASCADE"]);
         }
         // Only first level parent id is unique since that is case.id, at higher levels can have multiple child nodes
         $unique = $parentLevel == null ? true : false;
@@ -121,7 +138,7 @@ class MySQLDictionarySchemaGenerator {
         $parentId = $parentLevelName . "-id";
 
         //create a table using DBAL 
-        $recordTable = $this->schema->createTable(strtolower($record->getName()));
+        $recordTable = $this->schema->createTable(strtolower($this->nomSchama . '_' . $record->getName()));
         $recordTable->addOption('charset', 'utf8mb4');
         $recordTable->addOption('collation', 'utf8mb4_unicode_ci');
         //add columns -added auto increment for MySQL for record-ids 
@@ -138,7 +155,7 @@ class MySQLDictionarySchemaGenerator {
 
         $this->addRecordItemsToTable($recordTable, $record);
 
-        $recordTable->addForeignKeyConstraint(static::quoteString($parentLevelName), [static::quoteString($parentId)], [static::quoteString($parentId)], ["onDelete" => "CASCADE"]);
+        $recordTable->addForeignKeyConstraint(static::quoteString($this->nomSchama . '_' . $parentLevelName), [static::quoteString($parentId)], [static::quoteString($parentId)], ["onDelete" => "CASCADE"]);
         $recordTable->addIndex([static::quoteString($parentId)]);
     }
 
@@ -190,7 +207,7 @@ class MySQLDictionarySchemaGenerator {
           "partial_save_mode TEXT NULL,"
           "FOREIGN KEY(last_modified_revision) REFERENCES file_revisions(id)"
           ");\n" */
-        $casesTable = $this->schema->createTable(static::quoteString('cases'));
+        $casesTable = $this->schema->createTable(static::quoteString($this->nomSchama . '_cases'));
         $casesTable->addOption('charset', 'utf8mb4');
         $casesTable->addOption('collation', 'utf8mb4_unicode_ci');
         $casesTable->addColumn(static::quoteString('id'), "text", ["notnull" => true]);
@@ -220,7 +237,7 @@ class MySQLDictionarySchemaGenerator {
           "FOREIGN KEY(case_id) REFERENCES cases(id)"
           ");\n"
           "CREATE INDEX `notes-case-id` ON notes(case_id);"; */
-        $notesTable = $this->schema->createTable(static::quoteString('notes'));
+        $notesTable = $this->schema->createTable(static::quoteString($this->nomSchama . '_notes'));
         $notesTable->addOption('charset', 'utf8mb4');
         $notesTable->addOption('collation', 'utf8mb4_unicode_ci');
         $notesTable->addColumn(static::quoteString('case_id'), "text", ["notnull" => true]);
@@ -249,7 +266,7 @@ class MySQLDictionarySchemaGenerator {
           `modified_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           PRIMARY KEY (`id`)
           ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci; */
-        $jobsTable = $this->schema->createTable(static::quoteString('cspro_jobs'));
+        $jobsTable = $this->schema->createTable(static::quoteString($this->nomSchama . '_cspro_jobs'));
         $jobsTable->addOption('charset', 'utf8mb4');
         $jobsTable->addOption('collation', 'utf8mb4_unicode_ci');
         $jobsTable->addColumn("`id`", "integer", ["unsigned" => true, "notnull" => true, "autoincrement" => true]);
@@ -260,12 +277,17 @@ class MySQLDictionarySchemaGenerator {
         $jobsTable->addColumn("`cases_to_process`", "integer", ["unsigned" => true, "notnull" => false, "default" => null]);
         $jobsTable->addColumn("`cases_processed`", "integer", ["unsigned" => true, "notnull" => false, "default" => null]);
         $jobsTable->addColumn("`status`", "integer", ["unsigned" => true, "notnull" => true, "default" => 0]);
+        // Community layer: readable failure message, filled when status =
+        // JOB_STATUS_FAILED. Nullable text with no default, so DBAL emits valid
+        // DDL on MySQL, PostgreSQL and SQL Server alike, and existing INSERTs
+        // are unaffected.
+        $jobsTable->addColumn("`error_message`", "text", ["notnull" => false, "default" => null]);
         $jobsTable->addColumn("`created_time`", "datetime", ['columnDefinition' => 'timestamp default current_timestamp']);
         $jobsTable->addColumn("`modified_time`", "datetime", ['columnDefinition' => 'timestamp default current_timestamp on update current_timestamp']);
         $jobsTable->setPrimaryKey(["`id`"]);
 
         //Create meta table 
-        $metaTable = $this->schema->createTable(static::quoteString('cspro_meta'));
+        $metaTable = $this->schema->createTable(static::quoteString($this->nomSchama . '_cspro_meta'));
         $metaTable->addOption('charset', 'utf8mb4');
         $metaTable->addOption('collation', 'utf8mb4_unicode_ci');
         $metaTable->addColumn("`id`", "integer", ["unsigned" => true, "notnull" => true, "autoincrement" => true]);

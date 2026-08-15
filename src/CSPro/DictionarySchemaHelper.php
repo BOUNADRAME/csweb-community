@@ -30,6 +30,9 @@ class DictionarySchemaHelper {
     public const JOB_STATUS_NOT_STARTED = '0';
     public const JOB_STATUS_IN_PROCESS = '1';
     public const JOB_STATUS_COMPLETE = '2';
+    // Community layer: upstream has no terminal failure state, so a crashed
+    // breakout stayed IN_PROCESS forever and read as "still running".
+    public const JOB_STATUS_FAILED = '3';
 
     private $conn;
     private $config;
@@ -148,11 +151,16 @@ class DictionarySchemaHelper {
             }
             $this->conn = DriverManager::getConnection($this->connectionParams, $this->config);
             if ($checkDictionarySchema && !$this->IsValidSchema()) { //thread never should call using checkDictionarySchema as true
-//drop all the tables that exist. 
+//drop all the tables that exist.
                 $this->cleanDictionarySchema();
                 $processCasesOptions = $this->getProcessCaseOptions();
                 $this->createDictionarySchema($processCasesOptions);
             }
+            // Community layer: idempotent auto-migration adding error_message to
+            // _cspro_jobs on deployments created before that column existed.
+            // The target database has no schema_version of its own, so this is
+            // detected by introspection. Never rebuilds the schema.
+            $this->ensureJobsErrorColumn();
         } catch (\Exception $e) {
             $strMsg = "Failed initializing database: " . $this->connectionParams['dbname'] . " while processsing Dictionary: " . $this->dictionaryName;
             $this->logger->error($strMsg, ["context" => (string) $e]);
@@ -397,6 +405,111 @@ class DictionarySchemaHelper {
             $strMsg = "Failed processing questionnaires for JobId: " . $jobId . " in database:  " . $this->connectionParams['dbname'] . " while processsing Dictionary: " . $this->dictionaryName;
             $this->logger->error($strMsg, ["context" => (string) $e]);
             throw new \Exception($strMsg, 0, $e);
+        }
+    }
+
+    /**
+     * Community layer: make sure the per-dictionary cspro_jobs table carries an
+     * `error_message` column, so a failed breakout can record why it failed.
+     *
+     * Idempotent and non-blocking: a deployment created before this column
+     * existed gets it added on the next run, and a failure to migrate never
+     * stops the breakout itself.
+     */
+    private function ensureJobsErrorColumn(): void {
+        try {
+            $dictionaryLabel = strtolower(str_replace(" ", "_", str_replace("_DICT", "", $this->dictionary->getName())));
+            $tableName = $dictionaryLabel . '_cspro_jobs';
+
+            // getSchemaManager(): kept for consistency with the rest of this
+            // class (cf. cleanDictionarySchema) and valid on DBAL 3.x.
+            $schemaManager = $this->conn->getSchemaManager();
+
+            // Fast path (the normal case: already migrated) reads ONLY the
+            // columns (one query) instead of listTableDetails (columns + FKs +
+            // indexes). This runs on every worker run, on every thread, so keep
+            // it as light as possible.
+            try {
+                $existingColumns = $schemaManager->listTableColumns($tableName);
+            } catch (\Throwable $notFound) {
+                // Table not created yet: the schema definition already includes
+                // the column, nothing to migrate.
+                return;
+            }
+            foreach ($existingColumns as $col) {
+                if (strtolower($col->getName()) === 'error_message') {
+                    return; // already there: idempotent, no further DBAL calls.
+                }
+            }
+
+            // Column missing (rare, once per deployment). Load the full table as
+            // fromTable for getAlterTableSQL: avoids a DBAL deprecation and
+            // produces more reliable platform-specific DDL.
+            $fromTable = $schemaManager->listTableDetails($tableName);
+
+            $platform = $this->conn->getDatabasePlatform();
+            $tableDiff = new \Doctrine\DBAL\Schema\TableDiff(
+                $tableName,
+                [
+                    'error_message' => new \Doctrine\DBAL\Schema\Column(
+                        'error_message',
+                        \Doctrine\DBAL\Types\Type::getType('text'),
+                        ['notnull' => false, 'default' => null]
+                    ),
+                ],
+                [], [], [], [], [],
+                $fromTable
+            );
+            foreach ($platform->getAlterTableSQL($tableDiff) as $sql) {
+                $this->conn->executeStatement($sql);
+            }
+            $this->logger->info("Added error_message column to $tableName (breakout failure tracking migration).");
+        } catch (\Exception $e) {
+            // Non-blocking: the breakout must run even if this migration fails.
+            $this->logger->warning(
+                "Could not ensure error_message column on cspro_jobs for Dictionary: " . $this->dictionaryName,
+                ["context" => (string) $e]
+            );
+        }
+    }
+
+    /**
+     * Community layer: record a breakout job as FAILED with a readable message,
+     * so the UI can show the cause without anyone reading server logs.
+     *
+     * Best effort by design — never let failure bookkeeping mask the real error.
+     */
+    public function markJobFailed($jobId, string $errorMessage): bool {
+        // Guard: initialize() can throw BEFORE $this->dictionary / $this->conn
+        // are set (unknown dictionary, invalid connection parameters). Without
+        // this guard, null->getName() would raise an \Error caught neither by
+        // the catch below nor by the worker -> fatal. Degrade cleanly instead:
+        // the failure is still logged, just not persisted.
+        if (empty($jobId) || $this->dictionary === null || $this->conn === null) {
+            return false;
+        }
+        try {
+            $dictionaryLabel = strtolower(str_replace(" ", "_", str_replace("_DICT", "", $this->dictionary->getName())));
+            $platform = $this->conn->getDatabasePlatform();
+            $qi = fn(string $id): string => $platform->quoteIdentifier($id);
+
+            $stm = 'UPDATE ' . $qi($dictionaryLabel . '_cspro_jobs')
+                 . ' SET ' . $qi('status') . ' = :status, ' . $qi('error_message') . ' = :errorMessage'
+                 . ' WHERE ' . $qi('id') . ' = :id';
+            $this->conn->executeStatement($stm, [
+                'status'       => self::JOB_STATUS_FAILED,
+                'errorMessage' => $errorMessage,
+                'id'           => $jobId,
+            ]);
+            return true;
+        } catch (\Throwable $e) {
+            // \Throwable, not just \Exception: never let failure bookkeeping
+            // raise a fatal that would hide the real error.
+            $this->logger->warning(
+                "Could not persist FAILED status for JobID $jobId, Dictionary: " . $this->dictionaryName,
+                ["context" => (string) $e]
+            );
+            return false;
         }
     }
 

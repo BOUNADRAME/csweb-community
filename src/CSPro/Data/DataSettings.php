@@ -17,7 +17,7 @@ class DataSettings {
     }
 
     public function getDataSettings() {
-        $dataSettings = $this->pdo->query('SELECT `cspro_dictionaries`.`id` as id, `name` as name, `dictionary_label` as label,  `host_name` as targetHostName, `schema_name` as targetSchemaName,'
+        $dataSettings = $this->pdo->query('SELECT `cspro_dictionaries`.`id` as id, `name` as name, `dictionary_label` as label,  `host_name` as targetHostName, `cspro_dictionaries_schema`.`port` as targetPort, `cspro_dictionaries_schema`.`db_type` as dbType, `schema_name` as targetSchemaName,'
                         . ' `schema_user_name` as dbUserName, AES_DECRYPT(`schema_password`, \'cspro\') as dbPassword, `additional_config` as additionalConfig, `map_info` as mapInfo FROM `cspro_dictionaries_schema` RIGHT JOIN cspro_dictionaries'
                         . '  ON dictionary_id = cspro_dictionaries.id    ORDER BY dictionary_label')->fetchAll();
         $this->getDataCounts($dataSettings);
@@ -33,7 +33,7 @@ class DataSettings {
         $bind = [];
         $dataSetting = null;
         try {
-            $stm = 'SELECT `cspro_dictionaries`.`id` as id, `name` as name, dictionary_label as label,  `host_name` as targetHostName, `schema_name` as targetSchemaName,'
+            $stm = 'SELECT `cspro_dictionaries`.`id` as id, `name` as name, dictionary_label as label,  `host_name` as targetHostName, `cspro_dictionaries_schema`.`port` as targetPort, `cspro_dictionaries_schema`.`db_type` as dbType, `schema_name` as targetSchemaName,'
                     . ' `schema_user_name` as dbUserName, AES_DECRYPT(`schema_password`, \'cspro\') as dbPassword, `additional_config` as additionalConfig, `map_info` as mapInfo FROM `cspro_dictionaries_schema` RIGHT JOIN cspro_dictionaries'
                     . '  ON dictionary_id = cspro_dictionaries.id  WHERE name = :dictName';
 
@@ -50,6 +50,49 @@ class DataSettings {
         return $dataSetting;
     }
 
+    /**
+     * Community layer: map the `db_type` stored per dictionary to a DBAL
+     * driver. Upstream only ever talks to MySQL breakout targets, so it
+     * hardcodes pdo_mysql; the Community fork supports PostgreSQL, MySQL
+     * and SQL Server targets.
+     */
+    public static function resolveDriver(string $dbType): string {
+        return match (strtolower($dbType)) {
+            'mysql'     => 'pdo_mysql',
+            'sqlserver' => 'pdo_sqlsrv',
+            default     => 'pdo_pgsql',   // postgresql
+        };
+    }
+
+    /**
+     * Community layer: build the DBAL connection parameters for a breakout
+     * target, honouring the per-dictionary driver and port, and routing
+     * through the SSH tunnel when BREAKOUT_CONNECTION_MODE says so.
+     */
+    private function buildConnectionParams(array $dataSetting): array {
+        $driver = self::resolveDriver($dataSetting['dbType'] ?? 'postgresql');
+        // Resolve effective host/port via BREAKOUT_CONNECTION_MODE so that
+        // both "test connection" (when adding/updating a config) and the
+        // actual breakout queries go through the SSH tunnel when configured.
+        $resolved = \App\Service\BreakoutConnectionResolver::resolve([
+            'host_name' => $dataSetting['targetHostName'] ?? null,
+            'port'      => $dataSetting['targetPort'] ?? null,
+        ]);
+        $params = [
+            'dbname'   => $dataSetting['targetSchemaName'],
+            'user'     => $dataSetting['dbUserName'],
+            'password' => $dataSetting['dbPassword'],
+            'host'     => $resolved['host'],
+            'driver'   => $driver,
+        ];
+        // Omit the port entirely when unset so DBAL falls back to the
+        // driver's default (5432 / 3306 / 1433) instead of receiving null.
+        if ($resolved['port'] !== null) {
+            $params['port'] = $resolved['port'];
+        }
+        return $params;
+    }
+
     public function addDataSetting($dataSetting): bool {
         $bind = [];
         $sourceDBName = $this->pdo->query('select database()')->fetchColumn();
@@ -58,18 +101,26 @@ class DataSettings {
         if (strcasecmp($sourceDBName, $dataSetting['targetSchemaName']) == 0) {
             throw new \Exception("Source database: $sourceDBName cannot be same as  Target database: " . $dataSetting['targetSchemaName']);
         }
-        $connectionParams = ['dbname' => $dataSetting['targetSchemaName'], 'user' => $dataSetting['dbUserName'], 'password' => $dataSetting['dbPassword'], 'host' => $dataSetting['targetHostName'], 'driver' => 'pdo_mysql'];
+        // Community layer: honour the per-dictionary driver, port and tunnel
+        // mode when testing the connection, so "test connection" exercises the
+        // exact same path the breakout will later use.
+        $connectionParams = $this->buildConnectionParams($dataSetting);
         $config = new Configuration();
         try {
             $conn = DriverManager::getConnection($connectionParams, $config);
             $isConnected = $conn->connect();
 //if connection successful add
             if ($isConnected) {
-                $stm = "INSERT INTO `cspro_dictionaries_schema`(`dictionary_id`, `host_name`, `schema_name`, `schema_user_name`, `schema_password`, `additional_config`, `map_info`) "
-                        . "VALUES (:id, :targetHostName, :targetSchemaName, :dbUserName,AES_ENCRYPT(:dbPassword, :keyString), :additionalConfig, :mapInfo)";
+                // Community layer: `port` and `db_type` are fork-only columns
+                // (community schema migrations) that let a dictionary target a
+                // non-default port and a PostgreSQL / SQL Server backend.
+                $stm = "INSERT INTO `cspro_dictionaries_schema`(`dictionary_id`, `host_name`, `port`, `db_type`, `schema_name`, `schema_user_name`, `schema_password`, `additional_config`, `map_info`) "
+                        . "VALUES (:id, :targetHostName, :targetPort, :dbType, :targetSchemaName, :dbUserName,AES_ENCRYPT(:dbPassword, :keyString), :additionalConfig, :mapInfo)";
 
                 $bind['id'] = $dataSetting['id'];
                 $bind['targetHostName'] = $dataSetting['targetHostName'];
+                $bind['targetPort'] = ($dataSetting['targetPort'] ?? '') !== '' ? (int) $dataSetting['targetPort'] : null;
+                $bind['dbType'] = $dataSetting['dbType'] ?? 'postgresql';
                 $bind['targetSchemaName'] = $dataSetting['targetSchemaName'];
                 $bind['dbUserName'] = $dataSetting['dbUserName'];
                 $bind['dbPassword'] = $dataSetting['dbPassword'];
@@ -96,7 +147,10 @@ class DataSettings {
             throw new \Exception("Source database: $sourceDBName cannot be same as  Target database: " . $dataSetting['targetSchemaName']);
         }
         $this->logger->debug('setting is ' . print_r($dataSetting,true));
-        $connectionParams = ['dbname' => $dataSetting['targetSchemaName'], 'user' => $dataSetting['dbUserName'], 'password' => $dataSetting['dbPassword'], 'host' => $dataSetting['targetHostName'], 'driver' => 'pdo_mysql'];
+        // Community layer: honour the per-dictionary driver, port and tunnel
+        // mode when testing the connection, so "test connection" exercises the
+        // exact same path the breakout will later use.
+        $connectionParams = $this->buildConnectionParams($dataSetting);
         $config = new Configuration();
         try {
             $conn = DriverManager::getConnection($connectionParams, $config);
@@ -105,13 +159,17 @@ class DataSettings {
             if ($isConnected) {
                 $hasProcessCasesUpdateOccurred = $this->hasProcessCasesOptionsUpdated($dataSetting);
               
-                $stm = "UPDATE `cspro_dictionaries_schema` SET `host_name` =  :targetHostName, `schema_name` =  :targetSchemaName,"
+                // Community layer: also persist the fork-only `port` and
+                // `db_type` columns.
+                $stm = "UPDATE `cspro_dictionaries_schema` SET `host_name` =  :targetHostName, `port` = :targetPort, `db_type` = :dbType, `schema_name` =  :targetSchemaName,"
                         . " `schema_user_name` = :dbUserName, `schema_password` = AES_ENCRYPT(:dbPassword, :keyString), "
                         . " `additional_config` = :additionalConfig, `map_info` = :mapInfo"
                         . " WHERE `dictionary_id` = :id";
 
                 $bind['id'] = $dataSetting['id'];
                 $bind['targetHostName'] = $dataSetting['targetHostName'];
+                $bind['targetPort'] = ($dataSetting['targetPort'] ?? '') !== '' ? (int) $dataSetting['targetPort'] : null;
+                $bind['dbType'] = $dataSetting['dbType'] ?? 'postgresql';
                 $bind['targetSchemaName'] = $dataSetting['targetSchemaName'];
                 $bind['dbUserName'] = $dataSetting['dbUserName'];
                 $bind['dbPassword'] = $dataSetting['dbPassword'];
@@ -138,26 +196,41 @@ class DataSettings {
             $dataSetting['totalCases'] = "";
             $dataSetting['processedCases'] = "";
             $dataSetting['lastProcessedTime'] = "";
+            $dataSetting['lastError'] = "";
 
             if (isset($dataSetting['targetSchemaName'])) {
+                // Community layer: breakout tables live in the TARGET database
+                // prefixed per dictionary, because several dictionaries can share
+                // one target schema (selective breakout). Upstream assumes one
+                // dictionary per schema and queries bare `cases` / `cspro_jobs`.
+                //
+                // The prefix is always lowercased: the schema generator and the
+                // serializer both strtolower it. On case-sensitive MySQL (Linux,
+                // lower_case_table_names=0) dropping the strtolower yields
+                // "DARA_USERS_cases" instead of "dara_users_cases" -> error 42S02,
+                // swallowed by the catch below -> processedCases stays 0 in the UI
+                // even though the breakout succeeded. Keep it aligned with
+                // BreakoutStatusService.
+                $name_dict = strtolower(str_replace(" ", "_", str_replace("_DICT", "", $dataSetting['name']))) . "_";
+
                 $stm = "SELECT count(*) FROM `" . $dataSetting['name'] . "` WHERE `deleted` = 0";
                 $caseCount = (int) $this->pdo->fetchValue($stm);
                 $dataSetting['totalCases'] = $caseCount;
 
 //get number of cases processsed.
-                $connectionParams = ['dbname' => $dataSetting['targetSchemaName'], 'user' => $dataSetting['dbUserName'], 'password' => $dataSetting['dbPassword'], 'host' => $dataSetting['targetHostName'], 'driver' => 'pdo_mysql'];
+                $connectionParams = $this->buildConnectionParams($dataSetting);
                 $config = new Configuration();
                 try {
                     $conn = DriverManager::getConnection($connectionParams, $config);
 
-//get processsed case count 
+//get processsed case count
                     $dataSetting['processedCases'] = 0;
-                    $statement = $conn->executeQuery('SELECT count(*) FROM `cases` where `deleted`=0');
+                    $statement = $conn->executeQuery('SELECT count(*) FROM ' . $name_dict . 'cases where deleted=0');
                     $processedCases = $statement->fetchOne();
                     $dataSetting['processedCases'] = $processedCases;
 
 //get processed time (modified time) from the most recently processed job
-                    $statement = $conn->executeQuery('SELECT id , modified_time FROM `cspro_jobs` WHERE id = (SELECT max(id) from cspro_jobs where status =2)');
+                    $statement = $conn->executeQuery('SELECT id , modified_time FROM ' . $name_dict . 'cspro_jobs WHERE id = (SELECT max(id) from ' . $name_dict . 'cspro_jobs where status =2)');
                     if (($row = $statement->fetchAssociative()) !== false) {
                         $dataSetting['lastProcessedTime'] = $row['modified_time'];
                     }
@@ -165,6 +238,25 @@ class DataSettings {
                     if (strpos((string) $e, 'SQLSTATE[42S02]') == FALSE) {
                         $this->logger->error('Failed getting case counts and last processed time', ["context" => (string) $e]);
                     }
+                }
+
+                // Community layer: surface the last FAILED job's message (status
+                // 3 = FAILED). Isolated query: on a deployment not yet migrated
+                // the error_message column may be missing, so failure here is
+                // ignored silently rather than losing the counters above.
+                try {
+                    // isset($conn): $conn is assigned in the try above; if
+                    // getConnection() itself threw (target unreachable), $conn
+                    // would be undefined and $conn->executeQuery would raise an
+                    // \Error that catch (\Exception) would not catch.
+                    if (isset($conn)) {
+                        $statement = $conn->executeQuery('SELECT error_message FROM ' . $name_dict . 'cspro_jobs WHERE id = (SELECT max(id) from ' . $name_dict . 'cspro_jobs where status = 3)');
+                        if (($row = $statement->fetchAssociative()) !== false && !empty($row['error_message'])) {
+                            $dataSetting['lastError'] = (string) $row['error_message'];
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // column or table absent on an un-migrated target: not fatal
                 }
             }
         }

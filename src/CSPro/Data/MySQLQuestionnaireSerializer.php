@@ -30,9 +30,46 @@ class MySQLQuestionnaireSerializer {
     private $casesMap;  //target db connection
     private $casesIdMap;
     private $job;
+    private $labelDictionnaire;
+    private $targetPlatform; //Doctrine DBAL platform of the target breakout DB (MySQL / PostgreSQL / SQL Server)
 
     public function __construct(private Dictionary $dict, private $jobId, private PdoHelper $sourcePdo, private Connection $targetConnection, private LoggerInterface $logger) {
         $this->casesMap = [];
+        // Récupération du label du dictionnaire pour construire le préfixe des tables de breakout.
+        // Plusieurs dictionnaires peuvent partager un même schéma cible (breakout sélectif) :
+        // les tables sont donc préfixées <dict>_cases, <dict>_notes, <dict>_level-1, <dict>_cspro_jobs...
+        // Même construction que MySQLDictionarySchemaGenerator::$nomSchama, pour que DDL et DML
+        // désignent exactement les mêmes tables.
+        $this->labelDictionnaire = str_replace(" ", "_", str_replace("_DICT", "", $dict->getName()));
+        // Le SQL de breakout doit fonctionner pour MySQL, PostgreSQL et SQL Server.
+        // On ne code JAMAIS le caractère de quoting en dur (backtick MySQL vs
+        // double-quote ANSI) : on délègue à la plateforme DBAL de la base cible,
+        // qui applique la bonne convention. C'est aussi celle utilisée à la
+        // création du schéma, donc les identifiants DDL et DML restent cohérents.
+        $this->targetPlatform = $targetConnection->getDatabasePlatform();
+    }
+
+    /**
+     * Quote an identifier (table or column name) using the target database
+     * platform. Portable across MySQL (`id`), PostgreSQL / SQL Server ("id").
+     */
+    private function qi(string $identifier): string {
+        return $this->targetPlatform->quoteIdentifier($identifier);
+    }
+
+    /**
+     * Nom de table cible préfixé par le dictionnaire, en minuscules
+     * (important sur MySQL sensible à la casse sous Linux), non quoté.
+     */
+    private function tableName(string $suffix): string {
+        return strtolower($this->labelDictionnaire) . '_' . $suffix;
+    }
+
+    /**
+     * Nom de table cible préfixé ET quoté pour la plateforme cible.
+     */
+    private function qt(string $suffix): string {
+        return $this->qi($this->tableName($suffix));
     }
 
     public function serializeQuestionnaries($processCasesOptions) {
@@ -68,7 +105,7 @@ class MySQLQuestionnaireSerializer {
 
             //update job
             $jobId = $this->jobId;
-            $stm = "UPDATE `cspro_jobs` SET `status`= :status, `cases_processed` = :totalCases WHERE `id` = :jobId";
+            $stm = 'UPDATE ' . $this->qt('cspro_jobs') . ' SET ' . $this->qi('status') . '= :status, ' . $this->qi('cases_processed') . ' = :totalCases WHERE ' . $this->qi('id') . ' = :jobId';
             $bind['status'] = DictionarySchemaHelper::JOB_STATUS_COMPLETE;
             $bind['jobId'] = $this->jobId;
             $bind['totalCases'] = $caseCount;
@@ -85,26 +122,49 @@ class MySQLQuestionnaireSerializer {
         }
     }
 
+    /**
+     * Nouveauté vanilla 8.1 : les colonnes created_time / modified_time ne sont
+     * insérées dans la table des cases que si elles existent réellement dans le
+     * schéma cible (schéma créé par une version antérieure = colonnes absentes).
+     *
+     * Adaptation Community : la table est préfixée par le dictionnaire
+     * (<dict>_cases) puisque plusieurs dictionnaires partagent le même schéma.
+     *
+     * Adaptation Community (portabilité) : le vanilla interroge
+     * information_schema avec `table_schema` = nom de la base, sémantique propre
+     * à MySQL — sur PostgreSQL `table_schema` désigne le schéma (public), sur
+     * SQL Server il vaut 'dbo', si bien que la détection renvoyait toujours
+     * false et que la nouveauté 8.1 restait inactive sur ces deux moteurs.
+     * On passe par le SchemaManager DBAL, qui résout information_schema /
+     * pg_catalog / sys.columns selon la plateforme : même comportement sur
+     * MySQL, et fonctionnalité enfin active sur PostgreSQL et SQL Server.
+     *
+     * Le repli reste sûr : toute erreur d'introspection (table pas encore
+     * créée, droits insuffisants) retombe sur false, c.-à-d. l'INSERT sans
+     * created_time / modified_time.
+     */
     function includeCasesCreatedModifiedTime() {
-        $include = false;
-        $targetDatabaseName = $this->targetConnection->getDatabase();
+        $casesTableName = $this->tableName('cases');
         try {
-            $query = "SELECT COUNT(*) as count  
-                    FROM `information_schema`.`columns`
-                    WHERE table_schema = '{$targetDatabaseName}'
-                    AND table_name = 'cases'  AND column_name = 'created_time'";
-            $result = $this->targetConnection->fetchOne($query);
-            $include = $result > 0 ? true : $include;
-        } catch (Exception $ex) {
-            
+            $columns = $this->targetConnection->getSchemaManager()->listTableColumns($casesTableName);
+            foreach ($columns as $column) {
+                if (strtolower($column->getName()) === 'created_time') {
+                    return true;
+                }
+            }
+        } catch (\Throwable $ex) {
+            // Table absente ou introspection refusée : on n'insère simplement
+            // pas les deux colonnes.
         }
-        return $include;
+        return false;
     }
 
     public function getJobInformation() {
         try {
-            $stm = "SELECT `id`, `start_caseid`, `start_revision`, `end_caseid`, `end_revision`, `cases_to_process` FROM `cspro_jobs` "
-                    . " WHERE  `id` = " . $this->jobId;
+            $jobColumns = ['id', 'start_caseid', 'start_revision', 'end_caseid', 'end_revision', 'cases_to_process'];
+            $quotedJobColumns = implode(', ', array_map(fn($c) => $this->qi($c), $jobColumns));
+            $stm = 'SELECT ' . $quotedJobColumns . ' FROM ' . $this->qt('cspro_jobs')
+                    . ' WHERE ' . $this->qi('id') . ' = ' . (int) $this->jobId;
             $result = $this->targetConnection->fetchAllAssociative($stm);
             unset($this->job);
             if ($result) {
@@ -167,15 +227,15 @@ class MySQLQuestionnaireSerializer {
         $this->targetConnection->beginTransaction();
         try {
             //delete existing cases
-            $stm = 'DELETE FROM `cases` WHERE `id` in ( ' . $strCaseList . ")";
+            $stm = 'DELETE FROM ' . $this->qt('cases') . ' WHERE ' . $this->qi('id') . ' in ( ' . $strCaseList . ')';
             $count = $this->targetConnection->executeUpdate($stm);
 
             //delete notes for these cases
-            $stm = 'DELETE FROM `notes` WHERE `case_id` in ( ' . $strCaseList . ")";
+            $stm = 'DELETE FROM ' . $this->qt('notes') . ' WHERE ' . $this->qi('case_id') . ' in ( ' . $strCaseList . ')';
             $this->targetConnection->executeUpdate($stm);
 
             //cascade delete cases from break out tables
-            $stm = 'DELETE FROM `level-1` WHERE `case-id` in ( ' . $strCaseList . ")";
+            $stm = 'DELETE FROM ' . $this->qt('level-1') . ' WHERE ' . $this->qi('case-id') . ' in ( ' . $strCaseList . ')';
             $count = $this->targetConnection->executeUpdate($stm);
             $this->logger->debug("Deleted $count cases");
 
@@ -191,7 +251,7 @@ class MySQLQuestionnaireSerializer {
     }
 
     private function generateLevelInsertStatement(&$nameTypeMap): string {
-        $stm = "INSERT INTO `level-1` (";
+        $stm = 'INSERT INTO ' . $this->qt('level-1') . ' (';
         //TODO: fix for multiple levels
         $iLevel = 0;
         $level = $this->dict->getLevels()[$iLevel];
@@ -202,35 +262,35 @@ class MySQLQuestionnaireSerializer {
         $keys = array_keys($nameTypeMap);
         $quotedItemNames = [];
         foreach ($keys as $key) {
-            $quotedItemNames[] = MySQLDictionarySchemaGenerator::quoteString($key);
+            $quotedItemNames[] = $this->qi($key);
         }
         $itemList = implode(",", $quotedItemNames);
-        $itemList = "`case-id`," . $itemList;
+        $itemList = $this->qi('case-id') . ',' . $itemList;
 
-        $stm .= $itemList . ") VALUES ";
+        $stm .= $itemList . ') VALUES ';
         return $stm;
     }
 
     private function generateRecordInsertStatement(Record $record, &$nameTypeMap): string {
-        $recordName = MySQLDictionarySchemaGenerator::quoteString(strtolower($record->getName()));
+        $recordName = $this->qt(strtolower($record->getName()));
         $stm = "INSERT INTO $recordName (";
 
         $this->getRecordItemsNameType($record, $nameTypeMap);
         $keys = array_keys($nameTypeMap);
         $quotedItemNames = [];
         foreach ($keys as $key) {
-            $quotedItemNames[] = MySQLDictionarySchemaGenerator::quoteString($key);
+            $quotedItemNames[] = $this->qi($key);
         }
 
         $itemList = implode(",", $quotedItemNames);
 
         $parentLevelName = "level-" . (string) ($record->getLevel()->getLevelNumber() + 1);
-        $parentId = $parentLevelName . "-id";
+        $parentId = $this->qi($parentLevelName . "-id");
 
         if ($record->getMaxRecords() > 1) {
-            $itemList = "`$parentId`, `occ`, " . $itemList;
+            $itemList = $parentId . ', ' . $this->qi('occ') . ', ' . $itemList;
         } else {
-            $itemList = "`$parentId`," . $itemList;
+            $itemList = $parentId . ',' . $itemList;
         }
         $itemList = rtrim($itemList, ",");
         $stm .= $itemList . ") VALUES ";
@@ -312,13 +372,19 @@ class MySQLQuestionnaireSerializer {
 
     public function serializeCases(): int {
         $caseList = array_keys($this->casesMap);
+        // Colonnes de la table <dict>_cases. On les quote via la plateforme cible :
+        // 'key' est un mot réservé MySQL (mais pas PostgreSQL), donc la liste
+        // non quotée cassait sur MySQL. Le quoting plateforme règle ça pour les
+        // 3 SGBD sans traiter de colonne au cas par cas.
         if ($this->includeCasesCreatedModifiedTime()) {
-            $stm = "INSERT INTO `cases` (`id`, `key`, `label`, `last_modified_revision`, `deleted`, `verified`, `modified_time`, `created_time`, `partial_save_mode`) VALUES ";
+            $caseColumns = ['id', 'key', 'label', 'last_modified_revision', 'deleted', 'verified', 'modified_time', 'created_time', 'partial_save_mode'];
             $itemNames = ["uuid", "key", "label", "revision", "deleted", "verified", "modified_time", "created_time", "partial_save_mode"];
         } else {
-            $stm = "INSERT INTO `cases` (`id`, `key`, `label`, `last_modified_revision`, `deleted`, `verified`, `partial_save_mode`) VALUES  ";
+            $caseColumns = ['id', 'key', 'label', 'last_modified_revision', 'deleted', 'verified', 'partial_save_mode'];
             $itemNames = ["uuid", "key", "label", "revision", "deleted", "verified", "partial_save_mode"];
         }
+        $quotedCaseColumns = implode(', ', array_map(fn($c) => $this->qi($c), $caseColumns));
+        $stm = 'INSERT INTO ' . $this->qt('cases') . ' (' . $quotedCaseColumns . ') VALUES ';
         $values = [];
         $singlePlaceholder = '(' . implode(', ', array_fill(0, count($itemNames), '?')) . ')';
         // (?, ?), ... , (?, ?)
@@ -389,9 +455,10 @@ class MySQLQuestionnaireSerializer {
             if ((is_countable($result) ? count($result) : 0) == 0)
                 return 0;
 
-            //add the notes for these cases to  the notes table 
-            $stm = "INSERT INTO `notes` (`case_id`, `field_name`, `level_key`, `record_occurrence`, `item_occurrence`, "
-                    . "`subitem_occurrence`, `content`, `operator_id`, `modified_time`) VALUES ";
+            //add the notes for these cases to  the notes table
+            $noteColumns = ['case_id', 'field_name', 'level_key', 'record_occurrence', 'item_occurrence', 'subitem_occurrence', 'content', 'operator_id', 'modified_time'];
+            $quotedNoteColumns = implode(', ', array_map(fn($c) => $this->qi($c), $noteColumns));
+            $stm = 'INSERT INTO ' . $this->qt('notes') . ' (' . $quotedNoteColumns . ') VALUES ';
             $itemNames = ["case_id", "field_name", "level_key", "record_occurrence", "item_occurrence", "subitem_occurrence", "content", "operator_id", "modified_time"];
             $values = [];
             $singlePlaceholder = '(' . implode(', ', array_fill(0, count($itemNames), '?')) . ')';
@@ -421,7 +488,8 @@ class MySQLQuestionnaireSerializer {
     private function getCaseIdsMap() {
         try {
             // Select all the cases sent by the client that exist on the server
-            $stm = 'SELECT  `level-1-id` as id, `case-id` as uuid FROM `level-1` WHERE `case-id` in (';
+            $stm = 'SELECT  ' . $this->qi('level-1-id') . ' as id, ' . $this->qi('case-id') . ' as uuid FROM ' . $this->qt('level-1')
+                    . ' WHERE ' . $this->qi('case-id') . ' in (';
             $strOrderBy = ' ORDER BY  id';
 
             $strCaseList = "'" . implode("','", array_keys($this->casesMap)) . "'";
