@@ -49,14 +49,32 @@ class DictionarySchemaHelper {
     }
 
     private function getConnectionParameters(): bool {
-        $stm = "SELECT host_name, schema_name, schema_user_name, AES_DECRYPT(schema_password, '" . "cspro') as `password` FROM `cspro_dictionaries_schema`"
+        // Community layer: also read the fork-only `port` and `db_type` columns.
+        $stm = "SELECT host_name, port, db_type, schema_name, schema_user_name, AES_DECRYPT(schema_password, '" . "cspro') as `password` FROM `cspro_dictionaries_schema`"
             . " JOIN `cspro_dictionaries` ON dictionary_id = cspro_dictionaries.id WHERE cspro_dictionaries.name = :dictName";
         $bind = ['dictName' => $this->dictionaryName];
 
         $result = $this->pdo->fetchOne($stm, $bind);
 
         if ($result) {
-            $this->connectionParams = ['dbname' => $result['schema_name'], 'user' => $result['schema_user_name'], 'password' => $result['password'], 'host' => $result['host_name'], 'driver' => 'pdo_mysql'];
+            // Community layer: upstream hardcodes pdo_mysql and ignores the
+            // port, so every breakout target had to be a MySQL server on the
+            // default port. Resolve the driver from the dictionary's db_type,
+            // and the effective host/port from the connection mode (direct =
+            // use host_name as-is, tunnel = rewrite to 127.0.0.1:tunnel-port).
+            $driver = DataSettings::resolveDriver($result['db_type'] ?? 'postgresql');
+            $resolved = \App\Service\BreakoutConnectionResolver::resolve($result);
+            $this->connectionParams = [
+                'dbname'   => $result['schema_name'],
+                'user'     => $result['schema_user_name'],
+                'password' => $result['password'],
+                'host'     => $resolved['host'],
+                'driver'   => $driver,
+            ];
+            // Omit the port when unset so DBAL falls back to the driver default.
+            if ($resolved['port'] !== null) {
+                $this->connectionParams['port'] = $resolved['port'];
+            }
             return true;
         } else {
             $this->connectionParams = null;
@@ -306,9 +324,22 @@ class DictionarySchemaHelper {
     public function resetInProcesssJobs(): int {
         $bind = [];
         try {
-            $stm = "UPDATE `cspro_jobs` SET `status`= :status WHERE `status` = :in_process_jobs";
+            // Community layer: reset FAILED jobs alongside IN_PROCESS ones.
+            // A job left in FAILED is never picked up again, so its cases would
+            // stay unprocessed forever — the failure state exists to be visible,
+            // not to be terminal. The table is prefixed per dictionary, and the
+            // identifiers are quoted through the target platform so the same
+            // statement runs on MySQL, PostgreSQL and SQL Server.
+            $dictionaryLabel = strtolower(str_replace(" ", "_", str_replace("_DICT", "", $this->dictionary->getName())));
+            $platform = $this->conn->getDatabasePlatform();
+            $qi = fn(string $id): string => $platform->quoteIdentifier($id);
+
+            $stm = 'UPDATE ' . $qi($dictionaryLabel . '_cspro_jobs')
+                 . ' SET ' . $qi('status') . ' = :status'
+                 . ' WHERE ' . $qi('status') . ' IN (:in_process_jobs, :failed_jobs)';
             $bind['status'] = self::JOB_STATUS_NOT_STARTED;
             $bind['in_process_jobs'] = self::JOB_STATUS_IN_PROCESS;
+            $bind['failed_jobs'] = self::JOB_STATUS_FAILED;
             $count = $this->conn->executeUpdate($stm, $bind);
         } catch (\Exception $e) {
             $strMsg = "Failed resetting jobs in schema  " . $this->connectionParams['dbname'] . " while processsing Dictionary: " . $this->dictionaryName;
@@ -323,14 +354,16 @@ class DictionarySchemaHelper {
         $jobId = 0;
 //find a job that is not being processed and update its status to processing 
         try {
-            $stm = "SELECT `id` FROM `cspro_jobs` "
-                    . " WHERE  `status` = " . self::JOB_STATUS_NOT_STARTED . " ORDER BY `id`  LIMIT 1 ";
+            $stm = 'SELECT ' . $this->qi('id') . ' FROM ' . $this->qt('cspro_jobs')
+                    . ' WHERE ' . $this->qi('status') . ' = ' . self::JOB_STATUS_NOT_STARTED
+                    . ' ORDER BY ' . $this->qi('id') . ' LIMIT 1';
             $stmt = $this->conn->prepare($stm);
             $resultSet = $stmt->execute();
             $result = $resultSet->fetchAllAssociative();
             $jobId = (is_countable($result) ? count($result) : 0) > 0 ? $result[0]['id'] : $this->createJob($maxCasesPerChunk);
             if ($jobId) {
-                $stm = "UPDATE `cspro_jobs` SET `status`= :status WHERE `id` = :id";
+                $stm = 'UPDATE ' . $this->qt('cspro_jobs') . ' SET ' . $this->qi('status') . ' = :status'
+                        . ' WHERE ' . $this->qi('id') . ' = :id';
                 $bind['status'] = self::JOB_STATUS_IN_PROCESS;
                 $bind['id'] = $jobId;
                 $this->conn->executeUpdate($stm, $bind);
@@ -348,8 +381,10 @@ class DictionarySchemaHelper {
         //if a job already exists - get the endCaseId and endRevision if there are no cases at this revision 
 //SELECT the most recent job and get the endCaseId and endRevision 
         $jobId = 0;
-        $stm = "SELECT `id`, `start_caseid`, `start_revision`, `end_caseid`, `end_revision`, `cases_processed`, `status` FROM `cspro_jobs` "
-                . "ORDER BY `id` DESC LIMIT 1 ";
+        $jobColumns = ['id', 'start_caseid', 'start_revision', 'end_caseid', 'end_revision', 'cases_processed', 'status'];
+        $stm = 'SELECT ' . implode(', ', array_map(fn($c) => $this->qi($c), $jobColumns))
+                . ' FROM ' . $this->qt('cspro_jobs')
+                . ' ORDER BY ' . $this->qi('id') . ' DESC LIMIT 1';
 
         try {
             $stmt = $this->conn->prepare($stm);
@@ -382,8 +417,10 @@ class DictionarySchemaHelper {
                 $bind['endCaseId'] = $result[count($result) - 1]['id'];
                 $bind['endRevision'] = $result[count($result) - 1]['revision'];
                 $bind['cases_to_process'] = count($result);
-                $stm = "INSERT INTO `cspro_jobs`(`start_caseid`, `start_revision`, `end_caseid`, `end_revision` ,`cases_to_process`) "
-                        . "VALUES (:startCaseId, :startRevision, :endCaseId, :endRevision, :cases_to_process)";
+                $insertColumns = ['start_caseid', 'start_revision', 'end_caseid', 'end_revision', 'cases_to_process'];
+                $stm = 'INSERT INTO ' . $this->qt('cspro_jobs')
+                        . '(' . implode(', ', array_map(fn($c) => $this->qi($c), $insertColumns)) . ') '
+                        . 'VALUES (:startCaseId, :startRevision, :endCaseId, :endRevision, :cases_to_process)';
                 $stmt = $this->conn->executeUpdate($stm, $bind);
                 $jobId = $this->conn->lastInsertId();
             }
@@ -406,6 +443,33 @@ class DictionarySchemaHelper {
             $this->logger->error($strMsg, ["context" => (string) $e]);
             throw new \Exception($strMsg, 0, $e);
         }
+    }
+
+    /**
+     * Community layer: per-dictionary table prefix in the TARGET database.
+     *
+     * Upstream assumes one dictionary per target schema and queries bare
+     * `cases` / `cspro_jobs`. Selective breakout lets several dictionaries share
+     * one schema, so every table is prefixed. Must stay byte-identical to the
+     * prefix computed by MySQLDictionarySchemaGenerator (DDL) and
+     * MySQLQuestionnaireSerializer (DML).
+     */
+    private function tablePrefix(): string {
+        return strtolower(str_replace(" ", "_", str_replace("_DICT", "", $this->dictionary->getName())));
+    }
+
+    /**
+     * Community layer: prefixed table name, quoted for the target platform.
+     */
+    private function qt(string $suffix): string {
+        return $this->conn->getDatabasePlatform()->quoteIdentifier($this->tablePrefix() . '_' . $suffix);
+    }
+
+    /**
+     * Community layer: identifier quoted for the target platform.
+     */
+    private function qi(string $identifier): string {
+        return $this->conn->getDatabasePlatform()->quoteIdentifier($identifier);
     }
 
     /**

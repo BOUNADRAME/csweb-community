@@ -28,7 +28,26 @@ class MapDataRepository {
     public function getDBALConnection($dataSetting) {
         $conn = null;
         if (isset($dataSetting)) {
-            $connectionParams = ['dbname' => $dataSetting['targetSchemaName'], 'user' => $dataSetting['dbUserName'], 'password' => $dataSetting['dbPassword'], 'host' => $dataSetting['targetHostName'], 'driver' => 'pdo_mysql'];
+            // Community layer: map reports read the breakout target, which may
+            // be PostgreSQL or SQL Server on a non-default port, and may be
+            // reachable only through the SSH tunnel. Upstream hardcodes
+            // pdo_mysql and ignores the port.
+            $driver = DataSettings::resolveDriver($dataSetting['dbType'] ?? 'postgresql');
+            $resolved = \App\Service\BreakoutConnectionResolver::resolve([
+                'host_name' => $dataSetting['targetHostName'] ?? null,
+                'port'      => $dataSetting['targetPort'] ?? null,
+            ]);
+            $connectionParams = [
+                'dbname'   => $dataSetting['targetSchemaName'],
+                'user'     => $dataSetting['dbUserName'],
+                'password' => $dataSetting['dbPassword'],
+                'host'     => $resolved['host'],
+                'driver'   => $driver,
+            ];
+            // Omit the port when unset so DBAL falls back to the driver default.
+            if ($resolved['port'] !== null) {
+                $connectionParams['port'] = $resolved['port'];
+            }
             $config = new Configuration();
             $conn = DriverManager::getConnection($connectionParams, $config);
         }

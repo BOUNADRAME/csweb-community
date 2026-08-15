@@ -68,7 +68,16 @@ no upstream file modified:
   row into `ROLE_<NAME>` unchanged
 - `CommunitySchemaInstaller` + `csweb:community:install-schema`: idempotent
   installer tracked under `cspro_config.community_schema_version`,
-  separate from the upstream `schema_version` counter
+  separate from the upstream `schema_version` counter. Three steps, which
+  replace the 8.0 line's schema migrations 9 through 12:
+  - v1 permissions and default role grants
+  - v2 `cspro_dictionaries_schema`.`port` and `.db_type` (was schema 10/11)
+  - v3 `cspro_backup_config` table, trigger and default row (was schema 9)
+
+  Defers cleanly when the upstream tables do not exist yet, so it is safe
+  on the very first container boot, and re-running it never re-applies a
+  step or overwrites an operator's backup settings. `upgrade/upgrade.php`
+  and `setup/configure.php` stay exactly as upstream ships them.
 - Default grants: Administrator gets the full Community feature set;
   Developer (new in 8.1) gets dashboard and logs read access
 

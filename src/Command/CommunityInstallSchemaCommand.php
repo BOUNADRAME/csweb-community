@@ -45,11 +45,18 @@ class CommunityInstallSchemaCommand extends Command {
                 $io->success('Already up to date, nothing to do.');
                 return Command::SUCCESS;
             }
+
+            $steps = [
+                1 => 'permissions: ' . count(CommunityPermissions::PERMISSIONS) . ' rows (ids from '
+                    . CommunityPermissions::RANGE_START . ') + default role grants',
+                2 => 'cspro_dictionaries_schema: add `port` and `db_type` columns',
+                3 => 'cspro_backup_config: table, trigger and default row',
+            ];
             $rows = [];
-            foreach (CommunityPermissions::PERMISSIONS as $id => $name) {
-                $rows[] = [$id, $name];
+            foreach ($steps as $version => $description) {
+                $rows[] = [$version, $version > $installed ? 'to apply' : 'already applied', $description];
             }
-            $io->table(['id', 'permission'], $rows);
+            $io->table(['version', 'status', 'step'], $rows);
             return Command::SUCCESS;
         }
 

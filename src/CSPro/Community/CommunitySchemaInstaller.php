@@ -26,7 +26,7 @@ class CommunitySchemaInstaller {
      * under `community_schema_version`, independently of the upstream
      * `schema_version`.
      */
-    public const COMMUNITY_SCHEMA_VERSION = 1;
+    public const COMMUNITY_SCHEMA_VERSION = 3;
 
     public const CONFIG_KEY = 'community_schema_version';
 
@@ -46,8 +46,22 @@ class CommunitySchemaInstaller {
             return $current;
         }
 
+        // The upstream tables must exist before anything is layered on top.
+        // docker-entrypoint.sh runs this on every boot, including the very
+        // first one, when the operator has not been through /setup yet.
+        if (!$this->upstreamSchemaReady()) {
+            $this->logger->info('Upstream CSWeb schema not installed yet, deferring Community schema install.');
+            return $current;
+        }
+
         if ($current < 1) {
             $this->installPermissions();
+        }
+        if ($current < 2) {
+            $this->installBreakoutTargetColumns();
+        }
+        if ($current < 3) {
+            $this->installBackupConfig();
         }
 
         $this->setInstalledVersion(self::COMMUNITY_SCHEMA_VERSION);
@@ -105,6 +119,118 @@ class CommunitySchemaInstaller {
         $this->logger->info('Installed {count} Community permissions', [
             'count' => count(CommunityPermissions::PERMISSIONS),
         ]);
+    }
+
+    /**
+     * Community schema v2: per-dictionary breakout target settings.
+     *
+     * Upstream assumes every breakout target is a MySQL server reachable on the
+     * default port, so `cspro_dictionaries_schema` only stores a host name. The
+     * Community fork lets each dictionary name its own port and engine, which
+     * is what DataSettings::buildConnectionParams() reads.
+     *
+     * Both columns are added only when missing, so this is safe to re-run and
+     * safe on a database that already went through the 8.0 line's schema 10/11
+     * migrations.
+     */
+    private function installBreakoutTargetColumns(): void {
+        if (!$this->columnExists('cspro_dictionaries_schema', 'port')) {
+            $this->pdo->exec(
+                'ALTER TABLE `cspro_dictionaries_schema` '
+                . 'ADD COLUMN `port` smallint unsigned DEFAULT NULL AFTER `host_name`'
+            );
+            $this->logger->info('Added cspro_dictionaries_schema.port');
+        }
+
+        if (!$this->columnExists('cspro_dictionaries_schema', 'db_type')) {
+            $this->pdo->exec(
+                'ALTER TABLE `cspro_dictionaries_schema` '
+                . "ADD COLUMN `db_type` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'postgresql' AFTER `port`"
+            );
+            $this->logger->info('Added cspro_dictionaries_schema.db_type');
+        }
+    }
+
+    /**
+     * Community schema v3: scheduled backup configuration.
+     *
+     * Backed by BackupScheduler and the csweb:backup-run / csweb:backup-cleanup
+     * commands. A single row holds the whole configuration; the trigger mirrors
+     * the created_time convention used by the upstream tables.
+     */
+    private function installBackupConfig(): void {
+        $this->pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS `cspro_backup_config` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `enabled` tinyint(1) NOT NULL DEFAULT 0,
+  `cron_expression` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '0 2 * * *',
+  `retention_days` int unsigned NOT NULL DEFAULT 30,
+  `last_run` timestamp NULL DEFAULT NULL,
+  `next_run` timestamp NULL DEFAULT NULL,
+  `last_exit_code` int DEFAULT NULL,
+  `last_log_file` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `modified_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_time` timestamp DEFAULT '1971-01-01 00:00:00',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL);
+
+        // CREATE TRIGGER has no IF NOT EXISTS on MySQL 8, so drop first to stay
+        // idempotent.
+        $this->pdo->exec('DROP TRIGGER IF EXISTS `tr_cspro_backup_config`');
+        $this->pdo->exec(
+            'CREATE TRIGGER `tr_cspro_backup_config` BEFORE INSERT ON `cspro_backup_config` '
+            . 'FOR EACH ROW SET NEW.`created_time` = CURRENT_TIMESTAMP'
+        );
+
+        // Seed the single configuration row, disabled by default. Guarded so a
+        // re-run never wipes an operator's cron expression or retention.
+        $existing = (int) $this->pdo->fetchValue('SELECT COUNT(*) FROM `cspro_backup_config`');
+        if ($existing === 0) {
+            $this->pdo->exec(
+                'INSERT INTO `cspro_backup_config` (`enabled`, `cron_expression`, `retention_days`) '
+                . "VALUES (0, '0 2 * * *', 30)"
+            );
+        }
+
+        $this->logger->info('Installed cspro_backup_config');
+    }
+
+    /**
+     * True once the upstream installer has created the tables the Community
+     * layer builds on: the permission catalogue and the per-dictionary breakout
+     * settings.
+     */
+    private function upstreamSchemaReady(): bool {
+        foreach (['cspro_permissions', 'cspro_role_permissions', 'cspro_dictionaries_schema'] as $table) {
+            try {
+                $this->pdo->query(sprintf('SELECT 1 FROM `%s` LIMIT 1', $table));
+            } catch (\Exception $e) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * SHOW COLUMNS rather than information_schema: the CSWeb database itself is
+     * always MySQL (PdoHelper hardcodes the mysql: DSN), and this avoids
+     * depending on the schema name.
+     */
+    private function columnExists(string $table, string $column): bool {
+        try {
+            $stmt = $this->pdo->query(
+                sprintf('SHOW COLUMNS FROM `%s` LIKE %s', $table, $this->pdo->quote($column))
+            );
+            return $stmt->rowCount() > 0;
+        } catch (\Exception $e) {
+            $this->logger->debug('Column check failed for {table}.{column}', [
+                'table' => $table,
+                'column' => $column,
+                'context' => (string) $e,
+            ]);
+            return false;
+        }
     }
 
     private function setInstalledVersion(int $version): void {
