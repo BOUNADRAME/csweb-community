@@ -73,20 +73,16 @@ if [ -f /var/www/html/src/config.php ]; then
         }
     " 2>/dev/null || true
 
-    # Register dashboard_all permission (id 11) — idempotent
-    echo "[CSWeb] Checking dashboard_all permission..."
-    php -r "
-        require '/var/www/html/src/config.php';
-        try {
-            \$port = defined('DBPORT') ? DBPORT : '3306';
-            \$pdo = new PDO('mysql:host=' . DBHOST . ';dbname=' . DBNAME . ';port=' . \$port, DBUSER, DBPASS);
-            \$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            \$pdo->exec(\"INSERT IGNORE INTO cspro_permissions (id, name, modified_time, created_time) VALUES (11, 'dashboard_all', NOW(), NOW())\");
-            echo '[CSWeb] dashboard_all permission registered' . PHP_EOL;
-        } catch (Exception \$e) {
-            echo '[CSWeb] Could not register dashboard_all permission: ' . \$e->getMessage() . PHP_EOL;
-        }
-    " 2>/dev/null || true
+    # Install the Community layer schema additions — idempotent.
+    #
+    # Upstream CSWeb 8.1 owns permission ids 1..100 in cspro_permissions and
+    # tracks its own schema under cspro_config.schema_version. The Community
+    # layer claims ids from 110 up and tracks itself under
+    # cspro_config.community_schema_version, so neither installer touches the
+    # other's rows. See src/CSPro/Community/CommunityPermissions.php.
+    echo "[CSWeb] Installing Community layer schema..."
+    su -s /bin/bash www-data -c "php /var/www/html/bin/console csweb:community:install-schema --env=prod --no-debug" || \
+        echo "[CSWeb] WARNING: Community schema install failed — dashboard, backup and logs may be unavailable."
 else
     echo "[CSWeb] config.php not found, skipping cache clear (run /setup first)."
 fi

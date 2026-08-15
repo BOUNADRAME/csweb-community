@@ -14,7 +14,7 @@
     </style>
 {% endblock %}
 {% block navSettings %}
-    {% if is_granted('ROLE_SETTINGS_ALL') == true %}
+    {% if is_granted('ROLE_LOGS') or is_granted('ROLE_LOGS.READ') %}
         <li id="settings-nav-item" class="nav-item active">
             <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseSettings"
                aria-expanded="true" aria-controls="collapseSettings">

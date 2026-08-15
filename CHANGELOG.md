@@ -51,6 +51,38 @@ First port of the Community layer onto the upstream CSWeb 8.1.2 base.
 - `CSWEB_COMMUNITY_VERSION` constant, tracking the fork version
   independently of `CSPRO_VERSION`
 
+### Added — Community permission layer
+
+The upstream 8.1 permission model is adopted as-is rather than replaced.
+The Community features plug into it through the standard pipeline, with
+no upstream file modified:
+
+- `CommunityPermissions`: permission catalogue claiming ids from 110 up,
+  following the upstream convention of tens. Upstream owns 1..100, so a
+  future upstream release can extend its range without colliding.
+  - 110/111/112 `dashboard`, `dashboard.read`, `dashboard.write`
+  - 120/121/122 `backup`, `backup.read`, `backup.write`
+  - 130/131/132 `logs`, `logs.read`, `logs.write`
+- `DashboardVoter`, `BackupVoter`, `LogsVoter`: same shape as the upstream
+  voters, so `ApiKeyUserProvider::getUserRoles()` turns each permission
+  row into `ROLE_<NAME>` unchanged
+- `CommunitySchemaInstaller` + `csweb:community:install-schema`: idempotent
+  installer tracked under `cspro_config.community_schema_version`,
+  separate from the upstream `schema_version` counter
+- Default grants: Administrator gets the full Community feature set;
+  Developer (new in 8.1) gets dashboard and logs read access
+
+### Changed
+
+- Community controllers and templates now check the granular permissions
+  (`BackupVoter::BACKUP_READ`, …) instead of the coarse `ROLE_*_ALL` names
+  used on the 8.0 line, mapped read/write by HTTP method
+- `base.twig`: Community nav entries appended in their own `navCommunity`
+  block, leaving the upstream nav exactly as shipped
+- `docker-entrypoint.sh`: replaced the hardcoded `dashboard_all` insert at
+  id 11 with the installer command. **Id 11 means `apps.read` in the 8.1
+  schema**, so the old statement would have silently corrupted permissions
+
 ### Ported
 
 Community layer carried over from 8.0.x (17 PHP classes, 3 templates):

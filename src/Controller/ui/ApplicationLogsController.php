@@ -2,6 +2,7 @@
 
 namespace App\Controller\ui;
 
+use App\Security\LogsVoter;
 use Psr\Container\ContainerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,13 +22,13 @@ class ApplicationLogsController extends AbstractController implements TokenAuthe
 
     #[Route('/application-logs', name: 'applicationLogs', methods: ['GET'])]
     public function viewAction(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted(LogsVoter::LOGS_READ);
         return $this->render('applicationLogs.twig');
     }
 
     #[Route('/application-logs/data', name: 'applicationLogsData', methods: ['GET'])]
     public function dataAction(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted(LogsVoter::LOGS_READ);
         try {
             $draw = (int) $request->query->get('draw', 1);
             $start = (int) $request->query->get('start', 0);
@@ -109,7 +110,7 @@ class ApplicationLogsController extends AbstractController implements TokenAuthe
 
     #[Route('/application-logs/stats', name: 'applicationLogsStats', methods: ['GET'])]
     public function statsAction(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted(LogsVoter::LOGS_READ);
         try {
             $rows = $this->pdo->fetchAll(
                 "SELECT level_name, COUNT(*) as cnt FROM cspro_log GROUP BY level_name ORDER BY cnt DESC"
@@ -129,7 +130,7 @@ class ApplicationLogsController extends AbstractController implements TokenAuthe
 
     #[Route('/application-logs/detail/{id}', name: 'applicationLogsDetail', methods: ['GET'])]
     public function detailAction(Request $request, int $id): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted(LogsVoter::LOGS_READ);
         try {
             $row = $this->pdo->fetchOne(
                 "SELECT id, channel, level, level_name, message, context, created_time FROM cspro_log WHERE id = :id",
@@ -148,7 +149,7 @@ class ApplicationLogsController extends AbstractController implements TokenAuthe
 
     #[Route('/application-logs/truncate', name: 'applicationLogsTruncate', methods: ['DELETE'])]
     public function truncateAction(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted(LogsVoter::LOGS_WRITE);
         try {
             $this->pdo->perform("TRUNCATE TABLE cspro_log");
             $result = ['description' => 'All log entries have been deleted.', 'code' => 200];
@@ -161,7 +162,7 @@ class ApplicationLogsController extends AbstractController implements TokenAuthe
 
     #[Route('/application-logs/delete-filtered', name: 'applicationLogsDeleteFiltered', methods: ['DELETE'])]
     public function deleteFilteredAction(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted(LogsVoter::LOGS_WRITE);
         try {
             $body = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
             $channel = trim($body['channel'] ?? '');

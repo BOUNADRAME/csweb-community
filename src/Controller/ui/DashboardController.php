@@ -2,6 +2,7 @@
 
 namespace App\Controller\ui;
 
+use App\Security\DashboardVoter;
 use App\Service\BreakoutStatusService;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -19,13 +20,13 @@ class DashboardController extends AbstractController implements TokenAuthenticat
 
     #[Route('/breakout/dashboard', name: 'breakoutDashboard', methods: ['GET'])]
     public function viewDashboard(): Response {
-        $this->denyAccessUnlessGranted('ROLE_DASHBOARD_ALL');
+        $this->denyAccessUnlessGranted(DashboardVoter::DASHBOARD_READ);
         return $this->render('dashboard.twig', []);
     }
 
     #[Route('/breakout/dashboard/summary', name: 'breakoutDashboardSummary', methods: ['GET'])]
     public function summary(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_DASHBOARD_ALL');
+        $this->denyAccessUnlessGranted(DashboardVoter::DASHBOARD_READ);
         $bypass = $this->wantsFreshData($request);
         try {
             $payload = [
@@ -46,7 +47,7 @@ class DashboardController extends AbstractController implements TokenAuthenticat
 
     #[Route('/breakout/dashboard/dictionaries', name: 'breakoutDashboardDictionaries', methods: ['GET'])]
     public function dictionaries(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_DASHBOARD_ALL');
+        $this->denyAccessUnlessGranted(DashboardVoter::DASHBOARD_READ);
         try {
             $filters = $this->parseFilters($request);
             $page  = max(1, (int) $request->query->get('page', 1));

@@ -2,6 +2,7 @@
 
 namespace App\Controller\ui;
 
+use App\Security\BackupVoter;
 use Psr\Container\ContainerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -30,13 +31,13 @@ class BackupController extends AbstractController implements TokenAuthenticatedC
 
     #[Route('/backup', name: 'backup', methods: ['GET'])]
     public function viewBackupAction(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_BACKUP_ALL');
+        $this->denyAccessUnlessGranted(BackupVoter::BACKUP_READ);
         return $this->render('backup.twig');
     }
 
     #[Route('/backup/config', name: 'backupConfig', methods: ['GET'])]
     public function getConfig(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted(BackupVoter::BACKUP_READ);
         try {
             $config = $this->backupScheduler->getConfig();
             return new Response(json_encode($config, JSON_THROW_ON_ERROR), Response::HTTP_OK);
@@ -48,7 +49,7 @@ class BackupController extends AbstractController implements TokenAuthenticatedC
 
     #[Route('/backup/config', name: 'backupConfigUpdate', methods: ['PUT'])]
     public function updateConfig(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted(BackupVoter::BACKUP_WRITE);
         try {
             $body = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
             $cronExpression = trim($body['cronExpression']);
@@ -76,7 +77,7 @@ class BackupController extends AbstractController implements TokenAuthenticatedC
 
     #[Route('/backup/toggle', name: 'backupToggle', methods: ['PUT'])]
     public function toggleBackup(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted(BackupVoter::BACKUP_WRITE);
         try {
             $this->backupScheduler->toggleEnabled();
             $result = ['description' => 'Backup toggled successfully', 'code' => 200];
@@ -89,7 +90,7 @@ class BackupController extends AbstractController implements TokenAuthenticatedC
 
     #[Route('/backup/run-now', name: 'backupRunNow', methods: ['POST'])]
     public function runNow(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted(BackupVoter::BACKUP_WRITE);
         try {
             $phpBinary = (new PhpExecutableFinder())->find();
             $consolePath = realpath($this->kernel->getProjectDir() . '/bin/console');
@@ -140,7 +141,7 @@ class BackupController extends AbstractController implements TokenAuthenticatedC
 
     #[Route('/backup/files', name: 'backupFilesList', methods: ['GET'])]
     public function listFiles(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted(BackupVoter::BACKUP_READ);
         try {
             $backupDir = $this->kernel->getProjectDir() . '/var/backups';
             $files = [];
@@ -198,7 +199,7 @@ class BackupController extends AbstractController implements TokenAuthenticatedC
 
     #[Route('/backup/files/download', name: 'backupFileDownload', methods: ['GET'])]
     public function downloadFile(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted(BackupVoter::BACKUP_READ);
         $file = $request->query->get('file', '');
         $safe = basename($file);
         $backupDir = $this->kernel->getProjectDir() . '/var/backups';
@@ -215,7 +216,7 @@ class BackupController extends AbstractController implements TokenAuthenticatedC
 
     #[Route('/backup/files/delete', name: 'backupFileDelete', methods: ['DELETE'])]
     public function deleteFile(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted(BackupVoter::BACKUP_WRITE);
         try {
             $body = json_decode($request->getContent(), true);
             $file = $body['file'] ?? '';
@@ -247,7 +248,7 @@ class BackupController extends AbstractController implements TokenAuthenticatedC
 
     #[Route('/backup/files/delete-bulk', name: 'backupFileDeleteBulk', methods: ['POST'])]
     public function deleteFilesBulk(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted(BackupVoter::BACKUP_WRITE);
         try {
             $body = json_decode($request->getContent(), true);
             $files = $body['files'] ?? [];
@@ -301,7 +302,7 @@ class BackupController extends AbstractController implements TokenAuthenticatedC
 
     #[Route('/backup/cleanup', name: 'backupCleanupNow', methods: ['POST'])]
     public function cleanupNow(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted(BackupVoter::BACKUP_WRITE);
         try {
             $config = $this->backupScheduler->getConfig();
             $retentionDays = $config ? (int) $config['retention_days'] : 30;
@@ -341,7 +342,7 @@ class BackupController extends AbstractController implements TokenAuthenticatedC
 
     #[Route('/backup/logs', name: 'backupLogsList', methods: ['GET'])]
     public function logsList(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted(BackupVoter::BACKUP_READ);
         try {
             $logDir = $this->kernel->getProjectDir() . '/var/logs/backup';
             $logs = [];
@@ -371,7 +372,7 @@ class BackupController extends AbstractController implements TokenAuthenticatedC
 
     #[Route('/backup/logs/content', name: 'backupLogContent', methods: ['GET'])]
     public function logContent(Request $request): Response {
-        $this->denyAccessUnlessGranted('ROLE_SETTINGS_ALL');
+        $this->denyAccessUnlessGranted(BackupVoter::BACKUP_READ);
         $file = $request->query->get('file', '');
         $safe = basename($file);
         $logDir = $this->kernel->getProjectDir() . '/var/logs/backup';
