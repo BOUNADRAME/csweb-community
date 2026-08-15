@@ -78,8 +78,29 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --no-script
     || composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-source
 
 # Install frontend dependencies (Bootstrap, FontAwesome, jQuery, etc.)
-RUN npm install -g bower --quiet \
-    && bower install --allow-root
+#
+# CSWeb 8.1 ships its bower_components pre-built inside the release archive,
+# in a flat layout the templates address directly:
+#   bower_components/bootstrap/css/bootstrap.min.css
+#   bower_components/fontawesome-free/css/all.min.css
+#
+# `bower install` resolves bower.json instead — Bootstrap 3 and font-awesome 4 —
+# and produces a different tree (bootstrap/dist/css/, no fontawesome-free at
+# all). Every stylesheet then 404s, which CSWeb turns into a redirect to
+# /setup/, so the browser loops until ERR_TOO_MANY_REDIRECTS.
+#
+# Take the assets from the upstream archive, which is also what pins them to
+# the exact CSWeb release. bower_components/ is gitignored, so this must not
+# depend on anything present in the build context.
+ARG CSWEB_RELEASE_URL=https://csprousers.org/releases/8.1/csweb-8.1.2.zip
+RUN set -eux; \
+    rm -rf /var/www/html/bower_components; \
+    curl -fsSL -o /tmp/csweb-release.zip "$CSWEB_RELEASE_URL"; \
+    unzip -q /tmp/csweb-release.zip 'bower_components/*' -d /tmp/csweb-release; \
+    mv /tmp/csweb-release/bower_components /var/www/html/bower_components; \
+    rm -rf /tmp/csweb-release.zip /tmp/csweb-release; \
+    test -f /var/www/html/bower_components/bootstrap/css/bootstrap.min.css; \
+    test -f /var/www/html/bower_components/fontawesome-free/css/all.min.css
 
 # Set base permissions
 #
