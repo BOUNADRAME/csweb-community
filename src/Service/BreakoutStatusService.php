@@ -87,7 +87,7 @@ class BreakoutStatusService {
         $dataSql = "
             SELECT
                 d.id,
-                d.dictionary_name,
+                d.name AS dictionary_name,
                 d.dictionary_label,
                 (s.dictionary_id IS NOT NULL)     AS breakout_configured,
                 s.host_name,
@@ -105,7 +105,7 @@ class BreakoutStatusService {
             LEFT JOIN cspro_dictionaries_schema s ON s.dictionary_id = d.id
             LEFT JOIN cspro_breakout_scheduler sch ON sch.dictionary_id = d.id
             $whereClause
-            ORDER BY d.dictionary_name
+            ORDER BY d.name
             LIMIT :limit OFFSET :offset
         ";
         $stmt = $this->pdo->prepare($dataSql);
@@ -181,7 +181,7 @@ class BreakoutStatusService {
 
         $allRows = $this->pdo->query("
             SELECT
-                d.dictionary_name,
+                d.name AS dictionary_name,
                 (s.dictionary_id IS NOT NULL) AS configured,
                 s.host_name, s.port, s.db_type, s.schema_name, s.schema_user_name,
                 AES_DECRYPT(s.schema_password, 'cspro') AS schema_password_plain
@@ -248,7 +248,7 @@ class BreakoutStatusService {
      */
     private function computeTopProblems(int $limit): array {
         $errorsSql = "
-            SELECT d.dictionary_name, d.dictionary_label, sch.last_run, sch.last_exit_code
+            SELECT d.name AS dictionary_name, d.dictionary_label, sch.last_run, sch.last_exit_code
             FROM cspro_dictionaries d
             JOIN cspro_breakout_scheduler sch ON sch.dictionary_id = d.id
             WHERE sch.last_exit_code IS NOT NULL
@@ -263,12 +263,12 @@ class BreakoutStatusService {
         $errors = $st->fetchAll(PDO::FETCH_ASSOC);
 
         $neverRunSql = "
-            SELECT d.dictionary_name, d.dictionary_label
+            SELECT d.name AS dictionary_name, d.dictionary_label
             FROM cspro_dictionaries d
             JOIN cspro_dictionaries_schema s ON s.dictionary_id = d.id
             LEFT JOIN cspro_breakout_scheduler sch ON sch.dictionary_id = d.id
             WHERE sch.last_run IS NULL
-            ORDER BY d.dictionary_name
+            ORDER BY d.name
             LIMIT :lim
         ";
         $st = $this->pdo->prepare($neverRunSql);
@@ -281,7 +281,7 @@ class BreakoutStatusService {
         // keep top N. For huge dict catalogs (>500), upgrade to a persisted snapshot table later.
         $candidatesSql = "
             SELECT
-                d.dictionary_name, d.dictionary_label,
+                d.name AS dictionary_name, d.dictionary_label,
                 s.host_name, s.port, s.db_type, s.schema_name, s.schema_user_name,
                 AES_DECRYPT(s.schema_password, 'cspro') AS schema_password_plain
             FROM cspro_dictionaries d
@@ -326,7 +326,7 @@ class BreakoutStatusService {
         $dictMany   = $filters['dictionaries'] ?? [];
 
         if ($dictSingle !== '') {
-            $where[] = 'd.dictionary_name = :dict_single';
+            $where[] = 'd.name = :dict_single';
             $params[':dict_single'] = strtoupper($dictSingle);
         } elseif (!empty($dictMany)) {
             $placeholders = [];
@@ -335,7 +335,7 @@ class BreakoutStatusService {
                 $placeholders[] = $key;
                 $params[$key]   = strtoupper(trim($name));
             }
-            $where[] = 'd.dictionary_name IN (' . implode(',', $placeholders) . ')';
+            $where[] = 'd.name IN (' . implode(',', $placeholders) . ')';
         }
 
         if (array_key_exists('breakout_configured', $filters) && $filters['breakout_configured'] !== null) {

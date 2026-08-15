@@ -13,7 +13,7 @@ class BreakoutScheduler {
     }
 
     public function getSchedules(): array {
-        $stm = 'SELECT s.`id`, s.`dictionary_id`, d.`dictionary_name` as name, d.`dictionary_label` as label,'
+        $stm = 'SELECT s.`id`, s.`dictionary_id`, d.`name` as name, d.`dictionary_label` as label,'
             . ' s.`enabled`, s.`cron_expression`, s.`last_run`, s.`next_run`, s.`last_exit_code`, s.`last_log_file`'
             . ' FROM `cspro_breakout_scheduler` s'
             . ' JOIN `cspro_dictionaries` d ON d.`id` = s.`dictionary_id`'
@@ -23,7 +23,7 @@ class BreakoutScheduler {
     }
 
     public function getUnscheduledDictionaries(): array {
-        $stm = 'SELECT d.`id`, d.`dictionary_name` as name, d.`dictionary_label` as label'
+        $stm = 'SELECT d.`id`, d.`name` as name, d.`dictionary_label` as label'
             . ' FROM `cspro_dictionaries` d'
             . ' JOIN `cspro_dictionaries_schema` ds ON ds.`dictionary_id` = d.`id`'
             . ' WHERE d.`id` NOT IN (SELECT `dictionary_id` FROM `cspro_breakout_scheduler`)'
@@ -119,7 +119,7 @@ class BreakoutScheduler {
     }
 
     public function getDueSchedules(): array {
-        $stm = 'SELECT s.`id`, s.`dictionary_id`, d.`dictionary_name` as name, s.`cron_expression`'
+        $stm = 'SELECT s.`id`, s.`dictionary_id`, d.`name` as name, s.`cron_expression`'
             . ' FROM `cspro_breakout_scheduler` s'
             . ' JOIN `cspro_dictionaries` d ON d.`id` = s.`dictionary_id`'
             . ' WHERE s.`enabled` = 1 AND s.`next_run` <= NOW()';

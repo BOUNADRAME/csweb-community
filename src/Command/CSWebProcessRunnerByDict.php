@@ -198,7 +198,7 @@ class CSWebProcessRunnerByDict extends Command {
         }
 
         //do exception handling
-        $stm = 'SELECT id, dictionary_name as dictName FROM `cspro_dictionaries` JOIN `cspro_dictionaries_schema`  ON dictionary_id = cspro_dictionaries.id WHERE dictionary_name IN ('.$listDictName.')';
+        $stm = 'SELECT id, name as dictName FROM `cspro_dictionaries` JOIN `cspro_dictionaries_schema`  ON dictionary_id = cspro_dictionaries.id WHERE dictionary_name IN ('.$listDictName.')';
 
         $result = $this->pdo->fetchAll($stm);
 
