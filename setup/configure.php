@@ -37,9 +37,22 @@ function parentDirectory($url) {
 $setupError = false;
 $upgrade = 0;
 $errorCode = 0;
-$databaseName = "";
-$host = "";
-$databaseUsername = "";
+// Community layer: prefill the connection fields from the environment when the
+// stack provides it (docker-compose passes MYSQL_DATABASE / MYSQL_HOST /
+// MYSQL_USER), so a Docker install does not require retyping values that are
+// already in .env — and cannot get them subtly wrong, such as entering
+// localhost where the container needs the mysql service name.
+//
+// Passwords are deliberately NOT prefilled: rendering them into the HTML would
+// expose them in the page source and in the browser cache. They stay empty and
+// must be typed. A bare-metal install sees empty fields exactly as upstream.
+$envDatabaseName = getenv('MYSQL_DATABASE');
+$envHost = getenv('MYSQL_HOST');
+$envUser = getenv('MYSQL_USER');
+
+$databaseName = is_string($envDatabaseName) ? trim($envDatabaseName) : "";
+$host = is_string($envHost) ? trim($envHost) : "";
+$databaseUsername = is_string($envUser) ? trim($envUser) : "";
 $databasePassword = "";
 $adminPassword = "";
 $timezone = date_default_timezone_get();
@@ -50,14 +63,18 @@ $maxExecutionTime = 300;
 
 $apiUrl = getProtocol() . '://' . $_SERVER['SERVER_NAME'] . getPort() . parentDirectory(parentDirectory($_SERVER['REQUEST_URI'])) . '/api/';
 
-// Community layer: upstream derives the API URL from the browser's request,
-// which is the host-side address (localhost:8095). CSWeb calls this URL from
-// *inside* the container, where Apache listens on port 80 and the published
-// port does not exist, so the derived value fails with
-// "cURL error 7: Failed to connect to localhost port 8095".
-// Honour API_URL from the environment when it is set — docker-compose passes
-// the container-side value — and fall back to the upstream derivation
-// otherwise, so a bare-metal install is unaffected.
+// Community layer: allow API_URL to be pinned from the environment.
+//
+// The derivation above is correct in most setups: SERVER_PORT is the port
+// Apache actually listens on (80 inside the container, so no port suffix), and
+// SERVER_NAME follows the Host header, so a VPS reached at
+// https://csweb.example.org derives https://csweb.example.org/api/.
+//
+// It breaks only when the address CSWeb must call itself on differs from the
+// one the browser used — a reverse proxy terminating TLS on another host, or a
+// published port that is not reachable from inside the container. Setting
+// API_URL then pins the value; leaving it empty keeps the derivation, which is
+// the right default for both a plain Docker install and a domain-based deploy.
 $apiUrlFromEnv = getenv('API_URL');
 if (is_string($apiUrlFromEnv) && trim($apiUrlFromEnv) !== '') {
     $apiUrl = trim($apiUrlFromEnv);

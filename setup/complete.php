@@ -21,6 +21,30 @@ if (is_file(__DIR__ . '/../src/config.php')) {
                 . implode(' | ', $communityInstallOutput));
         }
     }
+
+    // Community layer: persist config.php to the Docker volume immediately.
+    //
+    // docker-entrypoint.sh copies it to /var/www/html/config-persist and leaves
+    // a symlink behind, but that only runs at container start — and at start
+    // the file does not exist yet, because setup writes it while the container
+    // is already running. The copy therefore never happened, and rebuilding the
+    // image silently discarded the configuration, sending the operator back to
+    // /setup. Persisting here closes the same window as the installer above.
+    $persistDir = '/var/www/html/config-persist';
+    $configSrc = __DIR__ . '/../src/config.php';
+    if (is_dir($persistDir) && is_writable($persistDir) && !is_link($configSrc)) {
+        $persisted = $persistDir . '/config.php';
+        if (@copy($configSrc, $persisted)) {
+            @chmod($persisted, 0644);
+            // Replace the real file with a symlink so later writes land in the
+            // volume, exactly as the entrypoint would have set it up.
+            if (@unlink($configSrc)) {
+                @symlink($persisted, $configSrc);
+            }
+        } else {
+            error_log('[CSWeb] Could not persist config.php to ' . $persistDir);
+        }
+    }
 }
 ?>
 <!DOCTYPE html>
