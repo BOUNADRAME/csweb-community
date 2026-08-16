@@ -72,6 +72,58 @@ class MySQLQuestionnaireSerializer {
         return $this->qi($this->tableName($suffix));
     }
 
+    /**
+     * Community layer: execute a multi-row INSERT in batches.
+     *
+     * A single INSERT with every row's placeholders is fine on MySQL and
+     * PostgreSQL but fails on SQL Server, which caps a statement at 2100
+     * parameters — reached after roughly 230 cases at 9 columns each. The
+     * breakout would then die mid-run on any realistic volume.
+     *
+     * Rows are sent in chunks sized so that chunk * columns stays under the
+     * platform limit. MySQL and PostgreSQL keep an effectively single batch
+     * unless the volume is very large, so their behaviour is unchanged.
+     *
+     * @param string  $insertPrefix  "INSERT INTO tbl (cols) VALUES "
+     * @param array   $values        flat parameter list, row-major
+     * @param int     $columnCount   parameters per row
+     * @return int                   total rows inserted
+     */
+    private function executeBatchedInsert(string $insertPrefix, array $values, int $columnCount): int {
+        if ($columnCount < 1 || $values === []) {
+            return 0;
+        }
+
+        $totalRows = (int) (count($values) / $columnCount);
+        if ($totalRows < 1) {
+            return 0;
+        }
+
+        // SQL Server's hard cap is 2100 parameters per statement; leave a small
+        // margin. The other platforms have no comparable limit, so they get a
+        // large chunk and in practice a single round trip.
+        $isSqlServer = $this->targetPlatform instanceof \Doctrine\DBAL\Platforms\SQLServerPlatform;
+        $maxParams = $isSqlServer ? 2000 : 65000;
+        $rowsPerChunk = max(1, (int) floor($maxParams / $columnCount));
+
+        if ($rowsPerChunk >= $totalRows) {
+            $singlePlaceholder = '(' . implode(', ', array_fill(0, $columnCount, '?')) . ')';
+            $stm = $insertPrefix . implode(', ', array_fill(0, $totalRows, $singlePlaceholder));
+            return (int) $this->targetConnection->executeUpdate($stm, $values);
+        }
+
+        $inserted = 0;
+        $singlePlaceholder = '(' . implode(', ', array_fill(0, $columnCount, '?')) . ')';
+        for ($offset = 0; $offset < $totalRows; $offset += $rowsPerChunk) {
+            $rowsInChunk = min($rowsPerChunk, $totalRows - $offset);
+            $chunkValues = array_slice($values, $offset * $columnCount, $rowsInChunk * $columnCount);
+            $stm = $insertPrefix . implode(', ', array_fill(0, $rowsInChunk, $singlePlaceholder));
+            $inserted += (int) $this->targetConnection->executeUpdate($stm, $chunkValues);
+        }
+        $this->logger->debug("Batched insert: $totalRows rows in chunks of $rowsPerChunk");
+        return $inserted;
+    }
+
     public function serializeQuestionnaries($processCasesOptions) {
         $bind = [];
         DictionarySchemaHelper::updateProcessCasesOptions($this->dict, $processCasesOptions, $this->logger);
@@ -337,9 +389,6 @@ class MySQLQuestionnaireSerializer {
         $idItemNames = array_keys($nameTypeMap);
         $idItemNames = array_map('strtoupper', $idItemNames);
         $values = [];
-        $singlePlaceholder = '(' . implode(', ', array_fill(0, count($idItemNames) + 1, '?')) . ')';
-        // (?, ?), ... , (?, ?)
-        $placeholders = implode(', ', array_fill(0, count($this->casesMap), $singlePlaceholder));
 
         $this->logger->debug('serializeQuestionnaireLevel: processing ' . count($this->casesMap) . ' cases to insert');
         $level = $this->dict->getLevels()[0];
@@ -356,9 +405,8 @@ class MySQLQuestionnaireSerializer {
             }
         }
 
-        $stm .= $placeholders;
         try {
-            $count = $this->targetConnection->executeUpdate($stm, $values);
+            $count = $this->executeBatchedInsert($stm, $values, count($idItemNames) + 1);
             $this->logger->debug("inserted  $count rows into case level");
         } catch (\Exception $e) {
             $strMsg = '[SourceDB: ' . $this->sourcePdo->getDsn() . ' TargetDB: ' . $this->targetConnection->getDatabase();
@@ -386,10 +434,6 @@ class MySQLQuestionnaireSerializer {
         $quotedCaseColumns = implode(', ', array_map(fn($c) => $this->qi($c), $caseColumns));
         $stm = 'INSERT INTO ' . $this->qt('cases') . ' (' . $quotedCaseColumns . ') VALUES ';
         $values = [];
-        $singlePlaceholder = '(' . implode(', ', array_fill(0, count($itemNames), '?')) . ')';
-        // (?, ?), ... , (?, ?)
-        $placeholders = implode(', ', array_fill(0, count($this->casesMap), $singlePlaceholder));
-
         $this->logger->debug('Inserting into cases table: processing ' . count($this->casesMap) . ' cases to insert');
         foreach ($caseList as $case) {
             $caseRow = $this->casesMap[$case];
@@ -412,9 +456,8 @@ class MySQLQuestionnaireSerializer {
             }
         }
 
-        $stm .= $placeholders;
         try {
-            $count = $this->targetConnection->executeUpdate($stm, $values);
+            $count = $this->executeBatchedInsert($stm, $values, count($itemNames));
             $this->logger->debug("inserted  $count rows into cases table");
         } catch (\Exception $e) {
             $strMsg = '[SourceDB: ' . $this->sourcePdo->getDsn() . ' TargetDB: ' . $this->targetConnection->getDatabase();
@@ -461,9 +504,6 @@ class MySQLQuestionnaireSerializer {
             $stm = 'INSERT INTO ' . $this->qt('notes') . ' (' . $quotedNoteColumns . ') VALUES ';
             $itemNames = ["case_id", "field_name", "level_key", "record_occurrence", "item_occurrence", "subitem_occurrence", "content", "operator_id", "modified_time"];
             $values = [];
-            $singlePlaceholder = '(' . implode(', ', array_fill(0, count($itemNames), '?')) . ')';
-            // (?, ?), ... , (?, ?)
-            $placeholders = implode(', ', array_fill(0, is_countable($result) ? count($result) : 0, $singlePlaceholder));
 
             $this->logger->debug('Inserting into notes table');
             foreach ($result as $row) {
@@ -472,8 +512,7 @@ class MySQLQuestionnaireSerializer {
                 }
             }
 
-            $stm .= $placeholders;
-            $count = $this->targetConnection->executeUpdate($stm, $values);
+            $count = $this->executeBatchedInsert($stm, $values, count($itemNames));
             $this->logger->debug("inserted  $count notes");
         } catch (\Exception $e) {
             $strMsg = '[SourceDB: ' . $this->sourcePdo->getDsn() . ' TargetDB: ' . $this->targetConnection->getDatabase();
@@ -574,11 +613,11 @@ class MySQLQuestionnaireSerializer {
         $recordItemNames = array_map('strtoupper', $recordItemNames);
         $values = [];
         //add +1 for level-1-id
-        if ($record->getMaxRecords() > 1) {//to account for level id and occ 
-            $singlePlaceholder = '(' . implode(', ', array_fill(0, count($recordItemNames) + 2, '?')) . ')';
-        } else {//to account for level-id
-            $singlePlaceholder = '(' . implode(', ', array_fill(0, count($recordItemNames) + 1, '?')) . ')';
-        }
+        // Community layer: keep the column count, the batched insert needs it.
+        $recordColumnCount = $record->getMaxRecords() > 1
+                ? count($recordItemNames) + 2   // level id and occ
+                : count($recordItemNames) + 1;  // level id only
+        $singlePlaceholder = '(' . implode(', ', array_fill(0, $recordColumnCount, '?')) . ')';
         // (?, ?), ... , (?, ?)
 
         $recordCount = 0;
@@ -615,15 +654,12 @@ class MySQLQuestionnaireSerializer {
             }
         }
 
-        $placeholders = implode(', ', array_fill(0, $recordCount, $singlePlaceholder));
-
-        $stm .= $placeholders;
         if ($recordCount == 0) {
             $this->logger->debug("No records to output " . $record->getName());
             return;
         }
         try {
-            $count = $this->targetConnection->executeUpdate($stm, $values);
+            $count = $this->executeBatchedInsert($stm, $values, $recordColumnCount);
             $this->logger->debug("inserted  $count records");
         } catch (\Exception $e) {
             $strMsg = '[SourceDB: ' . $this->sourcePdo->getDsn() . ' TargetDB: ' . $this->targetConnection->getDatabase();

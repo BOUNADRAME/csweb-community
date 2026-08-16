@@ -282,13 +282,16 @@ class DictionarySchemaHelper {
     }
 
     public function tableExists($table) {
+        // Community layer: ask the schema manager instead of probing with
+        // "SELECT 1 ... LIMIT 1". LIMIT is MySQL/PostgreSQL syntax and a
+        // syntax error on SQL Server, so the probe threw on every call there
+        // and the table always looked missing. tablesExist() resolves through
+        // the platform's own catalogue, so it works on all three engines.
         try {
-            $result = $this->conn->executeQuery("SELECT 1 FROM {$table} LIMIT 1");
+            return $this->conn->getSchemaManager()->tablesExist([trim($table, '`"[]')]);
         } catch (\Exception) {
             return false;
         }
-        // ALW - By default PDO will not throw exceptions, so check result also.
-        return $result !== false;
     }
 
     public function IsValidSchema(): bool {
@@ -369,15 +372,17 @@ class DictionarySchemaHelper {
             // lock costs nothing.
             $this->conn->beginTransaction();
             try {
-                // FOR UPDATE via the platform, so MySQL and PostgreSQL both get
-                // their row lock. LIMIT is already used unguarded in five other
-                // queries here, so this statement is no less portable than the
-                // rest of the breakout — SQL Server targets would need a wider
-                // rewrite than a lock clause.
-                $stm = 'SELECT ' . $this->qi('id') . ' FROM ' . $this->qt('cspro_jobs')
-                        . ' WHERE ' . $this->qi('status') . ' = ' . self::JOB_STATUS_NOT_STARTED
-                        . ' ORDER BY ' . $this->qi('id') . ' LIMIT 1'
-                        . ' ' . $this->conn->getDatabasePlatform()->getWriteLockSQL();
+                // Row limit and lock clause both come from the platform:
+                // "LIMIT 1 FOR UPDATE" on MySQL and PostgreSQL,
+                // "OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY" on SQL Server, where
+                // LIMIT is a syntax error.
+                $platform = $this->conn->getDatabasePlatform();
+                $stm = $platform->modifyLimitQuery(
+                    'SELECT ' . $this->qi('id') . ' FROM ' . $this->qt('cspro_jobs')
+                    . ' WHERE ' . $this->qi('status') . ' = ' . self::JOB_STATUS_NOT_STARTED
+                    . ' ORDER BY ' . $this->qi('id'),
+                    1
+                ) . ' ' . $platform->getWriteLockSQL();
                 $stmt = $this->conn->prepare($stm);
                 $resultSet = $stmt->execute();
                 $result = $resultSet->fetchAllAssociative();
@@ -427,9 +432,13 @@ class DictionarySchemaHelper {
 //SELECT the most recent job and get the endCaseId and endRevision 
         $jobId = 0;
         $jobColumns = ['id', 'start_caseid', 'start_revision', 'end_caseid', 'end_revision', 'cases_processed', 'status'];
-        $stm = 'SELECT ' . implode(', ', array_map(fn($c) => $this->qi($c), $jobColumns))
-                . ' FROM ' . $this->qt('cspro_jobs')
-                . ' ORDER BY ' . $this->qi('id') . ' DESC LIMIT 1';
+        // Community layer: platform-generated row limit, see processNextJob().
+        $stm = $this->conn->getDatabasePlatform()->modifyLimitQuery(
+            'SELECT ' . implode(', ', array_map(fn($c) => $this->qi($c), $jobColumns))
+            . ' FROM ' . $this->qt('cspro_jobs')
+            . ' ORDER BY ' . $this->qi('id') . ' DESC',
+            1
+        );
 
         try {
             $stmt = $this->conn->prepare($stm);
