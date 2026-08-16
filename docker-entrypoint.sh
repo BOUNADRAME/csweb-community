@@ -53,25 +53,10 @@ if [ -f /var/www/html/src/config.php ]; then
     chmod -R 777 /var/www/html/var
     echo "[CSWeb] Cache cleared successfully."
 
-    # Remove UNIQUE constraint on schema_name (required for multi-dictionary breakout)
-    echo "[CSWeb] Checking schema_name constraint..."
-    php -r "
-        require '/var/www/html/src/config.php';
-        try {
-            \$port = defined('DBPORT') ? DBPORT : '3306';
-            \$pdo = new PDO('mysql:host=' . DBHOST . ';dbname=' . DBNAME . ';port=' . \$port, DBUSER, DBPASS);
-            \$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            \$result = \$pdo->query(\"SHOW INDEX FROM cspro_dictionaries_schema WHERE Key_name = 'schema_name'\");
-            if (\$result->rowCount() > 0) {
-                \$pdo->exec('ALTER TABLE cspro_dictionaries_schema DROP KEY schema_name');
-                echo '[CSWeb] Dropped UNIQUE constraint on schema_name' . PHP_EOL;
-            } else {
-                echo '[CSWeb] schema_name constraint already removed' . PHP_EOL;
-            }
-        } catch (Exception \$e) {
-            echo '[CSWeb] Could not check/drop schema_name constraint: ' . \$e->getMessage() . PHP_EOL;
-        }
-    " 2>/dev/null || true
+    # NOTE: the UNIQUE index on cspro_dictionaries_schema.schema_name used to be
+    # dropped here, but this block runs before /setup has created the table on a
+    # fresh stack, so it never had anything to drop. It now lives in
+    # CommunitySchemaInstaller (schema v6), which runs after setup.
 
     # Install the Community layer schema additions — idempotent.
     #

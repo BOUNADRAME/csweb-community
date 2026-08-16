@@ -26,7 +26,7 @@ class CommunitySchemaInstaller {
      * under `community_schema_version`, independently of the upstream
      * `schema_version`.
      */
-    public const COMMUNITY_SCHEMA_VERSION = 5;
+    public const COMMUNITY_SCHEMA_VERSION = 6;
 
     public const CONFIG_KEY = 'community_schema_version';
 
@@ -68,6 +68,9 @@ class CommunitySchemaInstaller {
         }
         if ($current < 5) {
             $this->installBackupFiles();
+        }
+        if ($current < 6) {
+            $this->dropSchemaNameUniqueIndex();
         }
 
         $this->setInstalledVersion(self::COMMUNITY_SCHEMA_VERSION);
@@ -265,6 +268,40 @@ CREATE TABLE IF NOT EXISTS `cspro_backup_files` (
 SQL);
 
         $this->logger->info('Installed cspro_backup_files');
+    }
+
+    /**
+     * Community schema v6: allow several dictionaries to share a target schema.
+     *
+     * Upstream puts a UNIQUE index on cspro_dictionaries_schema.schema_name,
+     * because it assumes one dictionary per target database. Selective breakout
+     * is built on the opposite assumption — that is why every target table is
+     * prefixed <dict>_ — so configuring a second dictionary against the same
+     * schema failed with:
+     *
+     *   Duplicate entry 'ansd' for key 'cspro_dictionaries_schema.schema_name'
+     *
+     * docker-entrypoint.sh already tried to drop this index, but it runs at
+     * boot, before /setup has created the table, so on a fresh stack it never
+     * had anything to drop and nothing retried afterwards.
+     */
+    private function dropSchemaNameUniqueIndex(): void {
+        try {
+            $stmt = $this->pdo->query(
+                'SHOW INDEX FROM `cspro_dictionaries_schema` WHERE Key_name = ' . $this->pdo->quote('schema_name')
+            );
+            if ($stmt->rowCount() > 0) {
+                $this->pdo->exec('ALTER TABLE `cspro_dictionaries_schema` DROP KEY `schema_name`');
+                $this->logger->info('Dropped UNIQUE index on cspro_dictionaries_schema.schema_name');
+            }
+        } catch (\Exception $e) {
+            // Non-blocking: without the drop, only the second dictionary
+            // sharing a schema fails, and it fails loudly at configuration
+            // time rather than silently.
+            $this->logger->warning('Could not drop the schema_name unique index', [
+                'context' => (string) $e,
+            ]);
+        }
     }
 
     /**
