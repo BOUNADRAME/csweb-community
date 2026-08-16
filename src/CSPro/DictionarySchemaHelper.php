@@ -352,21 +352,66 @@ class DictionarySchemaHelper {
     public function processNextJob($maxCasesPerChunk): int {
         $bind = [];
         $jobId = 0;
-//find a job that is not being processed and update its status to processing 
+//find a job that is not being processed and update its status to processing
         try {
-            $stm = 'SELECT ' . $this->qi('id') . ' FROM ' . $this->qt('cspro_jobs')
-                    . ' WHERE ' . $this->qi('status') . ' = ' . self::JOB_STATUS_NOT_STARTED
-                    . ' ORDER BY ' . $this->qi('id') . ' LIMIT 1';
-            $stmt = $this->conn->prepare($stm);
-            $resultSet = $stmt->execute();
-            $result = $resultSet->fetchAllAssociative();
-            $jobId = (is_countable($result) ? count($result) : 0) > 0 ? $result[0]['id'] : $this->createJob($maxCasesPerChunk);
-            if ($jobId) {
-                $stm = 'UPDATE ' . $this->qt('cspro_jobs') . ' SET ' . $this->qi('status') . ' = :status'
-                        . ' WHERE ' . $this->qi('id') . ' = :id';
-                $bind['status'] = self::JOB_STATUS_IN_PROCESS;
-                $bind['id'] = $jobId;
-                $this->conn->executeUpdate($stm, $bind);
+            // Community layer: claim the job atomically.
+            //
+            // Upstream reads the next NOT_STARTED job and marks it IN_PROCESS
+            // in two separate statements, with nothing in between. Two workers
+            // reaching that gap together both see the same row and both process
+            // the same cases — duplicated writes into the target database.
+            //
+            // The SELECT now runs inside a transaction with FOR UPDATE, so the
+            // second worker blocks on the row until the first commits, then
+            // re-reads it as IN_PROCESS and moves on. Single-worker deployments
+            // — the current scheduler runs dictionaries sequentially under a
+            // LockableTrait lock — behave exactly as before: an uncontended row
+            // lock costs nothing.
+            $this->conn->beginTransaction();
+            try {
+                // FOR UPDATE via the platform, so MySQL and PostgreSQL both get
+                // their row lock. LIMIT is already used unguarded in five other
+                // queries here, so this statement is no less portable than the
+                // rest of the breakout — SQL Server targets would need a wider
+                // rewrite than a lock clause.
+                $stm = 'SELECT ' . $this->qi('id') . ' FROM ' . $this->qt('cspro_jobs')
+                        . ' WHERE ' . $this->qi('status') . ' = ' . self::JOB_STATUS_NOT_STARTED
+                        . ' ORDER BY ' . $this->qi('id') . ' LIMIT 1'
+                        . ' ' . $this->conn->getDatabasePlatform()->getWriteLockSQL();
+                $stmt = $this->conn->prepare($stm);
+                $resultSet = $stmt->execute();
+                $result = $resultSet->fetchAllAssociative();
+                $jobId = (is_countable($result) ? count($result) : 0) > 0 ? (int) $result[0]['id'] : 0;
+
+                if ($jobId) {
+                    $stm = 'UPDATE ' . $this->qt('cspro_jobs') . ' SET ' . $this->qi('status') . ' = :status'
+                            . ' WHERE ' . $this->qi('id') . ' = :id';
+                    $bind['status'] = self::JOB_STATUS_IN_PROCESS;
+                    $bind['id'] = $jobId;
+                    $this->conn->executeUpdate($stm, $bind);
+                }
+                $this->conn->commit();
+            } catch (\Exception $inner) {
+                if ($this->conn->isTransactionActive()) {
+                    $this->conn->rollBack();
+                }
+                throw $inner;
+            }
+
+            // No pending job: create one *outside* the transaction above, so the
+            // row lock is released first. createJob() scans the source database
+            // and can be slow; holding the lock across it would serialise
+            // workers for no benefit.
+            if (!$jobId) {
+                $jobId = $this->createJob($maxCasesPerChunk);
+                if ($jobId) {
+                    $stm = 'UPDATE ' . $this->qt('cspro_jobs') . ' SET ' . $this->qi('status') . ' = :status'
+                            . ' WHERE ' . $this->qi('id') . ' = :id';
+                    $this->conn->executeUpdate($stm, [
+                        'status' => self::JOB_STATUS_IN_PROCESS,
+                        'id' => $jobId,
+                    ]);
+                }
             }
         } catch (\Exception $e) {
             $strMsg = "Failed getting next job from database:  " . $this->connectionParams['dbname'] . " while processsing Dictionary: " . $this->dictionaryName;
