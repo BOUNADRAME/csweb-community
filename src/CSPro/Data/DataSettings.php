@@ -324,14 +324,50 @@ class DataSettings {
             $bind = [];
             $bind['id'] = $dictionaryId;
             $dictName = $this->pdo->fetchValue($stm, $bind);
-            
-            // drop tables and recreate them. this will delete data (processed cases).
+
+            // Build the helper before the DELETE: it reads the connection
+            // parameters from cspro_dictionaries_schema, the very row about to
+            // be removed.
             $dictionarySchemaHelper = new DictionarySchemaHelper($dictName, $this->pdo, $this->logger);
-            $dictionarySchemaHelper->regenerateSchema();
-            
+            $canDropTables = false;
+            try {
+                $canDropTables = $dictionarySchemaHelper->initialize();
+            } catch (\Throwable $connect) {
+                $this->logger->warning(
+                    'Target database unreachable for ' . $dictName . ', its tables will be left in place.',
+                    ['context' => (string) $connect]
+                );
+            }
+
+            // Community layer: delete the configuration row FIRST.
+            //
+            // Upstream called regenerateSchema() before the DELETE, which drops
+            // the target tables and recreates them. When that recreation fails —
+            // an unreachable target, or a record wide enough to hit InnoDB's
+            // 8126-byte row limit — the exception propagates and the DELETE
+            // never runs. The configuration then cannot be removed from the UI
+            // at all: the Delete button confirms, posts, and silently fails,
+            // leaving the operator stuck with a broken entry.
+            //
+            // Removing the row first makes the button always work. Dropping the
+            // target tables is cleanup, so it is attempted afterwards and its
+            // failure is logged rather than fatal.
             $stm = 'DELETE FROM `cspro_dictionaries_schema` WHERE `dictionary_id` = :id';
             $row_count = $this->pdo->fetchAffected($stm, $bind);
-            return (bool)$row_count;
+
+            if ($canDropTables) {
+                try {
+                    $dictionarySchemaHelper->dropSchema();
+                } catch (\Throwable $cleanup) {
+                    $this->logger->warning(
+                        'Configuration removed, but the target tables could not be dropped for ' . $dictName
+                        . ' — they may need dropping by hand.',
+                        ['context' => (string) $cleanup]
+                    );
+                }
+            }
+
+            return (bool) $row_count;
         } catch (\Exception $e) {
             $this->logger->error('Failed deleting configuration. Dictionary Id: ' . $dictionaryId, ["context" => (string) $e]);
             throw $e;

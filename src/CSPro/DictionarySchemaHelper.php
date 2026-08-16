@@ -218,6 +218,24 @@ class DictionarySchemaHelper {
         return $this->initialized;
     }
 
+    /**
+     * Community layer: drop this dictionary's target tables without recreating
+     * them.
+     *
+     * regenerateSchema() drops *and* recreates, which is what a configuration
+     * update needs. Deleting a configuration only needs the drop — and must not
+     * depend on the schema being creatable, or a configuration whose schema
+     * fails to build can never be removed.
+     *
+     * Requires initialize() to have succeeded.
+     */
+    public function dropSchema(): void {
+        if ($this->conn === null) {
+            return;
+        }
+        $this->cleanDictionarySchema();
+    }
+
     private function cleanDictionarySchema() {
         try {
             $tables = $this->conn->getSchemaManager()->listTables();
