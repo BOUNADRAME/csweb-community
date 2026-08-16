@@ -222,13 +222,40 @@ class DictionarySchemaHelper {
         try {
             $tables = $this->conn->getSchemaManager()->listTables();
             if ((is_countable($tables) ? count($tables) : 0) > 0) {
-                $this->conn->prepare("SET FOREIGN_KEY_CHECKS = 0;")->execute();
+                // Community layer: SET FOREIGN_KEY_CHECKS is MySQL-only, and
+                // quoteString() hardcodes backticks — both break on PostgreSQL
+                // and SQL Server. Drop with CASCADE where the platform supports
+                // it, which removes the dependent constraints without needing to
+                // disable key checking at all.
+                $platform = $this->conn->getDatabasePlatform();
+                $isMySql = $platform instanceof \Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
+                // CASCADE on DROP TABLE is PostgreSQL syntax; SQL Server does
+                // not accept it and relies on drop order instead.
+                $supportsCascade = $platform instanceof \Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 
-                foreach ($tables as $table) {
-                    $sql = 'DROP TABLE ' . MySQLDictionarySchemaGenerator::quoteString($table->getName());
-                    $this->conn->prepare($sql)->execute();
+                if ($isMySql) {
+                    $this->conn->executeStatement('SET FOREIGN_KEY_CHECKS = 0');
                 }
-                $this->conn->prepare("SET FOREIGN_KEY_CHECKS = 1;")->execute();
+
+                // Only this dictionary's own tables: several dictionaries can
+                // share a target schema, so dropping everything would wipe a
+                // neighbour's data.
+                $prefix = $this->tablePrefix() . '_';
+                foreach ($tables as $table) {
+                    $name = $table->getName();
+                    if (!str_starts_with(strtolower($name), $prefix)) {
+                        continue;
+                    }
+                    $sql = 'DROP TABLE IF EXISTS ' . $this->qi($name);
+                    if ($supportsCascade) {
+                        $sql .= ' CASCADE';
+                    }
+                    $this->conn->executeStatement($sql);
+                }
+
+                if ($isMySql) {
+                    $this->conn->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
+                }
             }
         } catch (\Exception $e) {
             $strMsg = "Failed deleting tables from database: " . $this->connectionParams['dbname'] . " while processsing Dictionary: " . $this->dictionaryName;
@@ -244,11 +271,27 @@ class DictionarySchemaHelper {
             $dictionarySchema = new MySQLDictionarySchemaGenerator($this->logger);
             $processCasesOptions = $this->getProcessCaseOptions();
             $schema = $dictionarySchema->generateDictionary($this->dictionary, $processCasesOptions);
+            // Community layer: run each DDL statement on its own.
+            //
+            // toSql() returns one statement per table, index and constraint.
+            // Upstream joins them with ";" and sends the lot as a single
+            // prepared statement, which only MySQL accepts. PostgreSQL rejects
+            // it with "cannot insert multiple commands into a prepared
+            // statement", and SQL Server behaves the same way, so schema
+            // creation failed on every non-MySQL target.
+            //
+            // executeStatement() per entry is also what lets a failure name the
+            // statement that broke instead of the whole batch.
             $dictionarySQL = $schema->toSql($this->conn->getDatabasePlatform());
-            $dictionarySQL = implode(";" . PHP_EOL, $dictionarySQL);
-            $this->logger->debug("writing schema SQL " . $dictionarySQL);
+            $this->logger->debug("writing schema SQL " . implode(";" . PHP_EOL, $dictionarySQL));
 
-            $this->conn->prepare($dictionarySQL)->execute();
+            foreach ($dictionarySQL as $statement) {
+                $statement = trim($statement);
+                if ($statement === '') {
+                    continue;
+                }
+                $this->conn->executeStatement($statement);
+            }
 
             //insert into cspro_meta dictionary information
             $dictionaryVersion = $this->dictionary->getVersion();
