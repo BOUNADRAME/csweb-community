@@ -157,7 +157,10 @@ class MySQLQuestionnaireSerializer {
 
             //update job
             $jobId = $this->jobId;
-            $stm = 'UPDATE ' . $this->qt('cspro_jobs') . ' SET ' . $this->qi('status') . '= :status, ' . $this->qi('cases_processed') . ' = :totalCases WHERE ' . $this->qi('id') . ' = :jobId';
+            // Community layer: set modified_time explicitly. Upstream relied on
+            // MySQL's ON UPDATE CURRENT_TIMESTAMP, which PostgreSQL and SQL
+            // Server do not have, so "Last Processed Time" stayed empty there.
+            $stm = 'UPDATE ' . $this->qt('cspro_jobs') . ' SET ' . $this->qi('status') . '= :status, ' . $this->qi('cases_processed') . ' = :totalCases, ' . $this->qi('modified_time') . ' = CURRENT_TIMESTAMP WHERE ' . $this->qi('id') . ' = :jobId';
             $bind['status'] = DictionarySchemaHelper::JOB_STATUS_COMPLETE;
             $bind['jobId'] = $this->jobId;
             $bind['totalCases'] = $caseCount;

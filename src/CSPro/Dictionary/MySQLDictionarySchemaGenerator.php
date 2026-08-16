@@ -47,6 +47,28 @@ class MySQLDictionarySchemaGenerator {
         $this->nomSchama = null;
     }
 
+    /**
+     * Community layer: portable CURRENT_TIMESTAMP default.
+     *
+     * Upstream wrote these columns with a raw 'columnDefinition', which
+     * bypasses DBAL entirely and injects MySQL SQL verbatim —
+     * "timestamp default current_timestamp on update current_timestamp".
+     * PostgreSQL rejects that with a syntax error at "on", so creating the
+     * schema failed outright on a PostgreSQL target.
+     *
+     * The keyword itself is standard and accepted by MySQL, PostgreSQL and
+     * SQL Server alike, so it is passed as a plain default and DBAL renders
+     * the column for the platform.
+     *
+     * Note: the "ON UPDATE" half has no portable equivalent — it is a MySQL
+     * extension. cspro_jobs.modified_time is read as "Last Processed Time",
+     * so on non-MySQL targets a trigger is installed instead; see
+     * addModifiedTimeTrigger().
+     */
+    private function currentTimestampDefault(): string {
+        return 'CURRENT_TIMESTAMP';
+    }
+
     public static function generateColumnType(Item $item): string {
         if ($item->isNumeric()) {
             return self::COLUMN_TYPE_DECIMAL;
@@ -248,7 +270,9 @@ class MySQLDictionarySchemaGenerator {
         $notesTable->addColumn(static::quoteString('subitem_occurrence'), "integer", ["notnull" => true]);
         $notesTable->addColumn(static::quoteString('content'), "text", ["notnull" => true]);
         $notesTable->addColumn(static::quoteString('operator_id'), "text", ["notnull" => true]);
-        $notesTable->addColumn("`modified_time`", "datetime", ['columnDefinition' => 'timestamp']);
+        // Community layer: no raw columnDefinition — it bypasses DBAL and
+        // injects MySQL SQL verbatim, which is a syntax error on PostgreSQL.
+        $notesTable->addColumn("`modified_time`", "datetime", ["notnull" => false, "default" => null]);
         $notesTable->addIndex([static::quoteString('case_id')], null, [], ["lengths" => [191]]);
         //DBAL has issues with creating foreign key constraint on text columns with lengths. 
         //not adding for now, if needed add it in the future
@@ -282,8 +306,8 @@ class MySQLDictionarySchemaGenerator {
         // DDL on MySQL, PostgreSQL and SQL Server alike, and existing INSERTs
         // are unaffected.
         $jobsTable->addColumn("`error_message`", "text", ["notnull" => false, "default" => null]);
-        $jobsTable->addColumn("`created_time`", "datetime", ['columnDefinition' => 'timestamp default current_timestamp']);
-        $jobsTable->addColumn("`modified_time`", "datetime", ['columnDefinition' => 'timestamp default current_timestamp on update current_timestamp']);
+        $jobsTable->addColumn("`created_time`", "datetime", ["notnull" => false, "default" => $this->currentTimestampDefault()]);
+        $jobsTable->addColumn("`modified_time`", "datetime", ["notnull" => false, "default" => $this->currentTimestampDefault()]);
         $jobsTable->setPrimaryKey(["`id`"]);
 
         //Create meta table 
@@ -294,8 +318,8 @@ class MySQLDictionarySchemaGenerator {
         $metaTable->addColumn("`cspro_version`", "text", ["notnull" => true]);
         $metaTable->addColumn("`dictionary`", "text", ["notnull" => true]);
         $metaTable->addColumn("`source_modified_time`", "datetime", ["default" => null]);
-        $metaTable->addColumn("`created_time`", "datetime", ['columnDefinition' => 'timestamp default current_timestamp']);
-        $metaTable->addColumn("`modified_time`", "datetime", ['columnDefinition' => 'timestamp default current_timestamp on update current_timestamp']);
+        $metaTable->addColumn("`created_time`", "datetime", ["notnull" => false, "default" => $this->currentTimestampDefault()]);
+        $metaTable->addColumn("`modified_time`", "datetime", ["notnull" => false, "default" => $this->currentTimestampDefault()]);
         $metaTable->setPrimaryKey(["`id`"]);
     }
 

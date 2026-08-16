@@ -395,6 +395,7 @@ class DictionarySchemaHelper {
 
                 if ($jobId) {
                     $stm = 'UPDATE ' . $this->qt('cspro_jobs') . ' SET ' . $this->qi('status') . ' = :status'
+                            . ', ' . $this->qi('modified_time') . ' = CURRENT_TIMESTAMP'
                             . ' WHERE ' . $this->qi('id') . ' = :id';
                     $bind['status'] = self::JOB_STATUS_IN_PROCESS;
                     $bind['id'] = $jobId;
@@ -416,6 +417,7 @@ class DictionarySchemaHelper {
                 $jobId = $this->createJob($maxCasesPerChunk);
                 if ($jobId) {
                     $stm = 'UPDATE ' . $this->qt('cspro_jobs') . ' SET ' . $this->qi('status') . ' = :status'
+                            . ', ' . $this->qi('modified_time') . ' = CURRENT_TIMESTAMP'
                             . ' WHERE ' . $this->qi('id') . ' = :id';
                     $this->conn->executeUpdate($stm, [
                         'status' => self::JOB_STATUS_IN_PROCESS,
