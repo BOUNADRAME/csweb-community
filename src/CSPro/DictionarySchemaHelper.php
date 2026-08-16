@@ -256,8 +256,11 @@ class DictionarySchemaHelper {
                     . " WHERE  name = '" . $this->dictionaryName . "'";
             $result = $this->pdo->fetchOne($stm);
             if ($result) {
-                $stm = "INSERT INTO `cspro_meta`(`cspro_version`, `dictionary`, `source_modified_time`) "
-                        . "VALUES (:version, :dictionary, :source_modified_time)";
+                // Community layer: the meta table is prefixed per dictionary,
+                // like every other breakout table.
+                $stm = 'INSERT INTO ' . $this->qt('cspro_meta')
+                        . '(' . $this->qi('cspro_version') . ', ' . $this->qi('dictionary') . ', ' . $this->qi('source_modified_time') . ') '
+                        . 'VALUES (:version, :dictionary, :source_modified_time)';
                 $bind['version'] = $dictionaryVersion;
                 $bind['dictionary'] = $result['dictionary_full_content'];
                 $bind['source_modified_time'] = $result['modified_time'];
@@ -299,10 +302,12 @@ class DictionarySchemaHelper {
         //check the time stamp of dictionary in the meta table with the original dictionary timestamp.
         $isValid = false;
         try {
-            if (!$this->tableExists("`cspro_meta`")) {
+            // Community layer: prefixed meta table, unquoted for tableExists()
+            // which resolves through the schema manager.
+            if (!$this->tableExists($this->tablePrefix() . '_cspro_meta')) {
                 return $isValid;
             }
-            $stm = "SELECT source_modified_time FROM `cspro_meta` ";
+            $stm = 'SELECT ' . $this->qi('source_modified_time') . ' FROM ' . $this->qt('cspro_meta');
             $stmt = $this->conn->executeQuery($stm);
             $result = $stmt->fetch();
             if ($result) {
