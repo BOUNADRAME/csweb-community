@@ -24,12 +24,30 @@ const statusConfig: Record<VersionStatus, { color: string; bg: string; label: st
 
 export function VersionSwitcher() {
   const [open, setOpen] = useState(false)
+  // The line the reader picked. The site itself is not versioned — one set of
+  // pages covers both — but leaving the badge pinned to versions.current made a
+  // click look like it had done nothing. It now reflects the choice, which is
+  // what a dropdown showing a checkmark is expected to do.
+  const [selected, setSelected] = useState<string>(versions.current)
   const ref = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const basePath = router.basePath || ''
 
+  // Restore the choice across navigations: each page mounts the component
+  // afresh, so without this the badge would snap back on every click-through.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('csweb-doc-line')
+      if (saved && (versions.versions as VersionEntry[]).some((v) => v.version === saved)) {
+        setSelected(saved)
+      }
+    } catch {
+      // localStorage unavailable (private mode): fall back to the default.
+    }
+  }, [])
+
   const current = (versions.versions as VersionEntry[]).find(
-    (v) => v.version === versions.current
+    (v) => v.version === selected
   )
   const currentStatus = current ? statusConfig[current.status] : statusConfig.current
 
@@ -75,7 +93,7 @@ export function VersionSwitcher() {
             flexShrink: 0,
           }}
         />
-        v{versions.current}
+        v{selected}
         <svg
           width="12"
           height="12"
@@ -139,7 +157,11 @@ export function VersionSwitcher() {
 
           {(versions.versions as VersionEntry[]).map((v) => {
             const sc = statusConfig[v.status]
-            const isCurrent = v.version === versions.current
+            // Two different things: the project's current line (which carries
+            // the Current badge) and the line this reader picked (highlighted
+            // and reflected in the button).
+            const isProjectCurrent = v.version === versions.current
+            const isSelected = v.version === selected
             return (
               <a
                 key={v.version}
@@ -148,27 +170,39 @@ export function VersionSwitcher() {
                 // domain root and 404s, since the site is served from
                 // /csweb-community. Absolute URLs are left untouched.
                 href={
-                  isCurrent
+                  isProjectCurrent
                     ? basePath + '/'
                     : v.docsUrl.startsWith('http')
                       ? v.docsUrl
                       : basePath + v.docsUrl
                 }
                 role="option"
-                aria-selected={isCurrent}
-                onClick={() => setOpen(false)}
+                aria-selected={isSelected}
+                onClick={() => {
+                  setSelected(v.version)
+                  try {
+                    window.localStorage.setItem('csweb-doc-line', v.version)
+                  } catch {
+                    // localStorage unavailable: the choice simply lasts for
+                    // this page only.
+                  }
+                  setOpen(false)
+                }}
                 style={{
                   display: 'block',
                   padding: '10px 12px',
                   textDecoration: 'none',
                   color: 'currentColor',
                   borderBottom: '1px solid var(--nextra-border-color, #e5e7eb)',
-                  background: isCurrent ? 'var(--nextra-primary-hue-bg, rgba(37,99,235,0.04))' : 'transparent',
+                  background: isSelected ? 'var(--nextra-primary-hue-bg, rgba(37,99,235,0.04))' : 'transparent',
                   cursor: 'pointer',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontWeight: 600, fontSize: 14 }}>{v.label}</span>
+                  <span style={{ fontWeight: 600, fontSize: 14 }}>
+                    {isSelected && <span style={{ marginRight: 6 }}>✓</span>}
+                    {v.label}
+                  </span>
                   <span
                     style={{
                       fontSize: 11,
