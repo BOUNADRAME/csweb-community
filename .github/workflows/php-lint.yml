@@ -2,7 +2,7 @@ name: PHP Code Quality
 
 on:
   push:
-    branches: [ master, develop ]
+    branches: [ master, develop, 8.0.x, 8.1.x ]
     paths:
       - '**.php'
       - 'src/**'
@@ -10,7 +10,7 @@ on:
       - 'composer.lock'
       - '.github/workflows/php-lint.yml'
   pull_request:
-    branches: [ master, develop ]
+    branches: [ master, develop, 8.0.x, 8.1.x ]
     paths:
       - '**.php'
       - 'src/**'

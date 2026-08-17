@@ -11,7 +11,7 @@ Minor and patch versions follow the Community fork's own pace.
 ## Branching strategy
 
 - `master` — next major in development (currently future v9)
-- `8.x` — v8 maintenance branch, security and bugfix backports
+- `8.0.x` — v8 maintenance branch, security and bugfix backports
 
 See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the full workflow.
 

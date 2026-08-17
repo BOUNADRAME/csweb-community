@@ -2,12 +2,12 @@ name: Documentation Check
 
 on:
   push:
-    branches: [ master, develop ]
+    branches: [ master, develop, 8.0.x, 8.1.x ]
     paths:
       - '**.md'
       - 'docs/**'
   pull_request:
-    branches: [ master, develop ]
+    branches: [ master, develop, 8.0.x, 8.1.x ]
     paths:
       - '**.md'
       - 'docs/**'

@@ -50,7 +50,7 @@ meaningful share of deployments still runs CSPro 8.0.
 
 | Line     | Status  | Branch  | Upstream base |
 | -------- | ------- | ------- | ------------- |
-| v8.0.x   | Current | `8.x`   | CSWeb 8.0.x   |
+| v8.0.x   | Current | `8.0.x` | CSWeb 8.0.x   |
 | v8.1.x   | Beta    | `8.1.x` | CSWeb 8.1.x   |
 
 ### What the documentation site advertises
@@ -64,7 +64,7 @@ upstream ships a release its own upgrade script refuses, per the rule
 above.
 
 `8.1.x` is a **fresh clone of upstream CSWeb 8.1** onto which the
-Community feature set is re-applied — not a merge from `8.x`. Since the
+Community feature set is re-applied — not a merge from `8.0.x`. Since the
 two upstream trees are not upgrade-compatible, they are not
 merge-compatible either.
 
@@ -90,7 +90,7 @@ Inspired by the Next.js / Symfony model:
 ```
 master  ── next version in development
 8.1.x   ── v8.1 line, based on upstream CSWeb 8.1 (Beta)
-8.x     ── v8.0 line, based on upstream CSWeb 8.0 (Current)
+8.0.x   ── v8.0 line, based on upstream CSWeb 8.0 (Current)
 ```
 
 ### Where do I push my work?
@@ -98,13 +98,13 @@ master  ── next version in development
 | Type of change | Target branch |
 | -------------- | ------------- |
 | New feature, additive change | `master` |
-| Bugfix on the current stable | `8.x` (then forward-port to `8.1.x`) |
-| Security fix on the current stable | `8.x` (then forward-port to `8.1.x` and `master`) |
+| Bugfix on the current stable | `8.0.x` (then forward-port to `8.1.x`) |
+| Security fix on the current stable | `8.0.x` (then forward-port to `8.1.x` and `master`) |
 | Fix specific to the 8.1 port | `8.1.x` only |
 | Breaking change | `master` only |
 
-Because `8.x` and `8.1.x` sit on **different upstream trees**, a fix
-that lands on `8.x` must be re-applied to `8.1.x` by cherry-pick, and
+Because `8.0.x` and `8.1.x` sit on **different upstream trees**, a fix
+that lands on `8.0.x` must be re-applied to `8.1.x` by cherry-pick, and
 may need manual conflict resolution wherever upstream 8.1 changed the
 surrounding code — the roles UI in particular.
 
@@ -113,13 +113,13 @@ review.
 
 ### Backporting workflow
 
-When a fix lands on `master` and applies to `8.x`:
+When a fix lands on `master` and applies to `8.0.x`:
 
 ```bash
-git checkout 8.x
+git checkout 8.0.x
 git cherry-pick <commit-from-master>
 # Resolve conflicts if needed
-git push origin 8.x
+git push origin 8.0.x
 ```
 
 The maintainer then publishes a patch tag (e.g. `v8.0.1`) and a Docker

@@ -95,7 +95,7 @@
         },
         "branch-alias": {
             "dev-master": "9.x-dev",
-            "dev-8.x": "8.x-dev"
+            "dev-8.0.x": "8.0.x-dev"
 		},
 		"symfony": {
 			"allow-contrib": false,
