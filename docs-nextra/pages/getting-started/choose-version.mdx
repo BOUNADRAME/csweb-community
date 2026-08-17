@@ -139,6 +139,33 @@ n'est pas encore éprouvé en production. Ne déployez pas 8.1 sur une enquête 
 
 ---
 
+## Installer la version choisie
+
+La branche clonée détermine la version installée :
+
+```bash
+# CSWeb 8.0 — Current, pour CSPro 8.0 et antérieur
+git clone -b 8.x https://github.com/BOUNADRAME/csweb-community.git
+
+# CSWeb 8.1 — Beta, pour CSPro 8.1
+git clone -b 8.1.x https://github.com/BOUNADRAME/csweb-community.git
+```
+
+Sans `-b`, c'est la branche de développement qui est récupérée — pas une version
+publiée. Toujours nommer la branche.
+
+Pour changer de ligne sur un dépôt déjà cloné :
+
+```bash
+git fetch origin
+git checkout 8.1.x
+```
+
+⚠️ Changer de branche ne migre **pas** les données : les deux lignes ne sont pas
+compatibles, il faut une installation neuve (voir plus haut).
+
+---
+
 ## Décider en trois questions
 
 **1. Vos appareils de collecte sont-ils déjà tous en CSPro 8.1 ?**

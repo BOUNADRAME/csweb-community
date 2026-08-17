@@ -3,7 +3,7 @@ title: Installation
 description: Installer CSWeb Community Platform en 5 minutes avec Docker
 ---
 
-import { Tabs } from "nextra/components";
+import { Tabs, Callout } from "nextra/components";
 
 # Installation CSWeb Community Platform
 
@@ -79,10 +79,25 @@ docker compose version
 
 ### Étape 1 : Cloner le Projet
 
+La branche détermine la version installée, et celle-ci doit correspondre à la
+version de **CSPro déployée sur vos appareils de collecte** :
+
+| CSPro sur le terrain | Commande |
+|---|---|
+| CSPro 8.0 et antérieur | `git clone -b 8.x ...` |
+| CSPro 8.1 | `git clone -b 8.1.x ...` |
+
 ```bash
-git clone https://github.com/BOUNADRAME/csweb-community.git
+# CSWeb 8.0 — version courante, pour CSPro 8.0 et antérieur
+git clone -b 8.x https://github.com/BOUNADRAME/csweb-community.git
 cd csweb-community
 ```
+
+<Callout type="warning">
+**CSPro 8.0 et antérieur ne peuvent pas synchroniser avec CSWeb 8.1.** Se
+tromper de branche coupe la remontée des données du terrain. En cas de doute,
+voir [Choisir 8.0 ou 8.1](/getting-started/choose-version).
+</Callout>
 
 ### Étape 2 : Configuration Environnement
 
