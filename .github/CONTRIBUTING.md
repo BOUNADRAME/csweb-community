@@ -235,6 +235,13 @@ Puis sur GitHub :
 - [ ] Mes commits sont clairs et descriptifs
 - [ ] Mon code respecte les conventions du projet
 - [ ] J'ai résolu tous les conflits avec `master`
+- [ ] Si j'ai touché `composer.json`, j'ai lancé `composer update --lock`
+      dans le même commit
+
+> **`composer.json` et `composer.lock` vont par paire.** Le lock enregistre
+> une empreinte de `composer.json` ; éditer l'un sans régénérer l'autre fait
+> échouer `composer validate`, et donc la CI. `composer update --lock`
+> réécrit l'empreinte sans changer aucune version de dépendance.
 
 ---
 
