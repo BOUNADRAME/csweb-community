@@ -17,7 +17,7 @@
       "status": "beta",
       "branch": "8.1.x",
       "php": ">=8.1",
-      "symfony": "5.4",
+      "symfony": "6.4",
       "docsUrl": "/getting-started/choose-version",
       "githubUrl": "https://github.com/BOUNADRAME/csweb-community/tree/8.1.x"
     }

@@ -126,7 +126,17 @@ export function VersionSwitcher() {
             return (
               <a
                 key={v.version}
-                href={isCurrent ? basePath + '/' : v.docsUrl}
+                // basePath applies to every internal link, not just the current
+                // version: without it a relative docsUrl resolves against the
+                // domain root and 404s, since the site is served from
+                // /csweb-community. Absolute URLs are left untouched.
+                href={
+                  isCurrent
+                    ? basePath + '/'
+                    : v.docsUrl.startsWith('http')
+                      ? v.docsUrl
+                      : basePath + v.docsUrl
+                }
                 role="option"
                 aria-selected={isCurrent}
                 onClick={() => setOpen(false)}
