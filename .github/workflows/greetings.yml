@@ -38,7 +38,7 @@ jobs:
             **Prochaines étapes :**
             - ⏳ Un mainteneur va reviewer votre code
             - ✅ Assurez-vous que tous les checks passent
-            - 📖 Vérifiez le [guide de contribution](https://github.com/BOUNADRAME/csweb-community/blob/master/CONTRIBUTING.md)
+            - 📖 Vérifiez le [guide de contribution](https://github.com/BOUNADRAME/csweb-community/blob/master/.github/CONTRIBUTING.md)
 
             **Tips pour accélérer la review :**
             - Ajoutez des tests si applicable

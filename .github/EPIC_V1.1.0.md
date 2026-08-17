@@ -140,7 +140,7 @@ Rendre CSWeb Community Platform production-ready avec Docker Compose fonctionnel
 
 ## 📖 Documentation
 
-- [ ] Mettre à jour GETTING-STARTED.md
+- [ ] Mettre à jour le README
 - [ ] Créer DOCKER-GUIDE.md
 - [ ] Créer API-REFERENCE.md (OpenAPI)
 - [ ] Tutoriel vidéo YouTube (15 min)
@@ -198,9 +198,9 @@ Rendre CSWeb Community Platform production-ready avec Docker Compose fonctionnel
 
 ## 🔗 Ressources
 
-- [Plan stratégique](../blob/master/docs/CSWEB-COMMUNITY-PLATFORM-PLAN.md)
-- [Architecture Docker](../blob/master/docs/CSWEB-COMMUNITY-PLATFORM-PLAN.md#architecture-docker)
-- [Pont Kairos](../blob/master/docs/CSWEB-BRIDGE-KAIROS-TO-COMMUNITY.md)
+- [Documentation technique](../blob/master/docs/README.md)
+- [Architecture](../blob/master/docs/ARCHITECTURE-FLEXIBLE.md)
+- [Déploiement Docker](../blob/master/docs/DOCKER-DEPLOYMENT.md)
 
 ---
 
@@ -208,7 +208,7 @@ Rendre CSWeb Community Platform production-ready avec Docker Compose fonctionnel
 
 Pour toute question ou suggestion concernant cette roadmap, commentez ci-dessous ou ouvrez une discussion.
 
-**Intéressé pour contribuer ?** Voir [CONTRIBUTING.md](../blob/master/CONTRIBUTING.md)
+**Intéressé pour contribuer ?** Voir [CONTRIBUTING.md](../blob/master/.github/CONTRIBUTING.md)
 
 ---
 

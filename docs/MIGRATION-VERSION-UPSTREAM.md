@@ -30,7 +30,7 @@ irréalisable — d'où deux lignes maintenues en parallèle.
 | Upgrade amont accepté | Montée de version sur la ligne existante |
 | Upgrade amont refusé | **Nouvelle branche `X.Y.x`**, clone frais, les deux lignes coexistent |
 
-Voir `CONTRIBUTING.md` pour la politique de branches.
+Voir `.github/CONTRIBUTING.md` pour la politique de branches.
 
 ---
 
