@@ -53,6 +53,16 @@ meaningful share of deployments still runs CSPro 8.0.
 | v8.0.x   | Current | `8.x`   | CSWeb 8.0.x   |
 | v8.1.x   | Beta    | `8.1.x` | CSWeb 8.1.x   |
 
+### What the documentation site advertises
+
+`docs-nextra/versions.json` lists **lines**, not releases: `8.0` and `8.1`,
+never `8.0.2`. Patch tags accumulate on their branch without touching the
+version switcher, which would otherwise need editing on every fix.
+
+A new entry is added only when a new line is created — that is, when
+upstream ships a release its own upgrade script refuses, per the rule
+above.
+
 `8.1.x` is a **fresh clone of upstream CSWeb 8.1** onto which the
 Community feature set is re-applied — not a merge from `8.x`. Since the
 two upstream trees are not upgrade-compatible, they are not

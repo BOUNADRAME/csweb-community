@@ -1,9 +1,9 @@
 {
-  "current": "8.0.1",
+  "current": "8.0",
   "versions": [
     {
-      "version": "8.0.1",
-      "label": "CSWeb 8.0.1",
+      "version": "8.0",
+      "label": "CSWeb 8.0",
       "status": "current",
       "branch": "8.x",
       "php": ">=8.1",
@@ -12,8 +12,8 @@
       "githubUrl": "https://github.com/BOUNADRAME/csweb-community/tree/8.x"
     },
     {
-      "version": "8.1.0",
-      "label": "CSWeb 8.1.0",
+      "version": "8.1",
+      "label": "CSWeb 8.1",
       "status": "beta",
       "branch": "8.1.x",
       "php": ">=8.1",
