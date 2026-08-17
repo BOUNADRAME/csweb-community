@@ -2,8 +2,9 @@
 
 namespace Tests\Unit\CSPro;
 
-use App\CSPro\FileManager;
-use App\CSPro\FileInfo;
+use App\CSPro\FileManager\CSProFileManager;
+use Psr\Log\NullLogger;
+use App\CSPro\FileManager\FileInfo;
 use PHPUnit\Framework\TestCase;
 
 class FileManagerTest extends TestCase
@@ -36,14 +37,14 @@ class FileManagerTest extends TestCase
 
     public function testGetDirectoryListingWithoutRootReturnsNull(): void
     {
-        $fm = new FileManager();
+        $fm = new CSProFileManager(new NullLogger());
         // rootFolder is null by default
         $this->assertNull($fm->getDirectoryListing('anything'));
     }
 
     public function testGetDirectoryListingEmptyDir(): void
     {
-        $fm = new FileManager();
+        $fm = new CSProFileManager(new NullLogger());
         $fm->rootFolder = $this->tempDir;
 
         $result = $fm->getDirectoryListing('');
@@ -55,7 +56,7 @@ class FileManagerTest extends TestCase
     {
         file_put_contents($this->tempDir . '/hello.txt', 'world');
 
-        $fm = new FileManager();
+        $fm = new CSProFileManager(new NullLogger());
         $fm->rootFolder = $this->tempDir;
 
         $result = $fm->getDirectoryListing('');
@@ -71,7 +72,7 @@ class FileManagerTest extends TestCase
     {
         mkdir($this->tempDir . '/subdir');
 
-        $fm = new FileManager();
+        $fm = new CSProFileManager(new NullLogger());
         $fm->rootFolder = $this->tempDir;
 
         $result = $fm->getDirectoryListing('');
@@ -82,7 +83,7 @@ class FileManagerTest extends TestCase
 
     public function testPutFileCreatesFile(): void
     {
-        $fm = new FileManager();
+        $fm = new CSProFileManager(new NullLogger());
         $fm->rootFolder = $this->tempDir;
 
         $info = $fm->putFile('test.txt', 'hello');
@@ -96,7 +97,7 @@ class FileManagerTest extends TestCase
 
     public function testPutFileCreatesSubdirectories(): void
     {
-        $fm = new FileManager();
+        $fm = new CSProFileManager(new NullLogger());
         $fm->rootFolder = $this->tempDir;
 
         $info = $fm->putFile('a/b/deep.txt', 'nested');
@@ -107,7 +108,7 @@ class FileManagerTest extends TestCase
 
     public function testPutFileWithoutRootReturnsNull(): void
     {
-        $fm = new FileManager();
+        $fm = new CSProFileManager(new NullLogger());
         $this->assertNull($fm->putFile('test.txt', 'data'));
     }
 
@@ -115,7 +116,7 @@ class FileManagerTest extends TestCase
     {
         file_put_contents($this->tempDir . '/existing.txt', 'content');
 
-        $fm = new FileManager();
+        $fm = new CSProFileManager(new NullLogger());
         $fm->rootFolder = $this->tempDir;
 
         $info = $fm->getFileInfo('existing.txt');
@@ -127,7 +128,7 @@ class FileManagerTest extends TestCase
 
     public function testGetFileInfoReturnsNullForMissing(): void
     {
-        $fm = new FileManager();
+        $fm = new CSProFileManager(new NullLogger());
         $fm->rootFolder = $this->tempDir;
 
         $this->assertNull($fm->getFileInfo('nonexistent.txt'));
@@ -137,7 +138,7 @@ class FileManagerTest extends TestCase
     {
         mkdir($this->tempDir . '/mydir');
 
-        $fm = new FileManager();
+        $fm = new CSProFileManager(new NullLogger());
         $fm->rootFolder = $this->tempDir;
 
         $info = $fm->getFileInfo('mydir');

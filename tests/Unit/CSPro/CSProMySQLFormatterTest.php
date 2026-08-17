@@ -4,6 +4,8 @@ namespace Tests\Unit\CSPro;
 
 use App\CSPro\CSProMySQLFormatter;
 use Monolog\Logger;
+use Monolog\Level;
+use Monolog\LogRecord;
 use PHPUnit\Framework\TestCase;
 
 class CSProMySQLFormatterTest extends TestCase
@@ -14,16 +16,18 @@ class CSProMySQLFormatterTest extends TestCase
         string $channel = 'app',
         array $context = [],
         array $extra = []
-    ): array {
-        return [
-            'message' => $message,
-            'level' => $level,
-            'level_name' => Logger::getLevelName($level),
-            'channel' => $channel,
-            'context' => $context,
-            'extra' => $extra,
-            'datetime' => new \DateTimeImmutable('2024-01-15 10:30:00'),
-        ];
+    ): LogRecord {
+        // Monolog 3 passes an immutable LogRecord object to format(); Monolog 2
+        // passed an array. CSWeb 8.1 ships Monolog 3, so the fixture builds the
+        // object.
+        return new LogRecord(
+            datetime: new \DateTimeImmutable('2024-01-15 10:30:00'),
+            channel: $channel,
+            level: Level::fromValue($level),
+            message: $message,
+            context: $context,
+            extra: $extra,
+        );
     }
 
     public function testDefaultFormat(): void
