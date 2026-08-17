@@ -34,7 +34,7 @@ Je suis **Bouna DRAME** (Bouna DRAME) et je suis ravi d'annoncer le lancement of
 ## 📖 Liens Importants
 
 - 📚 **Documentation** : https://bounadrame.github.io/csweb-community/
-- 🚀 **Quick Start** : [GETTING-STARTED.md](../blob/master/GETTING-STARTED.md)
+- 🚀 **Quick Start** : [README](../blob/master/README.md)
 - 🎉 **Release v1.0.0-beta** : https://github.com/BOUNADRAME/csweb-community/releases/tag/v1.0.0-beta
 - 📋 **Roadmap** : [CHANGELOG.md](../blob/master/CHANGELOG.md)
 
@@ -48,7 +48,7 @@ Nous cherchons activement :
 - 📖 **Traducteurs** (FR → EN)
 - 📹 **Créateurs de contenu** (tutoriels vidéo)
 
-Voir [CONTRIBUTING.md](../blob/master/CONTRIBUTING.md) pour commencer !
+Voir [CONTRIBUTING.md](../blob/master/.github/CONTRIBUTING.md) pour commencer !
 
 ---
 

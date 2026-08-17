@@ -220,7 +220,7 @@ docker exec -it csweb-app php bin/console csweb:process-cases-by-dict VOTRE_DICT
 
 ## Performance Tuning
 
-Toutes les configurations PHP, MySQL, PostgreSQL et Apache sont pilotables depuis `.env`. Voir [.claude/PERFORMANCE-TUNING.md](.claude/PERFORMANCE-TUNING.md) pour le guide complet.
+Toutes les configurations PHP, MySQL, PostgreSQL et Apache sont pilotables depuis `.env`. Voir la section **Performance Tuning** de [.env.example](.env.example) pour les valeurs de reference et la regle d'application.
 
 ```bash
 # Verifier la configuration

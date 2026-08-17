@@ -119,7 +119,7 @@ La configuration de CSWeb prend actuellement 2-3 jours et nécessite une experti
 
 - **Documentation** : https://bounadrame.github.io/csweb-community/
 - **Repository** : https://github.com/BOUNADRAME/csweb-community
-- **Quick Start** : https://github.com/BOUNADRAME/csweb-community/blob/master/GETTING-STARTED.md
+- **Quick Start** : https://bounadrame.github.io/csweb-community/getting-started/
 
 ## 🧪 Ce que je recherche
 
@@ -181,7 +181,7 @@ P.S. : Le projet est né d'une collaboration avec l'ANSD (Sénégal). Notre obje
 📖 LIENS :
 - Documentation : https://bounadrame.github.io/csweb-community/
 - GitHub : https://github.com/BOUNADRAME/csweb-community
-- Quick Start : https://github.com/BOUNADRAME/csweb-community/blob/master/GETTING-STARTED.md
+- Quick Start : https://bounadrame.github.io/csweb-community/getting-started/
 
 💬 REJOIGNEZ-NOUS :
 - Discord : (lien à venir)

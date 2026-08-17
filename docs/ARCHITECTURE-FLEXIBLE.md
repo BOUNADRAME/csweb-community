@@ -718,7 +718,7 @@ docker-compose restart csweb
 
 ## Ressources
 
-- **Installation :** [QUICK-START.md](../QUICK-START.md)
+- **Installation :** [QUICK-START.md](../README.md#quick-start)
 - **Docker Deployment :** [DOCKER-DEPLOYMENT.md](DOCKER-DEPLOYMENT.md)
 - **Migration Breakout :** [MIGRATION-BREAKOUT-SELECTIF.md](MIGRATION-BREAKOUT-SELECTIF.md)
 - **Configuration Multi-DB :** [CONFIGURATION-MULTI-DATABASE.md](CONFIGURATION-MULTI-DATABASE.md)

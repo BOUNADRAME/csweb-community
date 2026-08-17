@@ -3,6 +3,8 @@ title: Prérequis Serveur
 description: Conditions et prérequis serveur pour déployer CSWeb Community Platform
 ---
 
+import { Callout } from 'nextra/components'
+
 # Prérequis Serveur
 
 Cette page détaille les **conditions techniques** nécessaires pour déployer CSWeb Community Platform sur un serveur appartenant à votre équipe ou organisation.
@@ -176,10 +178,33 @@ CSWeb Community Platform est un **logiciel auto-hébergé**. L'équipe d'enquêt
 
 ---
 
+## 9. Version de CSPro sur le terrain
+
+<Callout type="error">
+**Vérifiez ce point avant d'installer.** La version de CSWeb doit correspondre à celle
+de CSPro utilisée sur les appareils de collecte, sans quoi **la synchronisation ne
+fonctionnera pas**.
+
+| CSPro sur le terrain | Version CSWeb à installer |
+|---|---|
+| CSPro 8.0 et antérieur | **CSWeb 8.0.x** (Current) |
+| CSPro 8.1 | **CSWeb 8.1.x** (Beta) |
+
+CSPro 8.0 et antérieur **ne peuvent pas** synchroniser avec CSWeb 8.1. CSPro et CSWeb
+doivent être montés de version ensemble.
+</Callout>
+
+Recensez la version installée sur vos tablettes **avant** de choisir la version serveur.
+Voir [Choisir 8.0 ou 8.1](/getting-started/choose-version) pour la matrice complète et
+les critères de décision.
+
+---
+
 ## Récapitulatif rapide
 
 Avant de lancer l'installation, vérifiez que vous avez :
 
+- [ ] **Identifié la version de CSPro** utilisée sur le terrain (détermine la version CSWeb)
 - [ ] Un serveur Linux (Ubuntu 22.04 LTS recommandé)
 - [ ] Au moins 4 vCPU, 8 Go RAM, 100 Go SSD
 - [ ] Docker 20.10+ et Docker Compose 2.0+ installés
