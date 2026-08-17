@@ -47,6 +47,10 @@ class CheckConfigCommand extends Command
 
         $io->title('CSWeb Performance Configuration');
 
+        // Community layer: surface a .env change that was never applied,
+        // before the tables below report the stale values as if intended.
+        $envInSync = $this->displayEnvDrift($io);
+
         $this->displayPhpConfig($io, $config['php']);
         $this->displayApacheConfig($io, $config['apache']);
         $this->displayMysqlConfig($io, $config['mysql']);
@@ -102,6 +106,95 @@ class CheckConfigCommand extends Command
                 'maintenance_work_mem' => getenv('PG_MAINTENANCE_WORK_MEM') ?: '64MB',
             ],
         ];
+    }
+
+    /**
+     * Community layer: flag PHP settings whose active value does not match the
+     * environment variable meant to drive it.
+     *
+     * This catches a container whose php.ini was generated from a different
+     * environment than the one it now runs with. It cannot, however, see a
+     * .env edited on the host and never applied: `docker compose restart`
+     * leaves BOTH the environment variable and the generated ini at their old
+     * values, so the two agree with each other while disagreeing with the
+     * file. .env is deliberately absent from the image (it holds secrets), so
+     * the command has nothing to compare against.
+     *
+     * Hence the note printed below: after editing .env, always recreate with
+     * `docker compose up -d`, never `restart`.
+     *
+     * @return bool true when everything matches
+     */
+    private function displayEnvDrift(SymfonyStyle $io): bool
+    {
+        // max_execution_time is deliberately left out: the CLI SAPI forces it
+        // to 0 (unlimited) whatever php.ini says, so comparing it here would
+        // report a mismatch on every healthy install.
+        $checks = [
+            // label,                env var,                    live value
+            ['memory_limit',         'PHP_MEMORY_LIMIT',         ini_get('memory_limit')],
+            ['upload_max_filesize',  'PHP_UPLOAD_MAX_FILESIZE',  ini_get('upload_max_filesize')],
+            ['post_max_size',        'PHP_POST_MAX_SIZE',        ini_get('post_max_size')],
+        ];
+
+        $rows = [];
+        $drift = false;
+        foreach ($checks as [$label, $envVar, $live]) {
+            $wanted = getenv($envVar);
+            if ($wanted === false || trim((string) $wanted) === '') {
+                continue;
+            }
+            $matches = $this->normaliseSize((string) $wanted) === $this->normaliseSize((string) $live);
+            if (!$matches) {
+                $drift = true;
+            }
+            $rows[] = [$label, (string) $wanted, (string) $live, $matches ? 'ok' : 'MISMATCH'];
+        }
+
+        if ($rows === []) {
+            return true;
+        }
+
+        $io->section('Environment vs running configuration');
+        $io->table(['Setting', 'Container env', 'Actually active', 'Status'], $rows);
+
+        if ($drift) {
+            $io->warning([
+                'The active PHP configuration does not match this container\'s environment.',
+                'Recreate the container so the ini files are regenerated:',
+                '  docker compose up -d csweb',
+            ]);
+        } else {
+            $io->text([
+                ' <fg=gray>The values above are the container\'s own environment, not the .env file</>',
+                ' <fg=gray>on the host. After editing .env, apply it with "docker compose up -d" —</>',
+                ' <fg=gray>"docker compose restart" keeps the old values with no error shown.</>',
+                '',
+            ]);
+        }
+
+        return !$drift;
+    }
+
+    /**
+     * Normalise a PHP size shorthand (512M, 1G, 536870912) to bytes so "512M"
+     * and "512m" compare equal. Non-size values are returned unchanged.
+     */
+    private function normaliseSize(string $value): string
+    {
+        $value = trim($value);
+        if (!preg_match('/^(\d+)\s*([KMG])?$/i', $value, $m)) {
+            return strtolower($value);
+        }
+        $bytes = (int) $m[1];
+        $unit = strtoupper($m[2] ?? '');
+        $bytes *= match ($unit) {
+            'G' => 1024 * 1024 * 1024,
+            'M' => 1024 * 1024,
+            'K' => 1024,
+            default => 1,
+        };
+        return (string) $bytes;
     }
 
     private function displayPhpConfig(SymfonyStyle $io, array $php): void
