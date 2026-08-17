@@ -119,6 +119,23 @@ export function VersionSwitcher() {
           >
             Versions
           </div>
+          {/* The site itself is not versioned: there is one set of pages,
+              covering 8.0 with "8.1 only" callouts where the two differ. The
+              switcher points at the right branch and the comparison page — it
+              does not swap the documentation. Saying so avoids the reasonable
+              assumption that picking 8.1 reloads the site as 8.1. */}
+          <div
+            style={{
+              padding: '6px 12px',
+              fontSize: 11,
+              lineHeight: 1.4,
+              color: 'var(--nextra-gray-500, #6b7280)',
+              borderBottom: '1px solid var(--nextra-border-color, #e5e7eb)',
+            }}
+          >
+            Cette documentation couvre les deux lignes. Choisissez la branche à
+            installer :
+          </div>
 
           {(versions.versions as VersionEntry[]).map((v) => {
             const sc = statusConfig[v.status]
@@ -169,6 +186,24 @@ export function VersionSwitcher() {
                   <span>PHP {v.php}</span>
                   <span>Symfony {v.symfony}</span>
                 </div>
+                {/* The clone command for this line, so the branch to use is
+                    readable straight from the switcher instead of being looked
+                    up on another page. */}
+                <code
+                  style={{
+                    display: 'block',
+                    marginTop: 6,
+                    padding: '4px 6px',
+                    fontSize: 11,
+                    lineHeight: 1.4,
+                    borderRadius: 4,
+                    background: 'var(--nextra-gray-100, #f3f4f6)',
+                    color: 'var(--nextra-gray-700, #374151)',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  git clone -b {v.branch} …
+                </code>
                 <div style={{ marginTop: 4 }}>
                   <a
                     href={v.githubUrl}
@@ -177,7 +212,7 @@ export function VersionSwitcher() {
                     onClick={(e) => e.stopPropagation()}
                     style={{ fontSize: 11, color: 'var(--nextra-primary-hue, #2563eb)', textDecoration: 'none' }}
                   >
-                    {v.branch}
+                    Code source ({v.branch}) →
                   </a>
                 </div>
               </a>
