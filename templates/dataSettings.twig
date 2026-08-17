@@ -552,6 +552,9 @@
                             <tr>
                                 <th class="col-4">Data Label</th>
                                 <th class="col-auto">Data Name</th>
+                                {# Community layer: the target engine is per
+                                   dictionary, so it belongs next to the target. #}
+                                <th class="col-auto">DB Type</th>
                                 <th class="col-3">Target Schema</th>
                                 <th class="col-auto">Total Cases</th>
                                 <th class="col-auto">Processed Cases</th>
@@ -566,7 +569,21 @@
                                     <tr data-id={{ dataSetting.id}} data-dictname={{ dataSetting.name}} data-dictlabel="{{ dataSetting.label}}">
                                         <td>{{ dataSetting.label}}</td>
                                         <td>{{ dataSetting.name}}</td>
-                                        <td>{{ dataSetting.targetHostName}} | {{ dataSetting.targetSchemaName}}</td>
+                                        {# Community layer: engine badge. dbType is
+                                           null on rows created before the column
+                                           existed, so fall back to the same default
+                                           DataSettings::resolveDriver() uses. #}
+                                        {% set dbType = dataSetting.dbType|default('postgresql')|lower %}
+                                        <td>
+                                            {% if dbType == 'mysql' %}
+                                                <span class="badge badge-warning">MySQL</span>
+                                            {% elseif dbType == 'sqlserver' %}
+                                                <span class="badge badge-danger">SQL Server</span>
+                                            {% else %}
+                                                <span class="badge badge-info">PostgreSQL</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ dataSetting.targetHostName}}{% if dataSetting.targetPort %}:{{ dataSetting.targetPort }}{% endif %} | {{ dataSetting.targetSchemaName}}</td>
                                         <td>{{ dataSetting.totalCases}}</td>
                                         <td>{{ dataSetting.processedCases}}</td>
                                         <td>{{ dataSetting.lastProcessedTime}}</td>
@@ -867,7 +884,10 @@
                 $('#data-config-table').DataTable({
                 columnDefs: [{
                     orderable: false,
-                    targets: [6,7]
+                    // Community layer: Edit and Delete moved from 6,7 to 7,8
+                    // when the DB Type column was inserted. Counted from the
+                    // end so the indexes survive the next column change.
+                    targets: [-1, -2]
                     }]
                 });
                 var basemapSelect = $("#basemap-select");

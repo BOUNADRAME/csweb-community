@@ -62,8 +62,8 @@ class MySQLDictionarySchemaGenerator {
      *
      * Note: the "ON UPDATE" half has no portable equivalent — it is a MySQL
      * extension. cspro_jobs.modified_time is read as "Last Processed Time",
-     * so on non-MySQL targets a trigger is installed instead; see
-     * addModifiedTimeTrigger().
+     * so the UPDATE statements in DictionarySchemaHelper and
+     * MySQLQuestionnaireSerializer set it explicitly instead.
      */
     private function currentTimestampDefault(): string {
         return 'CURRENT_TIMESTAMP';
@@ -120,6 +120,8 @@ class MySQLDictionarySchemaGenerator {
         $levelIdTable = $this->schema->createTable(static::quoteString($this->nomSchama . '_' . $levelName));
         $levelIdTable->addOption('charset', 'utf8mb4');
         $levelIdTable->addOption('collation', 'utf8mb4_unicode_ci');
+        // Community layer: DYNAMIC row format — see generateRecordTable().
+        $levelIdTable->addOption('row_format', 'DYNAMIC');
         //add columns 
         $autoIncrementFlag = $parentLevel ? false : true;
         $levelIdTable->addColumn(static::quoteString($levelName) . "-id", "integer", ["unsigned" => true, "notnull" => true, "autoincrement" => $autoIncrementFlag]);
@@ -163,6 +165,13 @@ class MySQLDictionarySchemaGenerator {
         $recordTable = $this->schema->createTable(strtolower($this->nomSchama . '_' . $record->getName()));
         $recordTable->addOption('charset', 'utf8mb4');
         $recordTable->addOption('collation', 'utf8mb4_unicode_ci');
+        // Community layer: record tables carry one column per questionnaire
+        // item, so a wide questionnaire hits InnoDB's 8126-byte row limit and
+        // CREATE TABLE fails with "Row size too large". DYNAMIC stores long
+        // values off-page instead of reserving room inline, which is what
+        // census-sized questionnaires need. DBAL emits ROW_FORMAT only on
+        // MySQL and silently ignores the option on PostgreSQL and SQL Server.
+        $recordTable->addOption('row_format', 'DYNAMIC');
         //add columns -added auto increment for MySQL for record-ids 
         $recordTable->addColumn(static::quoteString(strtolower($record->getName()) . "-id"), "integer", ["unsigned" => true, "notnull" => true, "autoincrement" => true]);
         //set primary key on id 
