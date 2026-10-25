@@ -84,14 +84,17 @@ version de **CSPro déployée sur vos appareils de collecte** :
 
 | CSPro sur le terrain | Commande |
 |---|---|
-| CSPro 8.0 et antérieur | `git clone -b 8.0.x ...` |
-| CSPro 8.1 | `git clone -b 8.1.x ...` |
+| CSPro 8.1 | `git clone -b 8.1.x ...` (Current) |
+| CSPro 8.0 et antérieur | `git clone -b 8.0.x ...` (LTS) |
 
 ```bash
-# CSWeb 8.0 — version courante, pour CSPro 8.0 et antérieur
-git clone -b 8.0.x https://github.com/BOUNADRAME/csweb-community.git
+# CSWeb 8.1 — Current, pour CSPro 8.1
+git clone -b 8.1.x https://github.com/BOUNADRAME/csweb-community.git
 cd csweb-community
 ```
+
+Pour un parc encore en CSPro 8.0, remplacez `8.1.x` par `8.0.x` (ligne LTS). Pour un
+hébergement mutualisé cPanel, voir [Hébergement mutualisé (cPanel)](/getting-started/shared-hosting).
 
 <Callout type="warning">
 **CSPro 8.0 et antérieur ne peuvent pas synchroniser avec CSWeb 8.1.** Se
