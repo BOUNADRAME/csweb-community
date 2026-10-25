@@ -3,7 +3,7 @@
 <div align="center">
 
 ![CSWeb Logo](https://img.shields.io/badge/CSWeb-Community-blue?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-8.1.0--beta-orange?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-8.1.0-green?style=for-the-badge)
 ![CSWeb](https://img.shields.io/badge/CSWeb-8.1.2-blue?style=for-the-badge)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-Nextra-brightgreen?style=for-the-badge)](https://bounadrame.github.io/csweb-community/)
@@ -23,9 +23,10 @@
 > CSPro et CSWeb doivent etre montes de version ensemble. Verifiez la version
 > installee sur vos tablettes **avant** de choisir.
 >
-> La ligne 8.1 est en beta : le portage est complet et le breakout valide sur
-> MySQL et PostgreSQL, mais la synchronisation depuis un CSPro 8.1 reel n'a pas
-> encore ete eprouvee. A reserver aux tests tant que ce n'est pas le cas.
+> La ligne 8.1 couvre CSPro 8.1 : portage complet, breakout valide sur MySQL et
+> PostgreSQL, installation et synchronisation validees sur hebergement mutualise
+> cPanel (PHP 8.3, MariaDB 10.6). Paquet pret a deposer et guide :
+> `tools/build-cpanel-package.sh` et `tools/cpanel/INSTALL-cPanel.pdf`.
 >
 > Details : [Choisir 8.0 ou 8.1](https://bounadrame.github.io/csweb-community/getting-started/choose-version)
 
@@ -55,7 +56,7 @@
 
 ```bash
 # 1. Cloner le projet
-# Ligne 8.1 (beta) — pour CSPro 8.1
+# Ligne 8.1 — pour CSPro 8.1
 git clone -b 8.1.x https://github.com/BOUNADRAME/csweb-community.git
 # Ligne 8.0 (stable) — pour CSPro 8.0 et anterieur
 # git clone -b 8.x https://github.com/BOUNADRAME/csweb-community.git

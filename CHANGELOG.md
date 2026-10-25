@@ -29,10 +29,30 @@ _Nothing yet._
 
 ---
 
-## [8.1.0-beta.1] - Unreleased (branch `8.1.x`)
+## [8.1.0] - 2026-10-25 (branch `8.1.x`)
 
-First port of the Community layer onto the upstream CSWeb 8.1.2 base.
-**Beta: not validated against a real CSPro 8.1 synchronization yet.**
+Port of the Community layer onto the upstream CSWeb 8.1.2 base.
+
+### Added — Shared hosting (cPanel)
+- `tools/build-cpanel-package.sh`: ready-to-upload zip (production `vendor/`,
+  pre-built front-end assets, no Docker/tests), with SHA-256 checksum.
+- `tools/cpanel/INSTALL-cPanel.md/.pdf`: installation guide in English.
+- The Community schema installs itself on the first request after setup: no
+  shell command is needed on hosts without SSH.
+- Validated on PHP 8.3, Apache, MariaDB 10.6 with `exec`/`proc_open` disabled.
+
+### Fixed — Shared hosting
+- One MySQL connection per request instead of two (OAuth storage reuses the
+  request connection), for hosts capping `max_user_connections`.
+- Rate limiter: logins counted per IP + username and API calls per session, so
+  devices behind one office Wi-Fi or carrier NAT no longer get HTTP 429; the
+  dashboard login form is now recognised.
+- Setup: the API URL gets its trailing slash (dashboard login failed with
+  HTTP 500 otherwise).
+- `/logs/app` returned HTTP 500 (missing `LogsVoter` import).
+- `.htaccess`: deployed application packages under `files_csweb/` were
+  downloadable without authentication; `vendor/`, `bin/`, Composer and Docker
+  files are no longer served.
 
 ### Changed
 

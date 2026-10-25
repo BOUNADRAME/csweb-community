@@ -4,4 +4,4 @@ define('SCHEMA_VERSION', 8); // Database schema version, incremented when databa
 define('CSPRO_VERSION', '8.1');
 // Community fork version, follows SemVer independently of the upstream CSWeb release.
 // Kept in sync with the VERSION file at the repository root.
-define('CSWEB_COMMUNITY_VERSION', '8.1.0-beta.1');
+define('CSWEB_COMMUNITY_VERSION', '8.1.0');
