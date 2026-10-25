@@ -53,6 +53,12 @@ DirectoryIndex app.php
 	RedirectMatch 403 (^|/)var/.*$
 	RedirectMatch 403 (^|/)tests/.*$
 	RedirectMatch 403 (^|/)/files/.*$
+	# Community hardening: internal storage and build metadata are not web content.
+	# files_csweb/ holds deployed application packages, which must only be served
+	# through the authenticated API (/api/apps/...), never as static files.
+	RedirectMatch 403 (^|/)files_csweb/.*$
+	RedirectMatch 403 (^|/)(vendor|bin)/.*$
+	RedirectMatch 403 (^|/)(composer\.(json|lock)|docker-compose\.yml|Dockerfile|\.env[^/]*|\.git[^/]*)$
 	
     # If the requested filename exists, simply serve it.
     # We only want to let Apache serve files and not directories.
