@@ -71,6 +71,12 @@ services:
         arguments:
             $cacheDir: '%kernel.cache_dir%'
 
+    # Community layer: installs the Community schema on the first request after
+    # setup (no shell needed on shared hosting). $cacheDir holds its marker file.
+    App\EventSubscriber\CommunitySchemaSubscriber:
+        arguments:
+            $cacheDir: '%kernel.cache_dir%'
+
      #ApiKeyUserProvider
     App\Security\ApiKeyUserProvider:
         public: true

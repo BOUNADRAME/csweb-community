@@ -43,7 +43,6 @@ Results: installation, application deployment, CSEntry synchronization (includin
 | SSL certificate for the subdomain | *SSL/TLS Status* (AutoSSL) |
 | Disk space: about 200 MB, plus data | *Disk Usage* |
 | Files (inodes): about 16,000 | Provider |
-| Terminal or SSH access (one command, Step 7) | *Terminal*. Optional, see Step 7 |
 
 ## Ask your provider one question
 
@@ -124,22 +123,7 @@ Complete this step **before** Step 6: the address entered in the setup wizard is
 
 After installation, the wizard **locks itself** (`/setup/` returns *403 Forbidden*). This is expected and protects your installation.
 
-## Step 7. Activate the administration pages
-
-This step enables the **Settings**, **Backup** and **Logs** pages. Data collection and synchronization work without it.
-
-1. In cPanel, open **Terminal**.
-2. Run this command, replacing `ea-php83` with the PHP version chosen in Step 2 if it differs:
-
-```
-cd ~/csweb && /opt/cpanel/ea-php83/root/usr/bin/php bin/console csweb:community:install-schema --env=prod
-```
-
-3. The expected result ends with: `[OK] Community schema installed`.
-
-If **Terminal** is not available on your plan, ask your provider to run the command once, or skip this step.
-
-## Step 8. Validate the installation
+## Step 7. Validate the installation
 
 Complete this checklist before using the server for fieldwork.
 
@@ -198,7 +182,7 @@ For a census or a survey with several hundred interviewers synchronizing at the 
 | Some syncs fail at peak times; the log shows `max_user_connections` | The plan's connection limit is reached. Ask the provider to raise it, or schedule teams to sync at different times. |
 | Large syncs fail or time out | Check Step 2 settings (`max_execution_time`, upload limits). If the provider's firewall (ModSecurity) blocks requests, ask them to allow `/api/` on the CSWeb subdomain. |
 | *Backup now* shows an error | Expected on shared hosting: use the cPanel backups. |
-| Settings, Backup or Logs page shows an error | Step 7 was not run. |
+| Settings, Backup or Logs page shows an error | These pages are prepared automatically on the first visit after installation: reload the page. If the error persists, see `var/logs/ui.log`. |
 | `/setup/` returns *403 Forbidden* | Normal after installation. |
 
 # Updating CSWeb
@@ -207,7 +191,7 @@ For a census or a survey with several hundred interviewers synchronizing at the 
 2. Extract the new package into a new folder, for example `csweb-new`.
 3. Copy into it, from the current installation: the file `src/config.php` (written by the setup wizard) and the folders `files/` and `files_csweb/`.
 4. Swap the folders (rename `csweb` to `csweb-old`, then `csweb-new` to `csweb`), and empty the folder `csweb/var/cache`.
-5. Repeat Step 7 and the checklist of Step 8. Keep `csweb-old` until the update is validated.
+5. Run the checklist of Step 7. Keep `csweb-old` until the update is validated.
 
 # Support
 
