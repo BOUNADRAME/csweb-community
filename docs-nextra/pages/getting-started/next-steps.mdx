@@ -5,6 +5,8 @@ description: Aller plus loin avec CSWeb Community Platform
 
 
 
+import Link from 'next/link'
+
 # Prochaines Étapes
 
 Félicitations ! Vous avez installé CSWeb Community Platform et réalisé votre premier breakout.
@@ -21,38 +23,38 @@ Voici comment aller plus loin et tirer le maximum de la plateforme.
  <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6">
  <h4 className="text-lg font-bold mb-3">1. Approfondir le Breakout</h4>
  <ul className="space-y-2 text-sm">
- <li> <a href="/guides/breakout/selective">Breakout Sélectif Avancé</a></li>
- <li> <a href="/guides/breakout/scheduled">Breakout Automatique (Cron)</a></li>
- <li> <a href="/guides/breakout/monitoring">Monitoring en Temps Réel</a></li>
+ <li> <Link href="/guides/breakout/selective">Breakout Sélectif Avancé</Link></li>
+ <li> <Link href="/guides/breakout/scheduled">Breakout Automatique (Cron)</Link></li>
+ <li> <Link href="/guides/breakout/monitoring">Monitoring en Temps Réel</Link></li>
  </ul>
  </div>
 
  <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6">
  <h4 className="text-lg font-bold mb-3">2. Maîtriser Multi-DB</h4>
  <ul className="space-y-2 text-sm">
- <li> <a href="/guides/database/postgresql">PostgreSQL pour Analytics</a></li>
- <li> <a href="/guides/database/mysql">MySQL pour Legacy</a></li>
- <li> <a href="/guides/database/sqlserver">SQL Server (Microsoft)</a></li>
- <li> <a href="/guides/database/multi-db">Basculer entre SGBD</a></li>
+ <li> <Link href="/guides/database/postgresql">PostgreSQL pour Analytics</Link></li>
+ <li> <Link href="/guides/database/mysql">MySQL pour Legacy</Link></li>
+ <li> <Link href="/guides/database/sqlserver">SQL Server (Microsoft)</Link></li>
+ <li> <Link href="/guides/database/multi-db">Basculer entre SGBD</Link></li>
  </ul>
  </div>
 
  <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6">
  <h4 className="text-lg font-bold mb-3">3. Explorer l'API</h4>
  <ul className="space-y-2 text-sm">
- <li> <a href="/reference/api/oauth">OAuth2 Authentication</a></li>
- <li> <a href="/reference/api/breakout">Breakout API Endpoints</a></li>
- <li> <a href="/reference/api/webhooks">Webhooks Integration</a></li>
- <li> <a href="/reference/api/dictionaries">Dictionaries Management</a></li>
+ <li> <Link href="/reference/api/oauth">OAuth2 Authentication</Link></li>
+ <li> <Link href="/reference/api/breakout">Breakout API Endpoints</Link></li>
+ <li> <Link href="/reference/api/webhooks">Webhooks Integration</Link></li>
+ <li> <Link href="/reference/api/dictionaries">Dictionaries Management</Link></li>
  </ul>
  </div>
 
  <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6">
  <h4 className="text-lg font-bold mb-3">4. Automatiser avec CLI</h4>
  <ul className="space-y-2 text-sm">
- <li> <a href="/reference/cli/process-cases">process-cases-by-dict</a></li>
- <li> <a href="/reference/cli/check-drivers">check-database-drivers</a></li>
- <li> <a href="/reference/cli/overview">Vue d'ensemble CLI</a></li>
+ <li> <Link href="/reference/cli/process-cases">process-cases-by-dict</Link></li>
+ <li> <Link href="/reference/cli/check-drivers">check-database-drivers</Link></li>
+ <li> <Link href="/reference/cli/overview">Vue d'ensemble CLI</Link></li>
  </ul>
  </div>
 </div>
@@ -65,36 +67,36 @@ Voici comment aller plus loin et tirer le maximum de la plateforme.
  <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6">
  <h4 className="text-lg font-bold mb-3">1. Gestion des Utilisateurs</h4>
  <ul className="space-y-2 text-sm">
- <li> <a href="/guides/admin/users">Créer et gérer les comptes</a></li>
- <li> <a href="/guides/admin/users#roles">Rôles et permissions</a></li>
- <li> <a href="/guides/admin/users#oauth">OAuth externe (LDAP, AD)</a></li>
+ <li> <Link href="/guides/admin/users">Créer et gérer les comptes</Link></li>
+ <li> <Link href="/guides/admin/users#roles">Rôles et permissions</Link></li>
+ <li> <Link href="/guides/admin/users#oauth">OAuth externe (LDAP, AD)</Link></li>
  </ul>
  </div>
 
  <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6">
  <h4 className="text-lg font-bold mb-3">2. Scheduler Web</h4>
  <ul className="space-y-2 text-sm">
- <li> <a href="/guides/admin/scheduler">Configurer des jobs cron</a></li>
- <li> <a href="/guides/admin/scheduler#builder">Cron Builder visuel</a></li>
- <li> <a href="/guides/admin/scheduler#notifications">Notifications (Email, Slack)</a></li>
+ <li> <Link href="/guides/admin/scheduler">Configurer des jobs cron</Link></li>
+ <li> <Link href="/guides/admin/scheduler#builder">Cron Builder visuel</Link></li>
+ <li> <Link href="/guides/admin/scheduler#notifications">Notifications (Email, Slack)</Link></li>
  </ul>
  </div>
 
  <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6">
  <h4 className="text-lg font-bold mb-3">3. Monitoring</h4>
  <ul className="space-y-2 text-sm">
- <li> <a href="/guides/admin/monitoring">Logs Streaming Temps Réel</a></li>
- <li> <a href="/guides/admin/monitoring#metrics">Métriques (CPU, RAM, DB)</a></li>
- <li> <a href="/guides/admin/monitoring#alerts">Alertes Configurables</a></li>
+ <li> <Link href="/guides/admin/monitoring">Logs Streaming Temps Réel</Link></li>
+ <li> <Link href="/guides/admin/monitoring#metrics">Métriques (CPU, RAM, DB)</Link></li>
+ <li> <Link href="/guides/admin/monitoring#alerts">Alertes Configurables</Link></li>
  </ul>
  </div>
 
  <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6">
  <h4 className="text-lg font-bold mb-3">4. Webhooks</h4>
  <ul className="space-y-2 text-sm">
- <li> <a href="/guides/admin/webhooks">Configurer des webhooks</a></li>
- <li> <a href="/reference/api/webhooks">Webhooks API Reference</a></li>
- <li> <a href="/guides/admin/webhooks#examples">Exemples d'intégrations</a></li>
+ <li> <Link href="/guides/admin/webhooks">Configurer des webhooks</Link></li>
+ <li> <Link href="/reference/api/webhooks">Webhooks API Reference</Link></li>
+ <li> <Link href="/guides/admin/webhooks#examples">Exemples d'intégrations</Link></li>
  </ul>
  </div>
 </div>
@@ -107,36 +109,36 @@ Voici comment aller plus loin et tirer le maximum de la plateforme.
  <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6">
  <h4 className="text-lg font-bold mb-3">1. Architecture Flexible</h4>
  <ul className="space-y-2 text-sm">
- <li> <a href="/guides/architecture">Architecture Flexible</a></li>
- <li> <a href="/guides/deployment/remote">Déploiement Remote (RGPH5)</a></li>
- <li> <a href="/guides/architecture#migration">Migration vers Remote</a></li>
+ <li> <Link href="/guides/architecture">Architecture Flexible</Link></li>
+ <li> <Link href="/guides/deployment/remote">Déploiement Remote (RGPH5)</Link></li>
+ <li> <Link href="/guides/architecture#migration">Migration vers Remote</Link></li>
  </ul>
  </div>
 
  <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6">
  <h4 className="text-lg font-bold mb-3">2. Déploiement Production</h4>
  <ul className="space-y-2 text-sm">
- <li> <a href="/guides/deployment/docker-prod">Docker Production</a></li>
- <li> <a href="/guides/deployment/remote">Déploiement Remote</a></li>
- <li> <a href="/guides/deployment/backup">Backup & Restore</a></li>
+ <li> <Link href="/guides/deployment/docker-prod">Docker Production</Link></li>
+ <li> <Link href="/guides/deployment/remote">Déploiement Remote</Link></li>
+ <li> <Link href="/guides/deployment/backup">Backup & Restore</Link></li>
  </ul>
  </div>
 
  <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6">
  <h4 className="text-lg font-bold mb-3">3. Sécurité</h4>
  <ul className="space-y-2 text-sm">
- <li> <a href="/guides/architecture/security">Best Practices Sécurité</a></li>
- <li> <a href="/guides/architecture/security#ssl">SSL/TLS Configuration</a></li>
- <li> <a href="/guides/architecture/security#firewall">Firewall Rules</a></li>
+ <li> <Link href="/guides/architecture/security">Best Practices Sécurité</Link></li>
+ <li> <Link href="/guides/architecture/security#ssl">SSL/TLS Configuration</Link></li>
+ <li> <Link href="/guides/architecture/security#firewall">Firewall Rules</Link></li>
  </ul>
  </div>
 
  <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-6">
  <h4 className="text-lg font-bold mb-3">4. Performance</h4>
  <ul className="space-y-2 text-sm">
- <li> <a href="/guides/database/postgresql">Optimisation PostgreSQL</a></li>
- <li> <a href="/guides/database/postgresql#performance">Performance PostgreSQL</a></li>
- <li> <a href="/guides/deployment/docker-prod">Scaling en Production</a></li>
+ <li> <Link href="/guides/database/postgresql">Optimisation PostgreSQL</Link></li>
+ <li> <Link href="/guides/database/postgresql#performance">Performance PostgreSQL</Link></li>
+ <li> <Link href="/guides/deployment/docker-prod">Scaling en Production</Link></li>
  </ul>
  </div>
 </div>
