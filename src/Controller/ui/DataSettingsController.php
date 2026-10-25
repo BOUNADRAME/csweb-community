@@ -16,6 +16,7 @@ use App\CSPro\CSProResponse;
 use GuzzleHttp\Client;
 use App\CSPro\FileManager\CSProFileManager;
 use App\Security\SettingsVoter;
+use App\Security\LogsVoter;
 use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Process\PhpExecutableFinder;
 use Cron\CronExpression;

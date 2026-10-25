@@ -12,10 +12,11 @@ class OAuthHelper extends Server {
 
     private $storage;
 
-    public function __construct($database_host, $database_name, $database_user, $database_password) {
+    // Reuse the request's shared PdoHelper connection instead of opening a second one:
+    // halves the MySQL connections per request (matters on shared hosting max_user_connections).
+    public function __construct(PdoHelper $pdo) {
 
-        $dsn = 'mysql:host=' . $database_host . ';dbname=' . $database_name . ';charset=utf8mb4';
-        $this->storage = new CSProOAuthPdo(['dsn' => $dsn, 'username' => $database_user, 'password' => $database_password]);
+        $this->storage = new CSProOAuthPdo($pdo);
         parent::__construct($this->storage);
         // Add the "User Credentials" grant type
         $this->addGrantType(new \OAuth2\GrantType\UserCredentials($this->storage));

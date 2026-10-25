@@ -598,6 +598,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $filesDirectory = trim($_POST['filespath']);
         $maxExecutionTime = trim($_POST['maxExecutionTime']);
         $apiUrl = trim($_POST['apiurl']);
+        // The UI builds endpoint URLs as API_URL . 'token': without a trailing slash
+        // login fails with HTTP 500 ("/apitoken") although the setup test passed.
+        if ($apiUrl !== '' && substr($apiUrl, -1) !== '/') {
+            $apiUrl .= '/';
+        }
         $serverDeviceId = $apiUrl;
         $upgrade = trim($_POST['upgrade']);
 
