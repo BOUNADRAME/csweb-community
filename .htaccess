@@ -59,6 +59,7 @@ DirectoryIndex app.php
 	RedirectMatch 403 (^|/)files_csweb/.*$
 	RedirectMatch 403 (^|/)(vendor|bin)/.*$
 	RedirectMatch 403 (^|/)(composer\.(json|lock)|docker-compose\.yml|Dockerfile|\.env[^/]*|\.git[^/]*)$
+	RedirectMatch 403 (^|/)(BUILD-INFO\.txt|[^/]+\.md)$
 	
     # If the requested filename exists, simply serve it.
     # We only want to let Apache serve files and not directories.

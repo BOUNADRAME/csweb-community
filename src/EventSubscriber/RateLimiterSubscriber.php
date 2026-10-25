@@ -14,7 +14,10 @@ class RateLimiterSubscriber implements EventSubscriberInterface {
 
     private const LIMITS = [
         'login'  => ['max' => 5,   'window' => 60],
-        'api'    => ['max' => 60,  'window' => 60],
+        // Authenticated API calls are counted per session (see below). 600/min
+        // lets a large paged download (end-of-survey sync, Data Viewer) finish:
+        // at 60/min it was cut after ~60 pages. Logins keep their strict limit.
+        'api'    => ['max' => 600, 'window' => 60],
         'ui'     => ['max' => 120, 'window' => 60],
     ];
 

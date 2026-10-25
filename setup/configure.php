@@ -546,21 +546,27 @@ function writeApiConfigFile($databaseName, $host, $databaseUsername, $databasePa
     $configFile = @fopen($configFilePath, "w");
     if (!$configFile)
         throw new Exception("Unable to write to file $configFilePath. Check the file permissions for the directory.");
+    // Values are written with var_export() so a password or path containing a
+    // quote or backslash still produces a valid PHP file (a strong database
+    // password with ' used to break src/config.php and the whole site).
+    $define = function ($name, $value) use ($configFile) {
+        fwrite($configFile, "define('$name', " . var_export((string) $value, true) . ");\n");
+    };
     fwrite($configFile, "<?php\n");
-    fwrite($configFile, "define('DBHOST', '$host');\n");
-    fwrite($configFile, "define('DBUSER', '$databaseUsername');\n");
-    fwrite($configFile, "define('DBPASS', '$databasePassword');\n");
-    fwrite($configFile, "define('DBNAME', '$databaseName');\n");
+    $define('DBHOST', $host);
+    $define('DBUSER', $databaseUsername);
+    $define('DBPASS', $databasePassword);
+    $define('DBNAME', $databaseName);
     fwrite($configFile, "define('ENABLE_OAUTH', true);\n");
-    fwrite($configFile, "define('FILES_FOLDER', '$filesDirectory');\n");
-    fwrite($configFile, "define('INTERNAL_FILES_FOLDER', '$interalFilesDirectory');\n");
-    fwrite($configFile, "define('DEFAULT_TIMEZONE', '$timezone');\n");
-    fwrite($configFile, "define('MAX_EXECUTION_TIME', '$maxExecutionTime');\n");
-    fwrite($configFile, "define('API_URL', '$apiUrl');\n");
+    $define('FILES_FOLDER', $filesDirectory);
+    $define('INTERNAL_FILES_FOLDER', $interalFilesDirectory);
+    $define('DEFAULT_TIMEZONE', $timezone);
+    $define('MAX_EXECUTION_TIME', $maxExecutionTime);
+    $define('API_URL', $apiUrl);
     // Generate secure random APP_SECRET
     $appSecret = bin2hex(random_bytes(32)); // 64 character hex string
-    fwrite($configFile, "define('CSWEB_APP_SECRET', '$appSecret');\n");
-    
+    $define('CSWEB_APP_SECRET', $appSecret);
+
     fwrite($configFile, "define('CSWEB_LOG_LEVEL' , 'error');\n");
     fwrite($configFile, "define('CSWEB_PROCESS_CASES_LOG_LEVEL', 'error');\n");
     fwrite($configFile, "?>\n");
@@ -627,7 +633,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $probeUrl = is_string($internalApiUrl) && trim($internalApiUrl) !== ''
                 ? trim($internalApiUrl)
                 : $apiUrl;
-            testApiUrl($probeUrl, 'admin', $adminPassword);
+            try {
+                testApiUrl($probeUrl, 'admin', $adminPassword);
+            } catch (Exception $e) {
+                // The API reads src/config.php, so the file must exist for the
+                // probe. If the probe fails (HTTPS not ready yet, wrong URL),
+                // remove it again: its presence locks /setup/ (403) and the
+                // operator could not correct the URL and retry.
+                @unlink(getApiConfigFilePath());
+                throw new Exception($e->getMessage()
+                    . ' Check the CSWeb API URL (and that HTTPS works for it), then submit the form again.');
+            }
             header('Location: complete.php');
         }
     } catch (PDOException $e) {

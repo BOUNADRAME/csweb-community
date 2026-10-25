@@ -29,15 +29,26 @@ if (is_file(__DIR__ . '/../src/config.php')) {
             }
         }
 
-        if ($phpBinary === '' || !is_executable($phpBinary)) {
+        // Shared hosting (cPanel) disables exec(): calling it is a fatal error and
+        // turned this completion page into a blank HTTP 500. Skipping is safe:
+        // CommunitySchemaSubscriber installs the same schema on the first request.
+        $execAvailable = function_exists('exec')
+            && !in_array('exec', array_map('trim', explode(',', (string) ini_get('disable_functions'))), true);
+        if (!$execAvailable) {
+            error_log('[CSWeb] exec() disabled: Community schema will be installed on the first request.');
+        } elseif ($phpBinary === '' || !is_executable($phpBinary)) {
             error_log('[CSWeb] Community schema install skipped: no PHP CLI binary found.');
         } else {
-            $command = escapeshellarg($phpBinary) . ' ' . escapeshellarg($console)
-                     . ' csweb:community:install-schema --env=prod --no-debug 2>&1';
-            exec($command, $communityInstallOutput, $communityInstallStatus);
-            if ($communityInstallStatus !== 0) {
-                error_log('[CSWeb] Community schema install failed after setup: '
-                    . implode(' | ', $communityInstallOutput));
+            try {
+                $command = escapeshellarg($phpBinary) . ' ' . escapeshellarg($console)
+                         . ' csweb:community:install-schema --env=prod --no-debug 2>&1';
+                exec($command, $communityInstallOutput, $communityInstallStatus);
+                if ($communityInstallStatus !== 0) {
+                    error_log('[CSWeb] Community schema install failed after setup: '
+                        . implode(' | ', $communityInstallOutput));
+                }
+            } catch (\Throwable $e) {
+                error_log('[CSWeb] Community schema install skipped: ' . $e->getMessage());
             }
         }
     }

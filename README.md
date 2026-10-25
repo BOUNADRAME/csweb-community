@@ -16,8 +16,8 @@
 >
 > | Votre parc CSPro | Branche | Statut |
 > |---|---|---|
-> | CSPro 8.0 et anterieur | `8.x` | **Current** — recommandee |
-> | CSPro 8.1 | `8.1.x` | **Beta** |
+> | CSPro 8.1 | `8.1.x` | **Current** — recommandee |
+> | CSPro 8.0 et anterieur | `8.0.x` | **LTS** — maintenue |
 >
 > **CSPro 8.0 et anterieur ne peuvent pas se synchroniser avec CSWeb 8.1** :
 > CSPro et CSWeb doivent etre montes de version ensemble. Verifiez la version
@@ -58,8 +58,8 @@
 # 1. Cloner le projet
 # Ligne 8.1 — pour CSPro 8.1
 git clone -b 8.1.x https://github.com/BOUNADRAME/csweb-community.git
-# Ligne 8.0 (stable) — pour CSPro 8.0 et anterieur
-# git clone -b 8.x https://github.com/BOUNADRAME/csweb-community.git
+# Ligne 8.0 (LTS) — pour CSPro 8.0 et anterieur
+# git clone -b 8.0.x https://github.com/BOUNADRAME/csweb-community.git
 cd csweb-community
 
 # 2. Configurer l'environnement

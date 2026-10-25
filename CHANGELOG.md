@@ -11,10 +11,10 @@ Patch versions follow the Community fork's own pace.
 ## Branching strategy
 
 - `master` — next version in development
-- `8.1.x` — v8.1 line, based on upstream CSWeb 8.1 (Beta)
-- `8.x` — v8.0 line, based on upstream CSWeb 8.0 (Current)
+- `8.1.x` — v8.1 line, based on upstream CSWeb 8.1 (Current)
+- `8.0.x` — v8.0 line, based on upstream CSWeb 8.0 (LTS)
 
-`8.x` and `8.1.x` sit on **different upstream trees** and are not
+`8.0.x` and `8.1.x` sit on **different upstream trees** and are not
 upgrade-compatible: the upstream script refuses the 8.0 → 8.1 jump, and
 CSPro 8.0 and earlier cannot synchronize with CSWeb 8.1. Both lines are
 therefore maintained in parallel.
@@ -42,6 +42,14 @@ Port of the Community layer onto the upstream CSWeb 8.1.2 base.
 - Validated on PHP 8.3, Apache, MariaDB 10.6 with `exec`/`proc_open` disabled.
 
 ### Fixed — Shared hosting
+- Setup completion page returned a blank HTTP 500 on hosts that disable
+  `exec()`; the Community schema is then installed on the first request.
+- A failed API check in the setup wizard left `src/config.php` behind and
+  locked `/setup/`; the file is now removed so the form can be resubmitted.
+- `src/config.php` is written with escaped values: a database password
+  containing `'` or `\` no longer breaks the site.
+- API rate limit raised to 600 requests per minute per session, so large
+  paged downloads are not cut after ~60 pages (login limits unchanged).
 - One MySQL connection per request instead of two (OAuth storage reuses the
   request connection), for hosts capping `max_user_connections`.
 - Rate limiter: logins counted per IP + username and API calls per session, so
