@@ -4,6 +4,7 @@
   "choose-version": "Choisir 8.0 ou 8.1",
   "prerequisites": "Prérequis Serveur",
   "installation": "Installation",
+  "shared-hosting": "Hébergement mutualisé (cPanel)",
   "first-breakout": "Premier Breakout",
   "verify": "Vérification",
   "next-steps": "Prochaines Étapes"

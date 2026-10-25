@@ -13,7 +13,13 @@ interface VersionEntry {
   symfony: string
   docsUrl: string
   githubUrl: string
+  // Ready-to-upload package for shared hosting (cPanel), published with the
+  // line's GitHub release. Lines without one simply do not show the link.
+  cpanelZipUrl?: string
+  cpanelGuideUrl?: string
 }
+
+const linkStyle = { fontSize: 11, color: 'var(--nextra-primary-hue, #2563eb)', textDecoration: 'none' } as const
 
 const statusConfig: Record<VersionStatus, { color: string; bg: string; label: string }> = {
   current: { color: '#16a34a', bg: 'rgba(22,163,74,0.12)', label: 'Current' },
@@ -151,8 +157,8 @@ export function VersionSwitcher() {
               borderBottom: '1px solid var(--nextra-border-color, #e5e7eb)',
             }}
           >
-            Cette documentation couvre les deux lignes. Choisissez la branche à
-            installer :
+            Cette documentation couvre les deux lignes. Choisissez la ligne à
+            installer : branche Git, ou zip prêt à déposer sur cPanel.
           </div>
 
           {(versions.versions as VersionEntry[]).map((v) => {
@@ -238,13 +244,38 @@ export function VersionSwitcher() {
                 >
                   git clone -b {v.branch} …
                 </code>
-                <div style={{ marginTop: 4 }}>
+                <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
+                  <a
+                    href={v.docsUrl.startsWith('http') ? v.docsUrl : basePath + v.docsUrl}
+                    onClick={(e) => e.stopPropagation()}
+                    style={linkStyle}
+                  >
+                    Documentation →
+                  </a>
+                  {v.cpanelZipUrl && (
+                    <a
+                      href={v.cpanelZipUrl}
+                      onClick={(e) => e.stopPropagation()}
+                      style={linkStyle}
+                    >
+                      ⬇ Zip cPanel
+                    </a>
+                  )}
+                  {v.cpanelGuideUrl && (
+                    <a
+                      href={v.cpanelGuideUrl.startsWith('http') ? v.cpanelGuideUrl : basePath + v.cpanelGuideUrl}
+                      onClick={(e) => e.stopPropagation()}
+                      style={linkStyle}
+                    >
+                      Guide cPanel →
+                    </a>
+                  )}
                   <a
                     href={v.githubUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    style={{ fontSize: 11, color: 'var(--nextra-primary-hue, #2563eb)', textDecoration: 'none' }}
+                    style={linkStyle}
                   >
                     Code source ({v.branch}) →
                   </a>

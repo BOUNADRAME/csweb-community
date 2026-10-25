@@ -1,0 +1,105 @@
+---
+title: Hébergement mutualisé (cPanel)
+description: Installer CSWeb Community 8.1 sur un hébergement mutualisé cPanel, sans ligne de commande — paquet prêt à déposer, limites et passage à un VPS
+---
+
+import { Callout } from 'nextra/components'
+
+# Hébergement mutualisé (cPanel)
+
+CSWeb Community 8.1 peut être installé sur un hébergement mutualisé géré avec **cPanel**,
+à partir d'un paquet prêt à déposer : aucun accès SSH, Composer ou ligne de commande n'est
+nécessaire.
+
+<Callout type="info">
+**Pour bénéficier de toute la puissance de CSWeb Community, préférez un VPS** (voir
+[Installation](/getting-started/installation)). Le mutualisé fonctionne en mode réduit,
+limité à la collecte et à la synchronisation. Il convient à un pilote, à une formation ou
+à une enquête de petite taille.
+</Callout>
+
+---
+
+## Ce qui fonctionne, ce qui demande un VPS
+
+| Fonctionnalité | Mutualisé (cPanel) | VPS / Docker |
+|---|:---:|:---:|
+| Déploiement d'applications CSPro, synchronisation CSEntry | ✅ | ✅ |
+| Suivi (rapport de synchronisation, carte), gestion des utilisateurs | ✅ | ✅ |
+| Téléchargement des données (Data Viewer, export Stata / SPSS / R / CSV) | ✅ | ✅ |
+| **Breakout** vers MySQL ou PostgreSQL (tables prêtes pour l'analyse) | — | ✅ |
+| Traitements planifiés et tableaux de bord alimentés en continu | — | ✅ |
+| Sauvegardes automatiques pilotées depuis CSWeb | cPanel uniquement | ✅ |
+| Centaines d'enquêteurs synchronisant simultanément | Limité par l'offre | ✅ |
+
+---
+
+## Télécharger
+
+| Ligne | Paquet cPanel | Guide d'installation | Empreinte |
+|---|---|---|---|
+| **CSWeb 8.1** (Current) | **[⬇ csweb-8.1.0-cpanel.zip](https://github.com/BOUNADRAME/csweb-community/releases/download/v8.1.0/csweb-8.1.0-cpanel.zip)** (23 Mo) | [INSTALL-cPanel.pdf](https://github.com/BOUNADRAME/csweb-community/releases/download/v8.1.0/INSTALL-cPanel.pdf) (anglais) | [SHA-256](https://github.com/BOUNADRAME/csweb-community/releases/download/v8.1.0/csweb-8.1.0-cpanel.zip.sha256) |
+| **CSWeb 8.0** (LTS) | Pas de paquet cPanel : installation par branche `8.0.x` | [Installation](/getting-started/installation) | — |
+
+Le zip contient l'application, ses dépendances (`vendor/`), les ressources web et le
+guide. Toutes les versions publiées : [Releases GitHub](https://github.com/BOUNADRAME/csweb-community/releases).
+
+Le paquet se reconstruit depuis le dépôt avec `tools/build-cpanel-package.sh`.
+
+---
+
+## Prérequis de l'hébergement
+
+| Élément | Valeur |
+|---|---|
+| PHP | **8.3** recommandé (8.1 minimum) |
+| Base de données | **MariaDB 10.6+** ou MySQL 8.0+ |
+| Serveur web | Apache avec `mod_rewrite` et `.htaccess` |
+| HTTPS | Certificat pour le sous-domaine (AutoSSL) |
+| Espace | ~200 Mo et ~16 000 fichiers, plus les données |
+
+Demandez à l'hébergeur la valeur de **`max_user_connections`** de l'offre : 20 ou plus
+convient.
+
+---
+
+## Installation en 7 étapes
+
+Le détail de chaque étape, la checklist de validation et le dépannage sont dans `INSTALL-cPanel.pdf`.
+
+1. **Sous-domaine** — par exemple `csweb.votre-domaine.org`, racine `/home/<compte>/csweb`.
+2. **PHP** — *MultiPHP Manager* : 8.3 ; *MultiPHP INI Editor* : `memory_limit 256M`,
+   `upload_max_filesize` et `post_max_size 64M`, `max_execution_time 300`.
+3. **Base de données** — *MySQL Databases* : base, utilisateur, tous les privilèges.
+4. **Dépôt du zip** — *File Manager* : envoyer le zip dans le dossier personnel et l'extraire.
+5. **HTTPS** — *SSL/TLS Status* : lancer AutoSSL sur le sous-domaine.
+6. **Assistant** — `https://csweb.votre-domaine.org/setup/`, hôte `localhost`, URL d'API
+   `https://csweb.votre-domaine.org/api/`.
+7. **Vérification** — connexion admin, déploiement depuis CSPro Designer, synchronisation
+   CSEntry, téléchargement des données.
+
+Les pages d'administration Community (paramètres, sauvegardes, journaux) se configurent
+automatiquement à la première visite après l'installation.
+
+---
+
+## Capacité mesurée
+
+Tests réalisés sur un environnement reproduisant un mutualisé (PHP 8.3, MariaDB 10.6,
+fonctions `exec` / `proc_open` désactivées, 1 cœur CPU, 20 connexions par utilisateur) :
+
+| Situation | Résultat |
+|---|---|
+| 200 appareils synchronisant dans la même minute | Aucune erreur |
+| 5 000 cas envoyés en une seule synchronisation | ~2 secondes |
+| 30 tablettes derrière le même Wi-Fi (comptes distincts) | Aucune erreur |
+| Pics de plusieurs dizaines de synchronisations à la même seconde | Quelques synchronisations à relancer |
+
+---
+
+## Passer ensuite à un VPS
+
+Une installation mutualisée se migre vers un VPS sans perte : export de la base
+(*phpMyAdmin* ou sauvegarde cPanel), copie des dossiers `files/` et `files_csweb/`,
+installation sur le VPS, import de la base. Le breakout et les traitements planifiés
+deviennent alors disponibles sur les données déjà collectées.
