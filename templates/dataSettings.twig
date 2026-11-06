@@ -856,16 +856,16 @@
                                         <td data-order="{{ dataSetting.lastProcessedTime }}" class="js-datetime" data-datetime="{{ dataSetting.lastProcessedTime }}">{{ dataSetting.lastProcessedTime}}</td>
                                         <td style="text-align: center">
                                             {% if canManageSettings %}
-                                                <a href="javascript:;" class="edit-button-class"><i class="fas fa-pencil-alt fa-fw"></i></a>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary edit-button-class" title="Edit" aria-label="Edit"><i class="fas fa-pencil-alt"></i></button>
                                             {% else %}
-                                                <a href="javascript:;" class="isDisabled" style="color:grey; cursor:not-allowed; pointer-events: none;"><i class="fas fa-pencil-alt fa-fw"></i></a>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Edit" aria-label="Edit"><i class="fas fa-pencil-alt"></i></button>
                                             {% endif %}
                                         </td>
                                         <td style="text-align: center">
                                             {% if canManageSettings %}
-                                                <a href="javascript:;" class="delete-button-class"><i class="fas fa-trash-alt fa-fw"></i></a>
+                                                <button type="button" class="btn btn-sm btn-outline-danger delete-button-class" title="Delete" aria-label="Delete"><i class="fas fa-trash-alt"></i></button>
                                             {% else %}
-                                                <a href="javascript:;" class="isDisabled" style="color:grey; cursor:not-allowed; pointer-events: none;"><i class="fas fa-trash-alt fa-fw"></i></a>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" disabled title="Delete" aria-label="Delete"><i class="fas fa-trash-alt"></i></button>
                                             {% endif %}
                                         </td>
                                     </tr>

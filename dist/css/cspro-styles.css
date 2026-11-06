@@ -328,3 +328,4 @@ body.loading .spinner {
 .row-actions { display:inline-flex; flex-wrap:nowrap; gap:.25rem; }
 .row-actions .btn { padding:.15rem .45rem; line-height:1.2; font-size:.8rem; }
 .row-actions .btn i { width:1em; text-align:center; }
+#data-config-table .btn-sm { padding:.15rem .45rem; line-height:1.2; font-size:.8rem; }
