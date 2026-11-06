@@ -29,6 +29,48 @@ _Nothing yet._
 
 ---
 
+## [8.1.1] - 2026-11-06 (branch `8.1.x`)
+
+Fixes found by running the full 8.1.0 workflow end to end (setup, sync,
+selective breakout to PostgreSQL and MySQL, scheduler, webhooks, reports,
+backup and restore).
+
+### Fixed
+- `csweb:process-cases-by-dict` failed with `Unknown column 'dictionary_name'`:
+  CSWeb 8.1 renamed the column to `name`. The scheduler, "Run now" and
+  `breakout-webhook.php` all go through this command, so the selective
+  breakout did not run at all on 8.1.0.
+- `breakout-status-webhook.php` and `dictionary-schema-webhook.php` used the
+  same 8.0 column name and answered `Failed to query dictionaries`.
+- Sync Report and Map Report queried `level-1` / `cases` without the
+  per-dictionary table prefix (`<dict>_level-1`) and failed with
+  `Table '…level-1' doesn't exist`. Map Report now also quotes identifiers for
+  PostgreSQL and SQL Server targets. Sync Report, which joins the metadata
+  database in one MySQL query, answers `report_requires_mysql` for other
+  engines instead of a SQL error.
+- "Run now" on a schedule and "Run Now" in Settings > Backup left the run at
+  exit code -1 ("running" / "In Progress") for ever, and the manual backup
+  file at 0 B. Both now go through `csweb:scheduler-run --id` and
+  `csweb:backup-run --now`, which record the exit code, size and log at the
+  end. The manual backup no longer puts the database password on the web
+  server's command line.
+
+### Restored
+- Settings > Data: **Breakout Scheduler** and **Breakout Logs** tabs, lost
+  when the Community layer was rebased onto CSWeb 8.1.2 (the `/scheduler/*`
+  and `/breakout/logs/*` routes were still there). The active tab is kept in
+  the URL hash (`#scheduler`, `#logs`) and the tab shows the number of
+  active schedules.
+
+### Added
+- `dictionary-schema-webhook.php` `register`: optional `db_type`
+  (`postgresql`, `mysql`, `sqlserver`) and `port`, as in the admin UI; `list`
+  and `status` return them.
+- `docker-compose.yml`: `csweb_backups` volume on `var/backups`, so backup
+  files survive `docker compose up -d` and rebuilds.
+
+---
+
 ## [8.1.0] - 2026-10-25 (branch `8.1.x`)
 
 Port of the Community layer onto the upstream CSWeb 8.1.2 base.
