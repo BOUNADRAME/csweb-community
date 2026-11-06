@@ -36,6 +36,9 @@ services:
       - csweb_files:/var/www/html/files
       - csweb_logs:/var/www/html/var/logs
       - csweb_config:/var/www/html/config-persist
+      # Community layer: keep the Settings > Backup files when the container
+      # is recreated (docker compose up -d after a .env change, rebuild).
+      - csweb_backups:/var/www/html/var/backups
       # Templates for envsubst (processed at startup by docker-entrypoint.sh)
       - ./docker/apache/000-default.conf:/etc/templates/000-default.conf:ro
       - ./docker/apache/mpm_prefork.conf:/etc/templates/mpm_prefork.conf:ro
@@ -430,6 +433,11 @@ volumes:
     driver: local
     labels:
       - "com.csweb.volume=logs"
+
+  csweb_backups:
+    driver: local
+    labels:
+      - "com.csweb.volume=backups"
 
   csweb_config:
     driver: local
