@@ -2,6 +2,17 @@
 {% block resources %}
     <link href={{asset('dist/css/dropdownCheckboxes.min.css')}} rel="stylesheet">
     <style>
+        /* Community layer: breakout target engine chip */
+        .db-engine { display:inline-flex; align-items:center; gap:.35rem; padding:.2rem .55rem; border-radius:1rem;
+                     font-size:.78rem; font-weight:600; white-space:nowrap; border:1px solid transparent; }
+        .db-engine i { font-size:.8rem; }
+        .db-engine-postgresql { color:#1f4e79; background:#e7f0f9; border-color:#c5d9ee; }
+        .db-engine-mysql      { color:#8a4b00; background:#fff3e0; border-color:#ffd8a8; }
+        .db-engine-sqlserver  { color:#9b1c1c; background:#fdecec; border-color:#f5c2c2; }
+        /* Community layer: compact, single-line row actions */
+        .row-actions { display:inline-flex; flex-wrap:nowrap; gap:.25rem; }
+        .row-actions .btn { padding:.15rem .45rem; line-height:1.2; font-size:.8rem; }
+        .row-actions .btn i { width:1em; text-align:center; }
         .hidden {
             display: none;
         }
@@ -843,11 +854,11 @@
                                         {% set dbType = dataSetting.dbType|default('postgresql')|lower %}
                                         <td>
                                             {% if dbType == 'mysql' %}
-                                                <span class="badge badge-warning">MySQL</span>
+                                                <span class="db-engine db-engine-mysql" title="MySQL / MariaDB"><i class="fas fa-database"></i>MySQL</span>
                                             {% elseif dbType == 'sqlserver' %}
-                                                <span class="badge badge-danger">SQL Server</span>
+                                                <span class="db-engine db-engine-sqlserver" title="Microsoft SQL Server"><i class="fas fa-server"></i>SQL Server</span>
                                             {% else %}
-                                                <span class="badge badge-info">PostgreSQL</span>
+                                                <span class="db-engine db-engine-postgresql" title="PostgreSQL"><i class="fas fa-database"></i>PostgreSQL</span>
                                             {% endif %}
                                         </td>
                                         <td>{{ dataSetting.targetHostName}}{% if dataSetting.targetPort %}:{{ dataSetting.targetPort }}{% endif %} | {{ dataSetting.targetSchemaName}}</td>
@@ -2077,11 +2088,12 @@
                                         + '<td>' + (s.last_run || '-') + '</td>'
                                         + '<td>' + (s.next_run || '-') + '</td>'
                                         + '<td>'
-                                        + '<a href="javascript:;" class="schedule-toggle-btn mr-2" data-id="' + s.id + '">' + toggleIcon + '</a>'
-                                        + '<a href="javascript:;" class="schedule-run-btn mr-2" data-id="' + s.id + '" data-name="' + s.name + '"><i class="fas fa-rocket fa-fw" title="Run Now"></i></a>'
-                                        + '<a href="javascript:;" class="schedule-edit-btn mr-2" data-id="' + s.id + '" data-label="' + s.label + ' (' + s.name + ')" data-cron="' + s.cron_expression + '" data-enabled="' + s.enabled + '"><i class="fas fa-pencil-alt fa-fw" title="Edit"></i></a>'
-                                        + '<a href="javascript:;" class="schedule-delete-btn" data-id="' + s.id + '" data-label="' + s.label + ' (' + s.name + ')"><i class="fas fa-trash-alt fa-fw" title="Delete"></i></a>'
-                                        + '</td></tr>';
+                                        + '<div class="row-actions">'
+                                        + '<button type="button" class="btn btn-outline-secondary schedule-toggle-btn" data-id="' + s.id + '" title="' + (s.enabled == 1 ? 'Disable' : 'Enable') + '" aria-label="' + (s.enabled == 1 ? 'Disable' : 'Enable') + '">' + toggleIcon + '</button>'
+                                        + '<button type="button" class="btn btn-outline-primary schedule-run-btn" data-id="' + s.id + '" data-name="' + s.name + '" title="Run now" aria-label="Run now"><i class="fas fa-play"></i></button>'
+                                        + '<button type="button" class="btn btn-outline-secondary schedule-edit-btn" data-id="' + s.id + '" data-label="' + s.label + ' (' + s.name + ')" data-cron="' + s.cron_expression + '" data-enabled="' + s.enabled + '" title="Edit" aria-label="Edit"><i class="fas fa-pencil-alt"></i></button>'
+                                        + '<button type="button" class="btn btn-outline-danger schedule-delete-btn" data-id="' + s.id + '" data-label="' + s.label + ' (' + s.name + ')" title="Delete" aria-label="Delete"><i class="fas fa-trash-alt"></i></button>'
+                                        + '</div></td></tr>';
                                     tbody.append(row);
                                 });
                             } else {
@@ -2397,11 +2409,11 @@
                             '<td>' + badge + '</td>' +
                             '<td>' + escapeHtml(log.date) + '</td>' +
                             '<td>' + formatSize(log.size) + '</td>' +
-                            '<td>' +
-                                '<button class="btn btn-xs btn-info view-log-btn mr-1" data-file="' + escapeHtml(log.filename) + '" data-dict="' + escapeHtml(log.dictName) + '" data-type="' + escapeHtml(log.type) + '" data-date="' + escapeHtml(log.date) + '" data-size="' + log.size + '" title="View"><i class="fas fa-eye"></i></button>' +
-                                '<button class="btn btn-xs btn-success download-log-btn mr-1" data-file="' + escapeHtml(log.filename) + '" title="Download"><i class="fas fa-download"></i></button>' +
-                                '<button class="btn btn-xs btn-danger delete-log-btn" data-file="' + escapeHtml(log.filename) + '" title="Delete"><i class="fas fa-trash-alt"></i></button>' +
-                            '</td>' +
+                            '<td class="text-nowrap"><div class="row-actions">' +
+                                '<button type="button" class="btn btn-outline-primary view-log-btn" data-file="' + escapeHtml(log.filename) + '" data-dict="' + escapeHtml(log.dictName) + '" data-type="' + escapeHtml(log.type) + '" data-date="' + escapeHtml(log.date) + '" data-size="' + log.size + '" title="View log" aria-label="View log"><i class="fas fa-eye"></i></button>' +
+                                '<button type="button" class="btn btn-outline-secondary download-log-btn" data-file="' + escapeHtml(log.filename) + '" title="Download" aria-label="Download"><i class="fas fa-download"></i></button>' +
+                                '<button type="button" class="btn btn-outline-danger delete-log-btn" data-file="' + escapeHtml(log.filename) + '" title="Delete" aria-label="Delete"><i class="fas fa-trash-alt"></i></button>' +
+                            '</div></td>' +
                             '</tr>';
                     }
                     tbody.html(rows);
