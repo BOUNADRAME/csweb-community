@@ -552,6 +552,16 @@
                                             areaNamesColumnCount: areaNamesColumnCount,
                                             dictionary: selectedDictionary,
                                             dictionaryIds: selectedDictionaryIds
+                                        },
+                                        // Community layer: the API returns its error object in
+                                        // place of the rows (e.g. report_requires_mysql for a
+                                        // PostgreSQL target). Show it instead of an empty table.
+                                        dataSrc: function (json) {
+                                            if (json && json.data && !Array.isArray(json.data) && json.data.type === "error") {
+                                                ui.showAlert(json.data.message || "Failed getting the sync report.", "alert alert-warning");
+                                                return [];
+                                            }
+                                            return json.data || [];
                                         }
                                     },
 
