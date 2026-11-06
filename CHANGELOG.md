@@ -29,6 +29,30 @@ _Nothing yet._
 
 ---
 
+## [8.1.2] - 2026-11-06 (branch `8.1.x`)
+
+Usability fixes for the breakout administration screens.
+
+### Added
+- Settings > Data: **Test connection** button in Add and Edit Configuration.
+  It connects with the exact settings the breakout will use (engine, port,
+  SSH tunnel), shows the server and version, and explains the usual
+  failures: wrong password, unknown database, unknown host (Docker service
+  name), nothing listening (published vs internal port), timeout, missing
+  driver, TLS required. Nothing is saved. Route: `POST /dataSettings/testConnection`.
+
+### Fixed
+- Breakout Health and `breakout-status-webhook.php` reported dictionaries
+  processed from the CLI or a webhook as "Configured but never run", with no
+  last run. The last run now falls back on the last completed job in the
+  target database.
+- Breakout Health **Run now** always failed with "Failed to start breakout":
+  the request was sent with `fetch()` without the CSRF header.
+- Sync Report showed an empty table when the report could not be built (for
+  example for a PostgreSQL target); it now shows the server's message.
+
+---
+
 ## [8.1.1] - 2026-11-06 (branch `8.1.x`)
 
 Fixes found by running the full 8.1.0 workflow end to end (setup, sync,
