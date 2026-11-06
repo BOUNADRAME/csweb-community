@@ -268,6 +268,7 @@
                         </div>
                         <!-- map-options -->
                         <div class="modal-footer modal-footer-spacing-and-alignment">
+                            <button type="button" class="btn btn-outline-secondary mr-auto test-connection-btn" data-prefix="" title="Check the connection with these settings, without saving"><i class="fas fa-plug"></i> Test connection</button>
                             <button type="submit" class="btn btn-primary" id="add-button">Add</button>
                             <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
                         </div>
@@ -480,6 +481,7 @@
                             <!-- edit-map-options -->
                         </div>
                         <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary mr-auto test-connection-btn" data-prefix="edit-" title="Check the connection with these settings, without saving"><i class="fas fa-plug"></i> Test connection</button>
                             <button type="submit" class="btn btn-primary" id="update-button">Update</button>
                             <button type="button" class="btn btn-danger" id="edit-cancel-button" data-dismiss="modal">Cancel</button>
                             <button type="button" class="btn btn-primary hidden" id="view-additional-config-cancel-button">Cancel</button>
@@ -2784,6 +2786,55 @@
                     if ($.fn.dataTable) {
                         $.fn.dataTable.tables({visible: true, api: true}).columns.adjust();
                     }
+                });
+            })();
+    
+            // Community layer: "Test connection" in Add / Edit Configuration.
+            (function () {
+                function resultBox($btn) {
+                    var $box = $btn.closest(".modal-content").find(".test-connection-result");
+                    if (!$box.length) {
+                        $box = $('<div class="test-connection-result alert small mb-0 mx-3 mt-0" role="status" style="display:none"></div>');
+                        $btn.closest(".modal-footer").before($box);
+                    }
+                    return $box;
+                }
+                $(document).on("click", ".test-connection-btn", function () {
+                    var $btn = $(this), p = $btn.data("prefix") || "";
+                    var $box = resultBox($btn);
+                    var payload = {
+                        targetHostName: $("#" + p + "host-name").val(),
+                        targetPort: $("#" + p + "target-port").val(),
+                        dbType: $("#" + p + "db-type").val(),
+                        targetSchemaName: $("#" + p + "target-db-name").val(),
+                        dbUserName: $("#" + p + "db-user-name").val(),
+                        dbPassword: $("#" + p + "db-password").val()
+                    };
+                    $btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Testing…');
+                    $box.hide();
+                    $.ajax({
+                        type: "POST",
+                        url: "{{ path('testConnection') }}",
+                        data: JSON.stringify(payload),
+                        contentType: "application/json",
+                        dataType: "json",
+                        global: false
+                    }).done(function (r) {
+                        $box.removeClass("alert-success alert-danger")
+                            .addClass(r.ok ? "alert-success" : "alert-danger")
+                            .html('<i class="fas ' + (r.ok ? 'fa-check-circle' : 'fa-times-circle') + ' mr-1"></i>'
+                                + $("<span>").text(r.message + (r.server ? " (" + r.server + ")" : "")).html())
+                            .show();
+                    }).fail(function (xhr) {
+                        var msg = (xhr.responseJSON && xhr.responseJSON.message) || "Connection test failed.";
+                        $box.removeClass("alert-success").addClass("alert-danger").text(msg).show();
+                    }).always(function () {
+                        $btn.prop("disabled", false).html('<i class="fas fa-plug"></i> Test connection');
+                    });
+                });
+                // Start each opening of the dialog without the previous result.
+                $("#add-config-modal, #edit-config-modal").on("show.bs.modal", function () {
+                    $(this).find(".test-connection-result").hide();
                 });
             })();
     </script>

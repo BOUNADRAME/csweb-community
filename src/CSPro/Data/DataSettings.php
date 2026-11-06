@@ -93,6 +93,85 @@ class DataSettings {
         return $params;
     }
 
+    /**
+     * Community layer: "Test connection" in Add / Edit Configuration.
+     * Connects with the exact parameters the breakout will use (driver, port,
+     * SSH tunnel), runs a trivial query, and turns the usual failures into a
+     * short, actionable message. Nothing is written.
+     *
+     * @return array{ok:bool, message:string, server?:string}
+     */
+    public function testConnection(array $dataSetting): array {
+        foreach (['targetHostName', 'targetSchemaName', 'dbUserName', 'dbPassword'] as $field) {
+            if (trim((string) ($dataSetting[$field] ?? '')) === '') {
+                return ['ok' => false, 'message' => 'Fill in hostname, database name, username and password first.'];
+            }
+        }
+        $sourceDBName = $this->pdo->query('select database()')->fetchColumn();
+        if (strcasecmp((string) $sourceDBName, trim((string) $dataSetting['targetSchemaName'])) == 0) {
+            return ['ok' => false, 'message' => "The target database must differ from the CSWeb metadata database ($sourceDBName)."];
+        }
+        $dataSetting['targetSchemaName'] = trim((string) $dataSetting['targetSchemaName']);
+        $params = $this->buildConnectionParams($dataSetting);
+        // Fail fast instead of hanging on an unreachable host.
+        if (in_array($params['driver'], ['pdo_pgsql', 'pdo_mysql'], true)) {
+            $params['driverOptions'] = [\PDO::ATTR_TIMEOUT => 5];
+        }
+        $target = $params['host'] . (isset($params['port']) ? ':' . $params['port'] : '') . ' / ' . $params['dbname'];
+        try {
+            $conn = DriverManager::getConnection($params, new Configuration());
+            $conn->fetchOne('SELECT 1');
+            $class = (new \ReflectionClass($conn->getDatabasePlatform()))->getShortName();
+            $platform = str_contains($class, 'MariaDb') ? 'MariaDB'
+                : (str_contains($class, 'MySQL') ? 'MySQL'
+                : (str_contains($class, 'PostgreSQL') ? 'PostgreSQL'
+                : (str_contains($class, 'SQLServer') ? 'SQL Server' : $class)));
+            try {
+                $native = $conn->getWrappedConnection();
+                if (method_exists($native, 'getServerVersion')) {
+                    $version = (string) $native->getServerVersion();
+                    if (preg_match('/\d+\.\d+(\.\d+)?/', $version, $m)) {
+                        $platform .= ' ' . $m[0];
+                    }
+                }
+            } catch (\Throwable $ignored) {
+                // The version is a nicety; the connection itself succeeded.
+            }
+            $conn->close();
+            return ['ok' => true, 'message' => "Connected to $target.", 'server' => $platform];
+        } catch (\Throwable $e) {
+            $this->logger->warning('Test connection failed: ' . $e->getMessage());
+            return ['ok' => false, 'message' => self::explainConnectionError($e->getMessage(), $target)];
+        }
+    }
+
+    /** Map the common driver errors to a hint the administrator can act on. */
+    public static function explainConnectionError(string $raw, string $target): string {
+        $hints = [
+            '/password authentication failed|Access denied for user|Login failed for user|28P01|\[1045\]|18456/i'
+                => 'Wrong username or password.',
+            '/database "[^"]*" does not exist|Unknown database|3D000|\[1049\]|Cannot open database/i'
+                => 'The database does not exist on this server. Create it first (the breakout does not create the database).',
+            '/could not translate host name|getaddrinfo|Name or service not known|php_network_getaddresses|Unknown (MySQL server )?host/i'
+                => 'Hostname not found. With Docker, use the service name (postgres, mysql-breakout, sqlserver).',
+            '/Connection refused|\[2002\]|08006|\[111\]|actively refused/i'
+                => 'Nothing answers on this host and port. Check the port: with Docker, use the internal port (5432, 3306, 1433), not the published one (e.g. 3307).',
+            '/timed out|timeout expired|\[110\]/i'
+                => 'The server did not answer in time (firewall, wrong host or port).',
+            '/could not find driver/i'
+                => 'The PHP driver for this database type is not installed (see csweb:check-database-drivers).',
+            '/SSL|certificate/i'
+                => 'The server requires an SSL/TLS connection that is not configured.',
+        ];
+        foreach ($hints as $pattern => $hint) {
+            if (preg_match($pattern, $raw)) {
+                return "Cannot connect to $target. $hint";
+            }
+        }
+        $short = preg_replace('/^.*?(SQLSTATE\[[^\]]+\].*)$/s', '$1', $raw);
+        return "Cannot connect to $target. " . mb_substr(trim($short), 0, 200);
+    }
+
     public function addDataSetting($dataSetting): bool {
         $bind = [];
         $sourceDBName = $this->pdo->query('select database()')->fetchColumn();

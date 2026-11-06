@@ -119,6 +119,38 @@ class DataSettingsController extends AbstractController implements TokenAuthenti
         return $response;
     }
 
+    /**
+     * Community layer: check a breakout target before saving it, so a wrong
+     * port, password or Docker service name shows up here and not at the
+     * first breakout.
+     */
+    #[Route('/dataSettings/testConnection', name: 'testConnection', methods: ['POST'])]
+    public function testConnection(Request $request): Response {
+        $this->denyAccessUnlessGranted(SettingsVoter::SETTINGS_WRITE);
+        try {
+            $body = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            return new Response(json_encode(['ok' => false, 'message' => 'Invalid request.']), Response::HTTP_BAD_REQUEST, ['Content-Type' => 'application/json']);
+        }
+        $dbType = strtolower((string) ($body['dbType'] ?? 'postgresql'));
+        if (!in_array($dbType, ['postgresql', 'mysql', 'sqlserver'], true)) {
+            return new Response(json_encode(['ok' => false, 'message' => 'Invalid database type.']), Response::HTTP_BAD_REQUEST, ['Content-Type' => 'application/json']);
+        }
+        $port = trim((string) ($body['targetPort'] ?? ''));
+        if ($port !== '' && (!ctype_digit($port) || (int) $port < 1 || (int) $port > 65535)) {
+            return new Response(json_encode(['ok' => false, 'message' => 'Port must be between 1 and 65535.']), Response::HTTP_BAD_REQUEST, ['Content-Type' => 'application/json']);
+        }
+        $result = $this->dataSettings->testConnection([
+            'targetHostName'   => trim((string) ($body['targetHostName'] ?? '')),
+            'targetPort'       => $port,
+            'dbType'           => $dbType,
+            'targetSchemaName' => (string) ($body['targetSchemaName'] ?? ''),
+            'dbUserName'       => trim((string) ($body['dbUserName'] ?? '')),
+            'dbPassword'       => (string) ($body['dbPassword'] ?? ''),
+        ]);
+        return new Response(json_encode($result, JSON_THROW_ON_ERROR), Response::HTTP_OK, ['Content-Type' => 'application/json']);
+    }
+
     #[Route('/updateSetting', name: 'updateSetting', methods: ['PUT'])]
     public function updateDataSetting(Request $request): Response {
         $this->denyAccessUnlessGranted(SettingsVoter::SETTINGS_WRITE);
