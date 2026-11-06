@@ -184,14 +184,27 @@ class BreakoutStatusService {
                 d.name AS dictionary_name,
                 (s.dictionary_id IS NOT NULL) AS configured,
                 s.host_name, s.port, s.db_type, s.schema_name, s.schema_user_name,
-                AES_DECRYPT(s.schema_password, 'cspro') AS schema_password_plain
+                AES_DECRYPT(s.schema_password, 'cspro') AS schema_password_plain,
+                sch.last_run
             FROM cspro_dictionaries d
             LEFT JOIN cspro_dictionaries_schema s ON s.dictionary_id = d.id
+            LEFT JOIN cspro_breakout_scheduler sch ON sch.dictionary_id = d.id
         ")->fetchAll(PDO::FETCH_ASSOC);
+        // Community layer: "never run" and "last activity" also count breakouts
+        // started outside the scheduler (CLI, webhook), read from the target.
+        $neverRunCount = 0;
+        $lastActivity = $row['last_activity'];
 
         foreach ($allRows as $r) {
             $tot = $this->countSourceCases($r['dictionary_name']);
             $totalCases += $tot;
+            if ($r['configured']) {
+                $jobTime = $r['schema_password_plain'] ? $this->lastJobTime($r) : null;
+                if ($r['last_run'] === null && $jobTime === null) {
+                    $neverRunCount++;
+                }
+                $lastActivity = self::latest($lastActivity, $jobTime);
+            }
             if ($r['configured'] && $r['schema_password_plain']) {
                 $proc = $this->countProcessedCases($r);
                 if ($proc !== null) {
@@ -219,8 +232,8 @@ class BreakoutStatusService {
             'dicts_with_pending'      => $dictsWithPending,
             'dicts_in_error'          => (int) $row['dicts_in_error'],
             'dicts_running'           => (int) $row['dicts_running'],
-            'dicts_never_run'         => (int) $row['dicts_never_run'],
-            'last_activity'           => $row['last_activity'],
+            'dicts_never_run'         => $neverRunCount,
+            'last_activity'           => $lastActivity,
         ];
     }
 
@@ -263,18 +276,27 @@ class BreakoutStatusService {
         $errors = $st->fetchAll(PDO::FETCH_ASSOC);
 
         $neverRunSql = "
-            SELECT d.name AS dictionary_name, d.dictionary_label
+            SELECT d.name AS dictionary_name, d.dictionary_label,
+                   s.host_name, s.port, s.db_type, s.schema_name, s.schema_user_name,
+                   AES_DECRYPT(s.schema_password, 'cspro') AS schema_password_plain
             FROM cspro_dictionaries d
             JOIN cspro_dictionaries_schema s ON s.dictionary_id = d.id
             LEFT JOIN cspro_breakout_scheduler sch ON sch.dictionary_id = d.id
             WHERE sch.last_run IS NULL
             ORDER BY d.name
-            LIMIT :lim
         ";
-        $st = $this->pdo->prepare($neverRunSql);
-        $st->bindValue(':lim', $limit, PDO::PARAM_INT);
-        $st->execute();
-        $neverRun = $st->fetchAll(PDO::FETCH_ASSOC);
+        $neverRun = [];
+        foreach ($this->pdo->query($neverRunSql)->fetchAll(PDO::FETCH_ASSOC) as $nr) {
+            // Community layer: skip dictionaries already processed from the CLI
+            // or a webhook (they have completed jobs in the target).
+            if ($nr['schema_password_plain'] && $this->lastJobTime($nr) !== null) {
+                continue;
+            }
+            $neverRun[] = ['dictionary_name' => $nr['dictionary_name'], 'dictionary_label' => $nr['dictionary_label']];
+            if (count($neverRun) >= $limit) {
+                break;
+            }
+        }
 
         // Pending requires per-target counts — reuse buildStatusEntry for top N candidates only.
         // Strategy: pull all configured dicts (typically small number compared to cases), score them,
@@ -389,7 +411,10 @@ class BreakoutStatusService {
             'db_type'              => $configured ? ($row['db_type'] ?? 'postgresql') : null,
             'cron_enabled'         => (bool) $row['cron_enabled'],
             'cron_expression'      => $row['cron_expression'],
-            'last_run'             => $row['last_run'],
+            // Community layer: a breakout started from the CLI or a webhook does
+            // not go through the scheduler, so fall back on the last completed
+            // job in the target. Otherwise such dictionaries read "never run".
+            'last_run'             => self::latest($row['last_run'], $lastProcessedTime),
             'next_run'             => $row['next_run'],
             'last_exit_code'       => $row['last_exit_code'] !== null ? (int) $row['last_exit_code'] : null,
             'total_cases'          => $totalCases,
@@ -410,6 +435,13 @@ class BreakoutStatusService {
      * are constrained by upstream code, but we re-check here so this service
      * never interpolates an unsafe value into a SQL identifier.
      */
+    /** Most recent of two 'Y-m-d H:i:s' timestamps, either of which may be null. */
+    private static function latest(?string $a, ?string $b): ?string {
+        if ($a === null || $a === '') return ($b === '' ? null : $b);
+        if ($b === null || $b === '') return $a;
+        return strtotime($b) > strtotime($a) ? $b : $a;
+    }
+
     private static function isSafeDictName(string $name): bool {
         return (bool) preg_match('/^[A-Z0-9_]{1,64}$/', $name);
     }

@@ -253,7 +253,10 @@ foreach ($rows as $row) {
         'db_type'              => $configured ? ($row['db_type'] ?? 'postgresql') : null,
         'cron_enabled'         => (bool) $row['cron_enabled'],
         'cron_expression'      => $row['cron_expression'],
-        'last_run'             => $row['last_run'],
+        // Community layer: CLI and webhook breakouts do not go through the
+        // scheduler; fall back on the last completed job in the target.
+        'last_run'             => ($row['last_run'] !== null && ($lastProcessedTime === null || strtotime($row['last_run']) >= strtotime($lastProcessedTime)))
+                                    ? $row['last_run'] : $lastProcessedTime,
         'next_run'             => $row['next_run'],
         'last_exit_code'       => $row['last_exit_code'] !== null ? (int) $row['last_exit_code'] : null,
         'total_cases'          => $totalCases,
