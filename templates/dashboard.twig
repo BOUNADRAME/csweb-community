@@ -75,6 +75,7 @@
         <div class="toolbar-left">
             <h5 class="m-0"><i class="fas fa-tachometer-alt"></i> Breakout Health</h5>
             <span class="updated-hint" id="dash-updated-hint">Last update: —</span>
+            <span class="badge badge-pill badge-info ml-2" id="kpi-filter-badge" style="display:none" title="The cards show the dictionaries that match the filters"><i class="fas fa-filter"></i> Filtered</span>
         </div>
         <div class="toolbar-right">
             <label class="live-toggle">
@@ -204,6 +205,7 @@
                 limit: 25,
                 statusFilter: "all",
                 cronFilter: "",
+                filteredSummary: null,
                 search: "",
                 live: false,
                 liveTimer: null,
@@ -271,17 +273,6 @@
                 return { key: "up_to_date", cls: "s-ok", label: "Up-to-date" };
             }
 
-            function clientFilter(rows) {
-                var sf = state.statusFilter;
-                var q = state.search.toLowerCase();
-                return rows.filter(function (d) {
-                    if (sf !== "all" && statusFor(d).key !== sf) return false;
-                    if (q && d.dictionary.toLowerCase().indexOf(q) === -1
-                          && (d.label || "").toLowerCase().indexOf(q) === -1) return false;
-                    return true;
-                });
-            }
-
             function setUpdated(ts) {
                 var hint = document.getElementById("dash-updated-hint");
                 if (!ts) { hint.textContent = "Last update: —"; return; }
@@ -295,9 +286,19 @@
                 var s = payload.summary;
                 var p = payload.topProblems || { errors: [], pending: [], neverRun: [] };
                 state.lastSummary = s;
+                // Community layer: while a filter is active, the cards show the
+                // filtered set (set by renderTable); keep them as they are.
+                if (!state.filteredSummary) renderKpis(s, false);
+                renderProblems(p);
+                setUpdated(payload.generated_at);
+            }
 
+            // Community layer: the KPI cards follow the table filters.
+            function renderKpis(s, filtered) {
+                var badge = document.getElementById("kpi-filter-badge");
+                if (badge) badge.style.display = filtered ? "" : "none";
                 document.querySelector("#kpi-dicts .kpi-value").textContent = s.dictionaries_configured + " / " + s.dictionaries_total;
-                document.getElementById("kpi-dicts-sub").textContent = "configured / total";
+                document.getElementById("kpi-dicts-sub").textContent = filtered ? "configured / matching" : "configured / total";
 
                 document.querySelector("#kpi-collected .kpi-value").textContent = fmtNumber(s.total_cases);
                 document.querySelector("#kpi-processed .kpi-value").textContent = fmtNumber(s.processed_cases);
@@ -322,9 +323,6 @@
                 var errCard = document.getElementById("kpi-errors");
                 errCard.classList.remove("kpi-good", "kpi-warn", "kpi-error", "kpi-muted");
                 errCard.classList.add(s.dicts_in_error > 0 ? "kpi-error" : "kpi-muted");
-
-                renderProblems(p);
-                setUpdated(payload.generated_at);
             }
 
             function renderProblems(p) {
@@ -349,7 +347,12 @@
 
             // ----- Table rendering -----
             function renderTable(payload) {
-                var rows = clientFilter(payload.data || []);
+                // Community layer: search and status are filtered server side
+                // (every page), and the KPI cards follow the filtered set.
+                var rows = payload.data || [];
+                state.filteredSummary = payload.filtered_summary || null;
+                if (state.filteredSummary) renderKpis(state.filteredSummary, true);
+                else if (state.lastSummary) renderKpis(state.lastSummary, false);
                 var tbody = document.getElementById("breakout-dashboard-body");
                 if (!rows.length) {
                     tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">No dictionaries match the current filters.</td></tr>';
@@ -392,10 +395,12 @@
                             +  '<td>' + (d.cron_enabled ? fmtFuture(d.next_run) : '<span class="text-muted">—</span>') + '</td>'
                             +  '<td>' + exitTxt + '</td>'
                             +  '<td class="col-actions text-center">'
+                            +    '<div class="row-actions">'
                             +    (d.breakout_configured
-                                  ? '<button type="button" class="btn btn-link btn-sm p-1 dash-run-now" title="Run now"><i class="fas fa-play"></i></button>'
+                                  ? '<button type="button" class="btn btn-outline-primary dash-run-now" title="Run now" aria-label="Run now"><i class="fas fa-play"></i></button>'
                                   : '')
-                            +    '<a href="' + escapeHtml(URL_LOGS_PATH) + '#tab-logs" class="btn btn-link btn-sm p-1" title="View logs"><i class="fas fa-file-alt"></i></a>'
+                            +    '<a href="' + escapeHtml(URL_LOGS_PATH) + '#logs" class="btn btn-outline-secondary" title="View breakout logs" aria-label="View breakout logs"><i class="fas fa-file-alt"></i></a>'
+                            +    '</div>'
                             +  '</td>'
                             +  '</tr>';
                     }).join("");
@@ -403,7 +408,7 @@
 
                 document.getElementById("dash-list-summary").textContent =
                     "Showing " + rows.length + " of " + (payload.total || 0) + " dictionaries"
-                    + (state.statusFilter !== "all" || state.search ? " (filtered)" : "");
+                    + (payload.filtered_summary ? " matching the filters" : "");
 
                 renderPagination(payload);
             }
@@ -433,9 +438,9 @@
                 opts = opts || {};
                 var qs = "?page=" + state.page + "&limit=" + state.limit;
                 if (state.cronFilter !== "") qs += "&cron_enabled=" + encodeURIComponent(state.cronFilter);
+                if (state.statusFilter && state.statusFilter !== "all") qs += "&status=" + encodeURIComponent(state.statusFilter);
+                if (state.search) qs += "&search=" + encodeURIComponent(state.search);
                 if (opts.nocache) qs += "&nocache=1";
-                // status / search are applied client-side over the current page (cheap),
-                // server filters cover the heavy ones (cron / configured / dict name).
                 return URL_DICTIONARIES + qs;
             }
 

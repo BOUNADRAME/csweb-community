@@ -69,6 +69,18 @@ class BreakoutStatusService {
     private function computeStatusList(array $filters, int $page, int $limit): array {
         $offset = ($page - 1) * $limit;
 
+        // Community layer: when the user filters (search, status, cron), the
+        // status is computed per dictionary, so filter and paginate after
+        // building the entries, and return KPIs for the filtered set: the
+        // cards then match the table instead of always showing the totals.
+        $status = isset($filters['status']) ? (string) $filters['status'] : 'all';
+        $filtering = $status !== 'all'
+            || (isset($filters['search']) && trim((string) $filters['search']) !== '')
+            || (array_key_exists('cron_enabled', $filters) && $filters['cron_enabled'] !== null);
+        if ($filtering) {
+            return $this->computeFilteredStatusList($filters, $status, $page, $limit);
+        }
+
         [$whereClause, $params] = $this->buildWhereClause($filters);
 
         // Count total
@@ -337,6 +349,89 @@ class BreakoutStatusService {
     }
 
     /**
+     * @param array<string,mixed> $filters
+     * @return array<string,mixed>
+     */
+    private function computeFilteredStatusList(array $filters, string $status, int $page, int $limit): array {
+        [$whereClause, $params] = $this->buildWhereClause($filters);
+        $sql = "
+            SELECT
+                d.id,
+                d.name AS dictionary_name,
+                d.dictionary_label,
+                (s.dictionary_id IS NOT NULL)     AS breakout_configured,
+                s.host_name, s.port, s.db_type, s.schema_name, s.schema_user_name,
+                AES_DECRYPT(s.schema_password, 'cspro') AS schema_password_plain,
+                COALESCE(sch.enabled, 0)          AS cron_enabled,
+                sch.cron_expression, sch.last_run, sch.next_run, sch.last_exit_code
+            FROM cspro_dictionaries d
+            LEFT JOIN cspro_dictionaries_schema s ON s.dictionary_id = d.id
+            LEFT JOIN cspro_breakout_scheduler sch ON sch.dictionary_id = d.id
+            $whereClause
+            ORDER BY d.name
+        ";
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->execute();
+        $entries = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $entry = $this->buildStatusEntry($row);
+            if ($status === 'all' || self::statusKey($entry) === $status) {
+                $entries[] = $entry;
+            }
+        }
+
+        $total = count($entries);
+        $collected = 0; $processed = 0; $pendingCases = 0; $dictsPending = 0; $inError = 0; $configured = 0;
+        foreach ($entries as $e) {
+            $collected += (int) $e['total_cases'];
+            if ($e['breakout_configured']) {
+                $configured++;
+            }
+            if ($e['processed_cases'] !== null) {
+                $processed += (int) $e['processed_cases'];
+                $pendingCases += (int) $e['cases_pending'];
+                if ($e['cases_pending'] > 0) {
+                    $dictsPending++;
+                }
+            }
+            if ($e['last_exit_code'] !== null && $e['last_exit_code'] !== 0 && $e['last_exit_code'] !== -1) {
+                $inError++;
+            }
+        }
+
+        return [
+            'total' => $total,
+            'page'  => $page,
+            'pages' => (int) ceil($total / $limit),
+            'limit' => $limit,
+            'data'  => array_slice($entries, ($page - 1) * $limit, $limit),
+            'filtered_summary' => [
+                'dictionaries_total'      => $total,
+                'dictionaries_configured' => $configured,
+                'total_cases'             => $collected,
+                'processed_cases'         => $processed,
+                'completion_rate'         => $collected > 0 ? round($processed / $collected * 100, 2) : null,
+                'pending_cases'           => $pendingCases,
+                'dicts_with_pending'      => $dictsPending,
+                'dicts_in_error'          => $inError,
+            ],
+        ];
+    }
+
+    /** Same rule as statusFor() in dashboard.twig. */
+    public static function statusKey(array $e): string {
+        if (!$e['breakout_configured']) return 'not_configured';
+        if ($e['last_exit_code'] === -1) return 'running';
+        if ($e['last_exit_code'] !== null && $e['last_exit_code'] !== 0) return 'error';
+        if ($e['last_run'] === null) return 'never_run';
+        if ($e['is_up_to_date'] === false) return 'pending';
+        return 'up_to_date';
+    }
+
+    /**
      * @param array{dictionary?:string, dictionaries?:string[], cron_enabled?:bool, breakout_configured?:bool} $filters
      * @return array{0:string, 1:array<string,mixed>}
      */
@@ -358,6 +453,14 @@ class BreakoutStatusService {
                 $params[$key]   = strtoupper(trim($name));
             }
             $where[] = 'd.name IN (' . implode(',', $placeholders) . ')';
+        }
+
+        // Community layer: free-text search on name or label, server side, so
+        // it covers every page and not only the one loaded in the browser.
+        $search = isset($filters['search']) ? trim((string) $filters['search']) : '';
+        if ($search !== '') {
+            $where[] = '(d.name LIKE :q1 OR d.dictionary_label LIKE :q2)';
+            $params[':q1'] = $params[':q2'] = '%' . addcslashes($search, '%_\\') . '%';
         }
 
         if (array_key_exists('breakout_configured', $filters) && $filters['breakout_configured'] !== null) {
