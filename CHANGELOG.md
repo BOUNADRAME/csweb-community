@@ -29,6 +29,21 @@ _Nothing yet._
 
 ---
 
+## [8.1.5] - 2026-11-06 (branch `8.1.x`)
+
+### Fixed
+- Breakout Health: the KPI cards kept showing the totals of all dictionaries
+  while the table was filtered. The search and status filters now run on the
+  server, over every page (they used to filter only the 25 rows loaded in
+  the browser), and the cards show the filtered set, with a **Filtered**
+  badge and "configured / matching".
+
+### Changed
+- Breakout Health and Settings > Data (Edit / Delete): row actions use the
+  same compact outline buttons as the scheduler, logs and backup screens.
+
+---
+
 ## [8.1.4] - 2026-11-06 (branch `8.1.x`)
 
 ### Changed
