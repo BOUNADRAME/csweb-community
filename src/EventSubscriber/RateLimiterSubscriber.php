@@ -30,8 +30,28 @@ class RateLimiterSubscriber implements EventSubscriberInterface {
     // A coarser per-IP ceiling still caps credential stuffing across many accounts.
     private const LOGIN_PER_IP_MAX = 60;
 
+    // Limits can be raised for large field operations (census start, training
+    // centres where hundreds of tablets share one public IP) without touching
+    // the code: RATE_LIMIT_LOGIN_PER_USER, RATE_LIMIT_LOGIN_PER_IP,
+    // RATE_LIMIT_API_PER_MIN, RATE_LIMIT_UI_PER_MIN. Defaults are unchanged.
+    private array $limits;
+    private int $loginPerIpMax;
+
     public function __construct(string $cacheDir) {
         $this->cacheDir = $cacheDir . '/rate_limit';
+        $this->limits = self::LIMITS;
+        $this->limits['login']['max'] = self::envInt('RATE_LIMIT_LOGIN_PER_USER', self::LIMITS['login']['max']);
+        $this->limits['api']['max'] = self::envInt('RATE_LIMIT_API_PER_MIN', self::LIMITS['api']['max']);
+        $this->limits['ui']['max'] = self::envInt('RATE_LIMIT_UI_PER_MIN', self::LIMITS['ui']['max']);
+        $this->loginPerIpMax = self::envInt('RATE_LIMIT_LOGIN_PER_IP', self::LOGIN_PER_IP_MAX);
+    }
+
+    private static function envInt(string $name, int $default): int {
+        $value = $_SERVER[$name] ?? $_ENV[$name] ?? getenv($name);
+        if ($value === false || $value === null || $value === '' || !ctype_digit((string) $value)) {
+            return $default;
+        }
+        return max(1, (int) $value);
     }
 
     public static function getSubscribedEvents(): array {
@@ -56,14 +76,14 @@ class RateLimiterSubscriber implements EventSubscriberInterface {
             $category = 'login';
             $route = 'login_check';
         }
-        $limit = self::LIMITS[$category];
+        $limit = $this->limits[$category];
 
         $now = time();
         $buckets = [];
         if ($category === 'login') {
             $user = $this->extractUsername($request);
             $buckets[] = [$category . '_' . md5($ip . '|' . $route . '|' . $user), $limit['max']];
-            $buckets[] = [$category . '_ip_' . md5($ip . '|' . $route), self::LOGIN_PER_IP_MAX];
+            $buckets[] = [$category . '_ip_' . md5($ip . '|' . $route), $this->loginPerIpMax];
         } else {
             // Authenticated API calls are counted per session (bearer token) rather than per IP,
             // so devices sharing a public IP do not consume each other's quota.

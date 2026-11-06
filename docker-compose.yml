@@ -104,6 +104,13 @@ services:
       - APACHE_MAX_KEEP_ALIVE_REQUESTS=${APACHE_MAX_KEEP_ALIVE_REQUESTS:-100}
       - APACHE_TIMEOUT=${APACHE_TIMEOUT:-300}
 
+      # Rate limiting (requests per minute). Raise the login ceilings for a
+      # census start or a training centre where many tablets share one IP.
+      - RATE_LIMIT_LOGIN_PER_USER=${RATE_LIMIT_LOGIN_PER_USER:-5}
+      - RATE_LIMIT_LOGIN_PER_IP=${RATE_LIMIT_LOGIN_PER_IP:-60}
+      - RATE_LIMIT_API_PER_MIN=${RATE_LIMIT_API_PER_MIN:-600}
+      - RATE_LIMIT_UI_PER_MIN=${RATE_LIMIT_UI_PER_MIN:-120}
+
       # Webhooks shared secret (used by breakout-*-webhook.php at repo root)
       - BREAKOUT_WEBHOOK_TOKEN=${BREAKOUT_WEBHOOK_TOKEN}
       # Filesystem root used by webhooks to locate var/logs etc.

@@ -29,6 +29,27 @@ _Nothing yet._
 
 ---
 
+## [8.1.6] - 2026-11-06 (branch `8.1.x`)
+
+### Added
+- Sizing guide for large surveys and censuses (`guides/deployment/sizing`):
+  where data lives, input parameters and formulas, reference measurements,
+  three costed scenarios, server profiles, every scale-up variable of `.env`
+  with values per scenario, field pitfalls and a load-test procedure.
+- Sync load-test tool `tools/loadtest/csweb_sync_load.py` (Python 3, no
+  dependency): simulates enumerators syncing in parallel through the CSPro
+  API (OAuth token, deflate case upload, optional download), one account per
+  enumerator, and reports throughput, p50/p95 latency and errors.
+
+### Changed
+- Rate limits are now configurable from `.env` without touching the code:
+  `RATE_LIMIT_LOGIN_PER_USER` (5), `RATE_LIMIT_LOGIN_PER_IP` (60),
+  `RATE_LIMIT_API_PER_MIN` (600), `RATE_LIMIT_UI_PER_MIN` (120). Defaults are
+  unchanged. Raising `RATE_LIMIT_LOGIN_PER_IP` lets hundreds of tablets behind
+  one public IP (census start, training centres) log in at once.
+
+---
+
 ## [8.1.5] - 2026-11-06 (branch `8.1.x`)
 
 ### Fixed

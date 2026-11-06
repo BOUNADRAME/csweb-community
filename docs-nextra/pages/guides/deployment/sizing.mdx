@@ -1,0 +1,283 @@
+---
+title: Dimensionnement
+description: Dimensionner CSWeb Community pour une grande enquête ou un recensement — méthode, scénarios, profils de serveurs et test de charge
+---
+
+import { Callout } from "nextra/components";
+
+# Dimensionnement pour grandes enquêtes et recensements
+
+Le socle de CSWeb Community — CSWeb officiel avec breakout sélectif — a déjà servi
+à des recensements généraux de la population en Afrique de l'Ouest. La version
+actuelle ajoute une base cible et un SGBD par dictionnaire, le test de connexion,
+la planification, le suivi (Breakout Health), les webhooks et la sauvegarde
+planifiée. Cette page aide à dimensionner les serveurs d'une nouvelle opération.
+
+<Callout type="warning">
+Les volumes et profils ci-dessous sont des **ordres de grandeur** calculés à partir
+d'hypothèses explicites. Remplacez-les par les valeurs de votre opération
+(questionnaire réel, effectifs, calendrier) et validez-les par un
+[test de charge](#test-de-charge) sur un serveur de pré-production avant le terrain.
+</Callout>
+
+## Où vivent les données
+
+| Élément | Emplacement | Ce qui le fait grossir |
+|---|---|---|
+| Cas collectés | Base MySQL de métadonnées, une table par dictionnaire (colonne `questionnaire`, cas compressé) | Nombre de cas × taille du questionnaire × révisions |
+| Photos, signatures, audio (items binaires) | Dossier du serveur : `files/binary-data/<dictionnaire>/` | Nombre et taille des médias par cas |
+| Fichiers d'application (.pen, .pff, ressources) | Dossier `files/` | Taille de l'application × versions déployées |
+| Tables de breakout | Base cible du dictionnaire (PostgreSQL, MySQL ou SQL Server), tables préfixées `<dict>_` | Nombre de lignes : un cas = une ligne par enregistrement (ménage, personnes, logement…) |
+| Sauvegardes | Volume ou dossier de sauvegarde | Taille de la base de métadonnées × rétention |
+
+Le pic de charge d'un recensement n'est pas le breakout, qui tourne en arrière-plan :
+c'est la **synchronisation de fin de journée**, quand les agents recenseurs se
+connectent presque tous dans la même heure.
+
+## Paramètres d'entrée
+
+| Symbole | Paramètre | Comment l'obtenir |
+|---|---|---|
+| E | Enquêteurs actifs | Plan de collecte |
+| C | Cas (ménages) à collecter | Base de sondage / cartographie |
+| J | Jours de collecte | Calendrier |
+| s | Taille stockée d'un cas (Ko) | Pilote : `SELECT AVG(LENGTH(questionnaire))/1024 FROM <DICT>;` |
+| r | Lignes de breakout par cas | Pilote : total des lignes des tables `<dict>_*` ÷ nombre de cas |
+| m | Médias par cas × taille moyenne (Ko) | Questionnaire (photos, signatures) |
+| f | Fenêtre de synchronisation (heures) | Organisation du terrain, souvent 2 h |
+| d | Débit de breakout mesuré (lignes/s) | Pilote, voir [mesures de référence](#mesures-de-référence) |
+
+## Formules
+
+```text
+cas par jour               = C / J
+synchronisations/s au pic  = E / (3600 × f) × 3
+requêtes/s au pic          ≈ synchronisations/s × 4
+workers Apache             ≈ requêtes/s au pic × durée moyenne d'une requête (s) × 2
+base de métadonnées        ≈ C × s × 2
+médias                     ≈ C × m
+breakout quotidien (s)     = (C / J) × r / d
+```
+
+- Le facteur 3 couvre la concentration réelle des connexions dans la fenêtre.
+- Une synchronisation CSEntry enchaîne plusieurs requêtes (jeton, dictionnaire,
+  envoi, réception) : compter environ 4 requêtes.
+- Le facteur 2 de la base couvre les index, les révisions et la marge de croissance.
+
+## Mesures de référence
+
+Mesures prises le 6 novembre 2026 sur un serveur de test volontairement modeste
+(2 vCPU, 7 Go de RAM, application, MySQL et PostgreSQL sur la même machine),
+avec le script [`tools/loadtest/csweb_sync_load.py`](https://github.com/BOUNADRAME/csweb-community/tree/8.1.x/tools/loadtest)
+et un questionnaire de démonstration (ménage + personnes + logement).
+
+| Mesure | Résultat |
+|---|---|
+| 40 enquêteurs simulés, un compte chacun, 10 cas par synchronisation | 17,3 synchronisations/s, 173 cas/s soutenus pendant 90 s |
+| Temps d'envoi d'un lot de 10 cas | p50 12 ms, p95 20 ms, 0 erreur |
+| Breakout de 18 120 cas (116 000 lignes) vers MySQL | 16,7 s, soit environ 7 000 lignes/s |
+
+Le questionnaire de démonstration est petit (0,3 Ko stocké par cas). Un vrai
+questionnaire de recensement est plus lourd : **mesurez s, r et d sur votre
+pilote** et refaites le calcul.
+
+## Trois scénarios chiffrés
+
+Hypothèses communes : fenêtre de synchronisation de 2 h, débit de breakout
+prudent de 2 000 lignes/s (mesure de référence divisée par 3,5 pour un
+questionnaire réel).
+
+| | Enquête moyenne | Grande enquête nationale | Recensement |
+|---|---|---|---|
+| Enquêteurs (E) | 200 | 1 000 | 25 000 |
+| Cas à collecter (C) | 15 000 ménages | 60 000 ménages | 2,5 millions de ménages |
+| Durée (J) | 28 jours | 45 jours | 30 jours |
+| Taille stockée d'un cas (s) | 5 Ko | 30 Ko (modules consommation) | 5 Ko |
+| Lignes de breakout par cas (r) | 8 | 40 | 10 |
+| Cas par jour | 540 | 1 330 | 83 000 |
+| Synchronisations/s au pic | 0,1 | 0,4 | 10 |
+| Requêtes/s au pic | 0,4 | 1,7 | 42 |
+| Base de métadonnées | 0,2 Go | 4 Go | 25 Go |
+| Tables de breakout | moins de 1 Go | 2 à 5 Go | 15 à 20 Go |
+| Médias (1 photo de 150 Ko par cas) | 2 Go | 9 Go | 375 Go |
+| Breakout quotidien | 2 s | 27 s | 7 min |
+| Breakout complet de fin d'opération | 1 min | 20 min | 3,5 h |
+
+Lecture : même pour un recensement, la synchronisation reste modeste en débit.
+Les vrais postes de dimensionnement sont **le stockage des médias**, **la
+mémoire de la base de métadonnées** et **la sauvegarde**.
+
+## Profils de serveurs recommandés
+
+| Scénario | Application CSWeb | Base de métadonnées (MySQL) | Base(s) de breakout | Stockage et sauvegarde |
+|---|---|---|---|---|
+| Enquête moyenne | Une seule VM pour tout : 4 vCPU, 8 Go, 100 Go SSD (Docker) | Sur la même VM | Sur la même VM | Sauvegarde quotidienne copiée hors du serveur |
+| Grande enquête nationale | 4 vCPU, 8 Go, 100 Go SSD | 4 vCPU, 16 Go, 200 Go SSD | 4 vCPU, 16 Go, 200 Go SSD | 500 Go hors site, rétention 14 jours |
+| Recensement | 8 vCPU, 16 Go ; volume médias 0,5 à 1 To | 8 vCPU, 32 Go, 500 Go NVMe, `innodb_buffer_pool_size` 20 à 22 Go | Un serveur par grand dictionnaire : 8 vCPU, 32 Go, 300 Go SSD | 1 à 2 To hors site ; serveur de pré-production pour le test de charge |
+
+Pour un recensement, prévoir aussi un serveur de pré-production identique en
+taille à la production pendant la phase de test de charge.
+
+## Points de vigilance terrain
+
+- **Déploiement de l'application.** Diffuser un .pen de 10 Mo à 25 000 tablettes
+  représente 250 Go de transfert. Échelonner par région et par jour, et pas la
+  veille du démarrage.
+- **Connexions groupées.** Au démarrage, ou dans un centre de formation, des
+  centaines de tablettes sortent par la même IP publique (Wi-Fi, NAT opérateur).
+  La limite par défaut est de 60 connexions par minute et par IP : la relever
+  pendant la période concernée avec `RATE_LIMIT_LOGIN_PER_IP` (voir les réglages ci-dessous).
+- **Un compte par enquêteur.** Les connexions sont aussi limitées par compte
+  (5 par minute). Des comptes partagés provoquent des refus HTTP 429.
+- **Médias.** Le dossier `files/binary-data/` n'est pas dans la sauvegarde de la
+  base : le sauvegarder à part, sur un volume dimensionné pour la totalité des
+  photos.
+- **Restauration testée.** Une sauvegarde n'est fiable qu'après une restauration
+  réussie sur un serveur de test, au moins une fois avant le terrain.
+
+## Réglages du fichier `.env` pour la montée en charge
+
+Le fichier `.env` porte tous les réglages de montée en charge : PHP, Apache,
+MySQL de métadonnées, PostgreSQL de breakout, limitation de débit et journaux.
+Ce sont eux qui transforment un serveur dimensionné en serveur qui tient la
+charge : ne pas les laisser aux valeurs par défaut pour une grande opération.
+
+<Callout type="warning">
+Appliquer un changement avec `docker compose up -d`, **jamais** `docker compose restart` :
+`restart` conserve les anciennes variables, sans message d'erreur. Vérifier ensuite
+les valeurs réellement actives avec `php bin/console csweb:check-config`.
+</Callout>
+
+Valeurs de départ par scénario, à affiner avec le test de charge. Colonnes :
+enquête moyenne (une VM de 8 Go pour tout), grande enquête nationale (serveur
+de base de 16 Go), recensement (serveur applicatif de 16 Go, serveur de base de
+32 Go).
+
+### PHP (serveur applicatif)
+
+| Variable | Défaut | Moyenne | Grande | Recensement | Pourquoi |
+|---|---|---|---|---|---|
+| `PHP_MEMORY_LIMIT` | 512M | 512M | 512M | 1G | Le breakout charge un lot de cas en mémoire |
+| `PHP_MAX_EXECUTION_TIME` | 300 | 300 | 300 | 600 | Synchronisations volumineuses en fin d'opération |
+| *Maximum execution time* (assistant `/setup`, `MAX_EXECUTION_TIME` dans `src/config.php`) | 300 | 300 | 300 | 600 | Limite propre à l'API CSWeb : la garder alignée sur PHP |
+| `PHP_MAX_INPUT_TIME` | 300 | 300 | 300 | 600 | Réception des envois lents (réseau mobile) |
+| `PHP_POST_MAX_SIZE` / `PHP_UPLOAD_MAX_FILESIZE` | 100M | 100M | 100M | 200M si photos | Taille maximale d'un envoi (cas + médias) |
+| `PHP_OPCACHE_MEMORY` | 128 | 128 | 128 | 256 | Code PHP gardé compilé en mémoire |
+
+### Apache (serveur applicatif)
+
+| Variable | Défaut | Moyenne | Grande | Recensement | Pourquoi |
+|---|---|---|---|---|---|
+| `APACHE_MAX_REQUEST_WORKERS` | 150 | 100 | 150 | 250 | Requêtes traitées en parallèle |
+| `APACHE_SERVER_LIMIT` | 150 | 100 | 150 | 250 | Toujours égal à `APACHE_MAX_REQUEST_WORKERS` |
+| `APACHE_KEEP_ALIVE_TIMEOUT` | 5 | 5 | 5 | 3 | Libère plus vite les workers au pic |
+| `APACHE_TIMEOUT` | 300 | 300 | 300 | 600 | Aligné sur le temps d'exécution PHP |
+
+Règle de mémoire : nombre de workers × mémoire moyenne d'un worker (40 à 60 Mo
+en pratique, à mesurer) doit rester sous la RAM du serveur applicatif, moins
+2 Go pour le système. 250 workers × 40 Mo = 10 Go sur un serveur de 16 Go.
+
+### MySQL de métadonnées (cas collectés)
+
+| Variable | Défaut | Moyenne | Grande | Recensement | Pourquoi |
+|---|---|---|---|---|---|
+| `MYSQL_INNODB_BUFFER_POOL_SIZE` | 256M | 2G | 10G | 22G | **Le réglage le plus déterminant** : 60 à 70 % de la RAM du serveur de base |
+| `MYSQL_MAX_CONNECTIONS` | 200 | 200 | 300 | 450 | Au moins workers Apache + threads de breakout + planificateur + 50 |
+| `MYSQL_INNODB_LOG_FILE_SIZE` | 64M | 64M | 256M | 1G | Absorbe les rafales d'écriture de fin de journée |
+| `MYSQL_MAX_ALLOWED_PACKET` | 64M | 64M | 64M | 128M | Gros cas et lots volumineux |
+| `MYSQL_TABLE_OPEN_CACHE` | 2000 | 2000 | 2000 | 4000 | Nombreux dictionnaires et tables |
+| `MYSQL_THREAD_CACHE_SIZE` | 16 | 16 | 32 | 64 | Connexions réutilisées au pic |
+| `MYSQL_SLOW_QUERY_TIME` | 2 | 2 | 2 | 2 | Journal des requêtes lentes, à surveiller pendant le test de charge |
+| `MYSQL_WAIT_TIMEOUT` | 28800 | 28800 | 28800 | 600 | Ferme les connexions oubliées qui occupent `max_connections` |
+
+### PostgreSQL de breakout (tables d'analyse)
+
+| Variable | Défaut | Moyenne | Grande | Recensement | Pourquoi |
+|---|---|---|---|---|---|
+| `PG_SHARED_BUFFERS` | 256MB | 512MB | 4GB | 8GB | Environ 25 % de la RAM du serveur de breakout |
+| `PG_EFFECTIVE_CACHE_SIZE` | 1GB | 2GB | 12GB | 24GB | Environ 75 % de la RAM : guide le planificateur de requêtes |
+| `PG_WORK_MEM` | 4MB | 4MB | 16MB | 32MB | Tris et jointures des requêtes d'analyse |
+| `PG_MAINTENANCE_WORK_MEM` | 64MB | 64MB | 512MB | 1GB | Création d'index et `VACUUM` après les gros breakouts |
+| `PG_MAX_CONNECTIONS` | 200 | 200 | 200 | 200 | Suffisant : le breakout ouvre peu de connexions |
+
+### Limitation de débit, journaux et breakout
+
+| Variable | Défaut | Moyenne | Grande | Recensement | Pourquoi |
+|---|---|---|---|---|---|
+| `RATE_LIMIT_LOGIN_PER_IP` | 60 | 60 | 120 | 600 au démarrage et en formation | Tablettes derrière la même IP publique |
+| `RATE_LIMIT_LOGIN_PER_USER` | 5 | 5 | 5 | 5 | Protège chaque compte : ne pas relever |
+| `RATE_LIMIT_API_PER_MIN` | 600 | 600 | 600 | 600 | Par session : suffisant pour un téléchargement paginé |
+| `RATE_LIMIT_UI_PER_MIN` | 120 | 120 | 120 | 120 | Tableau de bord |
+| `CSWEB_LOG_LEVEL` / `CSWEB_PROCESS_CASES_LOG_LEVEL` | error | error | error | error | Le niveau `debug` écrit à chaque requête et ralentit le serveur |
+| `BREAKOUT_CONNECTION_MODE` | direct | direct | direct | direct, réseau privé | Le mode `tunnel` (SSH) ajoute de la latence au breakout |
+
+Quand les bases sont sur des serveurs séparés, les variables `MYSQL_*` et `PG_*`
+ne s'appliquent qu'aux conteneurs fournis par le `docker-compose.yml`. Reporter
+les mêmes valeurs dans le `my.cnf` et le `postgresql.conf` des serveurs externes
+(modèles dans `docker/mysql/` et `docker/postgres/`).
+
+Côté breakout, l'option `--threads` de `csweb:process-cases-by-dict` (3 par défaut)
+et la taille des lots `--maxCasesPerChunk` (1 000) se règlent par planification.
+Programmer le breakout la nuit, hors de la fenêtre de synchronisation.
+
+## Test de charge
+
+Le script `tools/loadtest/csweb_sync_load.py` simule des enquêteurs qui
+synchronisent en parallèle par l'API CSPro : jeton OAuth, envoi de cas
+compressés, téléchargement optionnel. Il construit les cas à partir de cas réels
+du pilote. Python 3, aucune dépendance.
+
+<Callout type="error">
+Le script écrit de vrais cas. Ne le lancez **jamais** sur la production : utilisez
+un serveur de pré-production et un dictionnaire de test, à vider après.
+</Callout>
+
+```bash
+# Un compte par enquêteur simulé, comme sur le terrain
+cat > comptes.csv <<'EOF'
+enq_test001,MotDePasse1
+enq_test002,MotDePasse2
+EOF
+
+python3 tools/loadtest/csweb_sync_load.py \
+  --url https://csweb-preprod.exemple.org \
+  --dict RGPH_TEST_DICT --user admin --password '...' \
+  --users-file comptes.csv \
+  --enumerators 500 --cases-per-sync 4 \
+  --duration 1800 --ramp 300 --think 30 --download 20 \
+  --json rapport.json
+```
+
+Le rapport donne les synchronisations et cas par seconde, la taille envoyée par
+cas, les temps p50/p95 et les erreurs. Verdict par défaut : moins de 1 %
+d'erreurs et p95 d'envoi sous 10 s.
+
+Déroulé conseillé :
+
+1. Copier le dictionnaire de l'opération en dictionnaire de test et y charger
+   quelques dizaines de cas du pilote (ils servent de modèles).
+2. Lancer un palier à 10 % des enquêteurs, puis 50 %, puis 100 % du pic calculé.
+3. Pendant chaque palier, suivre le CPU, la mémoire et les disques des trois
+   serveurs, et les journaux Apache et MySQL.
+4. Lancer le breakout du dictionnaire de test et mesurer le débit réel (lignes/s).
+5. Faire une sauvegarde puis une restauration complète, chronométrées.
+6. Reporter les mesures dans les formules et ajuster les serveurs.
+
+## Aller plus loin : passage à l'échelle horizontal
+
+Aujourd'hui, CSWeb tourne sur un seul serveur applicatif : les médias et
+fichiers sont dans un dossier local, ce qui empêche de lancer plusieurs
+instances derrière un répartiteur de charge. La séparation actuelle
+(application, base de métadonnées et bases de breakout sur des serveurs
+distincts, breakout programmé) est l'étape intermédiaire. Les étapes suivantes
+seraient :
+
+1. Stockage des fichiers et médias sur un stockage objet compatible S3 (MinIO
+   par exemple), derrière une couche d'abstraction.
+2. Application sans état : sessions et compteurs de limitation dans Redis,
+   plus aucun fichier local.
+3. Plusieurs instances CSWeb derrière un répartiteur de charge, puis sur
+   Kubernetes, avec le breakout lancé en jobs séparés par dictionnaire.
+
+Ces évolutions doivent rester optionnelles pour préserver la compatibilité avec
+CSWeb officiel.
