@@ -2,17 +2,6 @@
 {% block resources %}
     <link href={{asset('dist/css/dropdownCheckboxes.min.css')}} rel="stylesheet">
     <style>
-        /* Community layer: breakout target engine chip */
-        .db-engine { display:inline-flex; align-items:center; gap:.35rem; padding:.2rem .55rem; border-radius:1rem;
-                     font-size:.78rem; font-weight:600; white-space:nowrap; border:1px solid transparent; }
-        .db-engine i { font-size:.8rem; }
-        .db-engine-postgresql { color:#1f4e79; background:#e7f0f9; border-color:#c5d9ee; }
-        .db-engine-mysql      { color:#8a4b00; background:#fff3e0; border-color:#ffd8a8; }
-        .db-engine-sqlserver  { color:#9b1c1c; background:#fdecec; border-color:#f5c2c2; }
-        /* Community layer: compact, single-line row actions */
-        .row-actions { display:inline-flex; flex-wrap:nowrap; gap:.25rem; }
-        .row-actions .btn { padding:.15rem .45rem; line-height:1.2; font-size:.8rem; }
-        .row-actions .btn i { width:1em; text-align:center; }
         .hidden {
             display: none;
         }
@@ -864,7 +853,7 @@
                                         <td>{{ dataSetting.targetHostName}}{% if dataSetting.targetPort %}:{{ dataSetting.targetPort }}{% endif %} | {{ dataSetting.targetSchemaName}}</td>
                                         <td>{{ dataSetting.totalCases}}</td>
                                         <td>{{ dataSetting.processedCases}}</td>
-                                        <td>{{ dataSetting.lastProcessedTime}}</td>
+                                        <td data-order="{{ dataSetting.lastProcessedTime }}" class="js-datetime" data-datetime="{{ dataSetting.lastProcessedTime }}">{{ dataSetting.lastProcessedTime}}</td>
                                         <td style="text-align: center">
                                             {% if canManageSettings %}
                                                 <a href="javascript:;" class="edit-button-class"><i class="fas fa-pencil-alt fa-fw"></i></a>
@@ -2085,8 +2074,8 @@
                                         + '<td>' + s.label + ' (' + s.name + ')</td>'
                                         + '<td><code>' + s.cron_expression + '</code></td>'
                                         + '<td>' + statusBadge + '</td>'
-                                        + '<td>' + (s.last_run || '-') + '</td>'
-                                        + '<td>' + (s.next_run || '-') + '</td>'
+                                        + '<td data-order="' + (s.last_run || '') + '">' + cswebFormatDateTime(s.last_run) + '</td>'
+                                        + '<td data-order="' + (s.next_run || '') + '">' + cswebFormatDateTime(s.next_run) + '</td>'
                                         + '<td>'
                                         + '<div class="row-actions">'
                                         + '<button type="button" class="btn btn-outline-secondary schedule-toggle-btn" data-id="' + s.id + '" title="' + (s.enabled == 1 ? 'Disable' : 'Enable') + '" aria-label="' + (s.enabled == 1 ? 'Disable' : 'Enable') + '">' + toggleIcon + '</button>'
@@ -2407,8 +2396,8 @@
                             '<td>' + escapeHtml(log.dictName) + '</td>' +
                             '<td><small>' + escapeHtml(log.filename) + '</small></td>' +
                             '<td>' + badge + '</td>' +
-                            '<td>' + escapeHtml(log.date) + '</td>' +
-                            '<td>' + formatSize(log.size) + '</td>' +
+                            '<td data-order="' + escapeHtml(log.date) + '">' + cswebFormatDateTime(log.date) + '</td>' +
+                            '<td data-order="' + log.size + '">' + formatSize(log.size) + '</td>' +
                             '<td class="text-nowrap"><div class="row-actions">' +
                                 '<button type="button" class="btn btn-outline-primary view-log-btn" data-file="' + escapeHtml(log.filename) + '" data-dict="' + escapeHtml(log.dictName) + '" data-type="' + escapeHtml(log.type) + '" data-date="' + escapeHtml(log.date) + '" data-size="' + log.size + '" title="View log" aria-label="View log"><i class="fas fa-eye"></i></button>' +
                                 '<button type="button" class="btn btn-outline-secondary download-log-btn" data-file="' + escapeHtml(log.filename) + '" title="Download" aria-label="Download"><i class="fas fa-download"></i></button>' +
@@ -2514,7 +2503,7 @@
                     } else {
                         $typeBadge.text("Scheduled").removeClass("badge-warning").addClass("badge-primary");
                     }
-                    $("#view-log-date").text(date);
+                    $("#view-log-date").text(cswebFormatDateTime(date));
                     $("#view-log-size").text(formatSize(size));
                     $("#view-log-lines").text("");
                     $("#view-log-status").text("");

@@ -315,3 +315,16 @@ body.loading .spinner {
         height: 95vh;
     }
 }
+
+/* ===== Community layer (8.1.4): shared table helpers ===== */
+/* Community layer: breakout target engine chip */
+.db-engine { display:inline-flex; align-items:center; gap:.35rem; padding:.2rem .55rem; border-radius:1rem;
+             font-size:.78rem; font-weight:600; white-space:nowrap; border:1px solid transparent; }
+.db-engine i { font-size:.8rem; }
+.db-engine-postgresql { color:#1f4e79; background:#e7f0f9; border-color:#c5d9ee; }
+.db-engine-mysql      { color:#8a4b00; background:#fff3e0; border-color:#ffd8a8; }
+.db-engine-sqlserver  { color:#9b1c1c; background:#fdecec; border-color:#f5c2c2; }
+/* Community layer: compact, single-line row actions */
+.row-actions { display:inline-flex; flex-wrap:nowrap; gap:.25rem; }
+.row-actions .btn { padding:.15rem .45rem; line-height:1.2; font-size:.8rem; }
+.row-actions .btn i { width:1em; text-align:center; }
