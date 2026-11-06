@@ -29,6 +29,23 @@ _Nothing yet._
 
 ---
 
+## [8.1.3] - 2026-11-06 (branch `8.1.x`)
+
+### Changed
+- Settings > Data: the target engine shows as a colour-coded chip with an
+  icon (PostgreSQL, MySQL, SQL Server) instead of a plain badge.
+- Breakout Scheduler and Breakout Logs: row actions are compact outline
+  buttons with tooltips, kept on one line (the delete button no longer wraps
+  under the others).
+- `csweb:process-cases-by-dict` output: one line per job started
+  ("Starting job 3 for dictionary X (up to 1000 cases)"), no more
+  "Creating process … jobID: 0" when no job is left, and an end-of-run
+  summary per dictionary ("1 job(s) processed in 4.1s" or "already up to
+  date, nothing to process"), so a breakout log says at a glance whether the
+  run did something.
+
+---
+
 ## [8.1.2] - 2026-11-06 (branch `8.1.x`)
 
 Usability fixes for the breakout administration screens.
