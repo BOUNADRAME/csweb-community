@@ -126,6 +126,19 @@ class BreakoutScheduler {
         return $this->pdo->fetchAll($stm);
     }
 
+    /**
+     * Community layer: one schedule with its dictionary name, due or not.
+     * Used by "Run now", which runs a schedule outside its cron slot.
+     */
+    public function getScheduleById(int $id): ?array {
+        $stm = 'SELECT s.`id`, s.`dictionary_id`, d.`name` as name, s.`cron_expression`'
+            . ' FROM `cspro_breakout_scheduler` s'
+            . ' JOIN `cspro_dictionaries` d ON d.`id` = s.`dictionary_id`'
+            . ' WHERE s.`id` = :id';
+        $row = $this->pdo->fetchOne($stm, ['id' => $id]);
+        return $row ?: null;
+    }
+
     public function markRun(int $id, int $exitCode, string $logFile): void {
         try {
             $stm = 'SELECT `cron_expression` FROM `cspro_breakout_scheduler` WHERE `id` = :id';

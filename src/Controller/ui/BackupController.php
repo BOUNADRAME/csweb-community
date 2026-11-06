@@ -114,15 +114,18 @@ class BackupController extends AbstractController implements TokenAuthenticatedC
             $logFileName = 'backup_manual_' . $timestamp . '.log';
             $logFilePath = $logDir . '/' . $logFileName;
 
-            // Run mysqldump async
+            // Community layer: run the dump through csweb:backup-run --now, in
+            // the background, so the file size, exit code and log are recorded
+            // when it ends (a bare mysqldump left the run "In Progress" and the
+            // file at 0 B). It also keeps the database password off this
+            // request's process list.
             $shellCmd = sprintf(
-                'mysqldump --skip-ssl -h %s -u %s --password=%s %s | gzip > %s 2>%s &',
-                escapeshellarg(DBHOST),
-                escapeshellarg(DBUSER),
-                escapeshellarg(DBPASS),
-                escapeshellarg(DBNAME),
-                escapeshellarg($backupFilePath),
-                escapeshellarg($logFilePath)
+                '%s %s csweb:backup-run --now --file=%s --log-file=%s --env=%s > /dev/null 2>&1 &',
+                escapeshellarg((new PhpExecutableFinder())->find()),
+                escapeshellarg($consolePath),
+                escapeshellarg($backupFileName),
+                escapeshellarg($logFileName),
+                escapeshellarg($this->kernel->getEnvironment())
             );
 
             exec($shellCmd);

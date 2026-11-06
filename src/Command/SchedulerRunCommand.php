@@ -5,6 +5,7 @@ namespace App\Command;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Command\LockableTrait;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\HttpKernel\KernelInterface;
@@ -25,18 +26,37 @@ class SchedulerRunCommand extends Command {
 
     protected function configure() {
         $this->setDescription('Run due breakout schedules (designed to be called every minute via crontab)');
+        // Community layer: "Run now" runs one schedule through this command, so
+        // the exit code and log file are recorded when the breakout ends
+        // instead of staying at -1 (in progress) forever.
+        $this->addOption('id', null, InputOption::VALUE_REQUIRED, 'Run this schedule now, even if it is not due');
+        $this->addOption('log-file', null, InputOption::VALUE_REQUIRED, 'Log file name to write under var/logs/breakout (with --id)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         $io = new SymfonyStyle($input, $output);
 
-        if (!$this->lock()) {
+        $onlyId = $input->getOption('id') !== null ? (int) $input->getOption('id') : null;
+        $forcedLog = $input->getOption('log-file');
+        if ($forcedLog !== null && !preg_match('/^[A-Za-z0-9_.-]{1,128}\.log$/', (string) $forcedLog)) {
+            $io->error('Invalid --log-file name.');
+            return Command::FAILURE;
+        }
+
+        // A manual run takes its own lock so it neither waits for nor blocks
+        // the every-minute cron pass.
+        if (!$this->lock($onlyId !== null ? 'csweb-scheduler-run-' . $onlyId : null)) {
             $io->warning('The scheduler is already running in another process.');
             return Command::SUCCESS;
         }
 
         $scheduler = new BreakoutScheduler($this->pdo, $this->logger);
-        $dueSchedules = $scheduler->getDueSchedules();
+        if ($onlyId !== null) {
+            $one = $scheduler->getScheduleById($onlyId);
+            $dueSchedules = $one ? [$one] : [];
+        } else {
+            $dueSchedules = $scheduler->getDueSchedules();
+        }
 
         if (empty($dueSchedules)) {
             $io->text('No schedules due.');
@@ -55,7 +75,7 @@ class SchedulerRunCommand extends Command {
         foreach ($dueSchedules as $schedule) {
             $dictName = $schedule['name'];
             $timestamp = date('Y-m-d_H-i-s');
-            $logFileName = $dictName . '_' . $timestamp . '.log';
+            $logFileName = $forcedLog !== null ? (string) $forcedLog : $dictName . '_' . $timestamp . '.log';
             $logFilePath = $logDir . '/' . $logFileName;
 
             $io->text("Running breakout for dictionary: $dictName");
