@@ -29,6 +29,19 @@ _Nothing yet._
 
 ---
 
+## [8.1.4] - 2026-11-06 (branch `8.1.x`)
+
+### Changed
+- Dates and times on the Community screens (Settings > Data, Breakout
+  Scheduler, Breakout Logs, Settings > Backup, Settings > Logs) use one
+  readable format in the browser's language, e.g. "06 nov. 2026, 16:46",
+  instead of raw "2026-11-06 16:46:42". Tables still sort on the raw value.
+  Helper: `cswebFormatDateTime()` in `base.twig`.
+- Settings > Backup: file and log row actions use the same compact outline
+  buttons as Settings > Data; the shared styles moved to `cspro-styles.css`.
+
+---
+
 ## [8.1.3] - 2026-11-06 (branch `8.1.x`)
 
 ### Changed
