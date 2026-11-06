@@ -124,11 +124,11 @@ $where  = [];
 $params = [];
 
 if ($filterDictionary !== '') {
-    $where[] = 'd.dictionary_name = :dict_single';
+    $where[] = 'd.name = :dict_single';
     $params[':dict_single'] = strtoupper($filterDictionary);
 } elseif (!empty($filterDictionaries)) {
     $placeholders = implode(',', array_map(fn($i) => ':dict_' . $i, array_keys($filterDictionaries)));
-    $where[] = 'd.dictionary_name IN (' . $placeholders . ')';
+    $where[] = 'd.name IN (' . $placeholders . ')';
     foreach (array_values($filterDictionaries) as $i => $name) {
         $params[':dict_' . $i] = strtoupper($name);
     }
@@ -165,7 +165,7 @@ try {
     $dataSql = "
         SELECT
             d.id,
-            d.dictionary_name,
+            d.name AS dictionary_name,
             d.dictionary_label,
             (s.dictionary_id IS NOT NULL)     AS breakout_configured,
             s.host_name,
@@ -183,7 +183,7 @@ try {
         LEFT JOIN cspro_dictionaries_schema s ON s.dictionary_id = d.id
         LEFT JOIN cspro_breakout_scheduler sch ON sch.dictionary_id = d.id
         $whereClause
-        ORDER BY d.dictionary_name
+        ORDER BY d.name
         LIMIT :limit OFFSET :offset
     ";
 

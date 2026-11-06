@@ -13,7 +13,8 @@
  *
  * POST (JSON body):
  *   { "action": "register",  "dictionary_id": 3 OR "dictionary_name": "FOO_DICT",
- *     "host_name": "...", "schema_name": "...", "schema_user_name": "...", "schema_password": "..." }
+ *     "host_name": "...", "schema_name": "...", "schema_user_name": "...", "schema_password": "...",
+ *     "db_type": "postgresql|mysql|sqlserver" (optional), "port": 5432 (optional) }
  *   { "action": "unregister", "dictionary_id": 3 OR "dictionary_name": "FOO_DICT" }
  *
  * Response shape: { success, data, error, meta? }
@@ -47,10 +48,10 @@ function getDbConnection(): PDO {
  */
 function findDictionary(PDO $pdo, ?int $id, ?string $name): ?array {
     if ($id !== null) {
-        $stmt = $pdo->prepare('SELECT id, dictionary_name, dictionary_label FROM cspro_dictionaries WHERE id = ?');
+        $stmt = $pdo->prepare('SELECT id, name AS dictionary_name, dictionary_label FROM cspro_dictionaries WHERE id = ?');
         $stmt->execute([$id]);
     } elseif ($name !== null) {
-        $stmt = $pdo->prepare('SELECT id, dictionary_name, dictionary_label FROM cspro_dictionaries WHERE dictionary_name = ?');
+        $stmt = $pdo->prepare('SELECT id, name AS dictionary_name, dictionary_label FROM cspro_dictionaries WHERE name = ?');
         $stmt->execute([strtoupper($name)]);
     } else {
         return null;
@@ -113,12 +114,12 @@ function listDictionaries(): void {
     try {
         $pdo = getDbConnection();
         $stmt = $pdo->query('
-            SELECT d.id, d.dictionary_name, d.dictionary_label,
+            SELECT d.id, d.name AS dictionary_name, d.dictionary_label,
                    (s.dictionary_id IS NOT NULL) AS configured,
-                   s.host_name, s.schema_name, s.schema_user_name
+                   s.host_name, s.port, s.db_type, s.schema_name, s.schema_user_name
             FROM cspro_dictionaries d
             LEFT JOIN cspro_dictionaries_schema s ON d.id = s.dictionary_id
-            ORDER BY d.dictionary_name
+            ORDER BY d.name
         ');
         $rows = $stmt->fetchAll();
     } catch (\Throwable $e) {
@@ -139,9 +140,9 @@ function getDictionaryStatus(?int $id, ?string $name): void {
         $pdo = getDbConnection();
         if ($id !== null) {
             $stmt = $pdo->prepare('
-                SELECT d.id, d.dictionary_name, d.dictionary_label,
+                SELECT d.id, d.name AS dictionary_name, d.dictionary_label,
                        (s.dictionary_id IS NOT NULL) AS configured,
-                       s.host_name, s.schema_name, s.schema_user_name
+                       s.host_name, s.port, s.db_type, s.schema_name, s.schema_user_name
                 FROM cspro_dictionaries d
                 LEFT JOIN cspro_dictionaries_schema s ON d.id = s.dictionary_id
                 WHERE d.id = ?
@@ -149,12 +150,12 @@ function getDictionaryStatus(?int $id, ?string $name): void {
             $stmt->execute([$id]);
         } else {
             $stmt = $pdo->prepare('
-                SELECT d.id, d.dictionary_name, d.dictionary_label,
+                SELECT d.id, d.name AS dictionary_name, d.dictionary_label,
                        (s.dictionary_id IS NOT NULL) AS configured,
-                       s.host_name, s.schema_name, s.schema_user_name
+                       s.host_name, s.port, s.db_type, s.schema_name, s.schema_user_name
                 FROM cspro_dictionaries d
                 LEFT JOIN cspro_dictionaries_schema s ON d.id = s.dictionary_id
-                WHERE d.dictionary_name = ?
+                WHERE d.name = ?
             ');
             $stmt->execute([strtoupper((string) $name)]);
         }
@@ -252,6 +253,20 @@ function registerSchema(array $body): void {
         respondError('invalid_body', 'schema_password too long (max 256 chars).', 400);
     }
 
+    // Community layer: optional target engine and port, as in Settings > Data.
+    // Omitted values keep the UI defaults (PostgreSQL, driver default port).
+    $dbType = isset($body['db_type']) && $body['db_type'] !== '' ? strtolower((string) $body['db_type']) : null;
+    if ($dbType !== null && !in_array($dbType, ['postgresql', 'mysql', 'sqlserver'], true)) {
+        respondError('invalid_body', 'Invalid db_type (postgresql, mysql or sqlserver).', 400);
+    }
+    $port = null;
+    if (isset($body['port']) && $body['port'] !== '') {
+        $port = filter_var($body['port'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 65535]]);
+        if ($port === false) {
+            respondError('invalid_body', 'Invalid port (1-65535).', 400);
+        }
+    }
+
     [$id, $name] = extractDictionaryRef($body);
     if ($id === null && $name === null) {
         respondError('invalid_body', 'Provide either "dictionary_id" or "dictionary_name".', 400);
@@ -273,10 +288,12 @@ function registerSchema(array $body): void {
         // CSWeb code path that reads it via AES_DECRYPT(s.schema_password, 'cspro').
         $stmt = $pdo->prepare("
             INSERT INTO cspro_dictionaries_schema
-                (dictionary_id, host_name, schema_name, schema_user_name, schema_password, modified_time, created_time)
-            VALUES (?, ?, ?, ?, AES_ENCRYPT(?, 'cspro'), NOW(), NOW())
+                (dictionary_id, host_name, port, db_type, schema_name, schema_user_name, schema_password, modified_time, created_time)
+            VALUES (?, ?, ?, ?, ?, ?, AES_ENCRYPT(?, 'cspro'), NOW(), NOW())
             ON DUPLICATE KEY UPDATE
                 host_name = VALUES(host_name),
+                port = VALUES(port),
+                db_type = VALUES(db_type),
                 schema_name = VALUES(schema_name),
                 schema_user_name = VALUES(schema_user_name),
                 schema_password = VALUES(schema_password),
@@ -285,6 +302,8 @@ function registerSchema(array $body): void {
         $stmt->execute([
             $dict['id'],
             $body['host_name'],
+            $port,
+            $dbType,
             $body['schema_name'],
             $body['schema_user_name'],
             $body['schema_password'],
@@ -302,6 +321,20 @@ function registerSchema(array $body): void {
 
 /** @param array<string,mixed> $body */
 function unregisterSchema(array $body): void {
+    // Community layer: optional target engine and port, as in Settings > Data.
+    // Omitted values keep the UI defaults (PostgreSQL, driver default port).
+    $dbType = isset($body['db_type']) && $body['db_type'] !== '' ? strtolower((string) $body['db_type']) : null;
+    if ($dbType !== null && !in_array($dbType, ['postgresql', 'mysql', 'sqlserver'], true)) {
+        respondError('invalid_body', 'Invalid db_type (postgresql, mysql or sqlserver).', 400);
+    }
+    $port = null;
+    if (isset($body['port']) && $body['port'] !== '') {
+        $port = filter_var($body['port'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 65535]]);
+        if ($port === false) {
+            respondError('invalid_body', 'Invalid port (1-65535).', 400);
+        }
+    }
+
     [$id, $name] = extractDictionaryRef($body);
     if ($id === null && $name === null) {
         respondError('invalid_body', 'Provide either "dictionary_id" or "dictionary_name".', 400);
