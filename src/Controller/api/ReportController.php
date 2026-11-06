@@ -126,13 +126,28 @@ class ReportController extends AbstractController implements ApiTokenAuthenticat
         // Sync data to display in table
         try {
             //get the target schema name
-            $stm = "SELECT host_name, schema_name, schema_user_name, AES_DECRYPT(schema_password, '" . "cspro') as `password` "
+            $stm = "SELECT host_name, schema_name, schema_user_name, db_type, AES_DECRYPT(schema_password, '" . "cspro') as `password` "
                 . "FROM `cspro_dictionaries_schema` "
                 . "JOIN `cspro_dictionaries` ON dictionary_id = cspro_dictionaries.id WHERE cspro_dictionaries.name = :dictName";
             $bind = ['dictName' => $dictionary];
 
             $result = $this->pdo->fetchOne($stm, $bind);
+            // Community layer: the sync report joins the breakout tables with
+            // cspro_area_names in the metadata database, in one MySQL query. It
+            // therefore needs a MySQL / MariaDB target hosted on the metadata
+            // server. Say so instead of failing with a SQL error.
+            $dbType = strtolower((string) ($result['db_type'] ?? ''));
+            if ($dbType !== 'mysql') {
+                $response = new CSProResponse();
+                $response->setError(400, 'report_requires_mysql',
+                    "The sync report needs a MySQL / MariaDB breakout target on the CSWeb metadata server. Dictionary $dictionary uses " . ($dbType === '' ? 'postgresql' : $dbType) . '.');
+                return $response;
+            }
             $targetDBName = $result['schema_name'];
+            // Community layer: breakout tables are prefixed per dictionary
+            // (<dict>_level-1, <dict>_cases) so several dictionaries can share
+            // one target schema. Same rule as MySQLQuestionnaireSerializer.
+            $tablePrefix = strtolower(str_replace(" ", "_", str_replace("_DICT", "", $dictionary))) . '_';
             $this->logger->debug("Target schema name is : $targetDBName for dictionary: $dictionary");
 
             // Don't count the id and label column as a level of geography
@@ -254,11 +269,11 @@ class ReportController extends AbstractController implements ApiTokenAuthenticat
 
             $numericWhereStm = "";
             if ($numericLikeStm !== "") {
-                $numericWhereStm = " (SELECT * FROM `$targetDBName`.`level-1` WHERE $numericLikeStm) AS dictionary_data";
+                $numericWhereStm = " (SELECT * FROM `$targetDBName`.`{$tablePrefix}level-1` WHERE $numericLikeStm) AS dictionary_data";
             }
 
             if ($numericWhereStm === "") {
-                $subStm .= " ( SELECT  `L1`.* FROM `$targetDBName`.`level-1` AS L1 LEFT JOIN `$targetDBName`.`cases` AS C1 ON `C1`.`id` =  `L1`.`case-id` WHERE `C1`.`deleted` = 0 ) AS T1";
+                $subStm .= " ( SELECT  `L1`.* FROM `$targetDBName`.`{$tablePrefix}level-1` AS L1 LEFT JOIN `$targetDBName`.`{$tablePrefix}cases` AS C1 ON `C1`.`id` =  `L1`.`case-id` WHERE `C1`.`deleted` = 0 ) AS T1";
             } else {
                 $subStm .= $numericWhereStm;
             }
@@ -405,7 +420,7 @@ class ReportController extends AbstractController implements ApiTokenAuthenticat
         // Total row (entries) count
         try {
             $totalRowCountStm = "SELECT COUNT(*) FROM " .
-                    "(SELECT COUNT(*) FROM `$targetDBName`.`level-1` GROUP BY $dictionaryIdsStm) AS distinct_geography";
+                    "(SELECT COUNT(*) FROM `$targetDBName`.`{$tablePrefix}level-1` GROUP BY $dictionaryIdsStm) AS distinct_geography";
 
             $query = $this->pdo->prepare($totalRowCountStm);
             $query->execute();
