@@ -29,6 +29,25 @@ _Nothing yet._
 
 ---
 
+## [8.1.7] - 2026-11-07 (branch `8.1.x`)
+
+### Fixed
+- Breakout job claim: the row lock protected an existing job, but when
+  none was pending each worker created one from the last job's
+  watermark, and two workers could create two jobs over the same case
+  range. The whole claim now runs under an exclusive lock per target and
+  dictionary. Verified with 4 threads: 18,691 cases, one job per range,
+  no duplicate row.
+
+### Changed
+- `tools/loadtest/csweb_sync_load.py` also drives CSWeb 8.0 servers
+  (`id`/`caseids` case format, token response without `credentials`) and
+  sends the `gzip` Content-Encoding header CSEntry uses.
+- Sizing guide: minimum versions for large operations (8.1.7, 8.0.1).
+- CI also runs on the `8.0.x` branch.
+
+---
+
 ## [8.1.6] - 2026-11-06 (branch `8.1.x`)
 
 ### Added

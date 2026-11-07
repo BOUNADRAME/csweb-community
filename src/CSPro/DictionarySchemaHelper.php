@@ -421,6 +421,14 @@ class DictionarySchemaHelper {
     public function processNextJob($maxCasesPerChunk): int {
         $bind = [];
         $jobId = 0;
+        // Community layer: the row lock below protects an existing job, but
+        // when none is pending each worker calls createJob() from the last
+        // job's watermark, and two workers there can create two jobs over the
+        // same case range. The workers of one dictionary are always spawned on
+        // one host by one runner, so an flock() keyed by target and dictionary
+        // serialises the whole claim on every engine. It is held only for the
+        // claim, never while cases are processed.
+        $lockHandle = $this->acquireJobClaimLock();
 //find a job that is not being processed and update its status to processing
         try {
             // Community layer: claim the job atomically.
@@ -490,8 +498,43 @@ class DictionarySchemaHelper {
             $strMsg = "Failed getting next job from database:  " . $this->connectionParams['dbname'] . " while processsing Dictionary: " . $this->dictionaryName;
             $this->logger->error($strMsg, ["context" => (string) $e]);
             throw $e;
+        } finally {
+            $this->releaseJobClaimLock($lockHandle);
         }
         return $jobId;
+    }
+
+    /**
+     * Exclusive, blocking lock shared by the breakout workers of one dictionary
+     * on one target database. Returns null (no lock) if the lock file cannot be
+     * opened, so a read-only temp directory degrades to the row lock alone
+     * instead of stopping the breakout.
+     *
+     * @return resource|null
+     */
+    private function acquireJobClaimLock() {
+        $key = md5(($this->connectionParams['host'] ?? '') . '|' . ($this->connectionParams['port'] ?? '')
+                . '|' . ($this->connectionParams['dbname'] ?? '') . '|' . strtolower((string) $this->dictionaryName));
+        $file = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'csweb-breakout-claim-' . $key . '.lock';
+        $handle = @fopen($file, 'c');
+        if ($handle === false) {
+            $this->logger->warning('Breakout job claim lock unavailable, continuing without it: ' . $file);
+            return null;
+        }
+        if (!flock($handle, LOCK_EX)) {
+            fclose($handle);
+            $this->logger->warning('Breakout job claim lock could not be acquired, continuing without it: ' . $file);
+            return null;
+        }
+        return $handle;
+    }
+
+    /** @param resource|null $handle */
+    private function releaseJobClaimLock($handle): void {
+        if (is_resource($handle)) {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
     }
 
     public function createJob($maxCasesPerChunk): int {

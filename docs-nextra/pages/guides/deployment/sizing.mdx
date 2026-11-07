@@ -20,6 +20,15 @@ d'hypothèses explicites. Remplacez-les par les valeurs de votre opération
 [test de charge](#test-de-charge) sur un serveur de pré-production avant le terrain.
 </Callout>
 
+## Version minimale
+
+| Ligne | Version minimale pour une grande opération | Pourquoi |
+|---|---|---|
+| 8.1.x (CSPro 8.1) | 8.1.7 | Limites de connexion réglables, prise des jobs de breakout sous verrou |
+| 8.0.x (CSPro 8.0) | 8.0.1 | Avant 8.0.1, la limitation de débit comptait toutes les tablettes d'une même IP ensemble : 36 connexions sur 40 refusées et 3 cas/s au test de charge, contre 172 cas/s sans erreur en 8.0.1 |
+
+Les réglages, formules et scénarios de cette page valent pour les deux lignes.
+
 ## Où vivent les données
 
 | Élément | Emplacement | Ce qui le fait grossir |

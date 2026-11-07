@@ -54,7 +54,8 @@ def token(a, ctx, user=None, password=None):
     if st != 200:
         err(f"token HTTP {st}")
         return None
-    return json.loads(data)["credentials"]["access_token"]
+    d = json.loads(data)
+    return d.get("credentials", d)["access_token"]  # 8.1 : {credentials:{...}}, 8.0 : {access_token}
 
 
 def load_template(a, ctx):
@@ -86,16 +87,20 @@ def enumerator(i, a, ctx, template, stop_at):
         batch = []
         for _ in range(a.cases_per_sync):
             c = json.loads(json.dumps(rnd.choice(template)))
-            c["uuid"] = str(uuid.uuid4())
-            k = str(c.get("key", ""))  # meme longueur que la cle du dictionnaire
-            c["key"] = "".join(str(rnd.randint(0, 9)) if ch.isdigit() else ch for ch in k) or uuid.uuid4().hex[:8]
-            c["label"] = f"{a.key_prefix} {c['key']}"
+            # Format CSWeb 8.1 : uuid / key ; format CSWeb 8.0 : id / caseids.
+            id_f, key_f = ("uuid", "key") if "uuid" in c else ("id", "caseids")
+            c[id_f] = str(uuid.uuid4())
+            k = str(c.get(key_f, ""))  # meme longueur que la cle du dictionnaire
+            c[key_f] = "".join(str(rnd.randint(0, 9)) if ch.isdigit() else ch for ch in k) or uuid.uuid4().hex[:8]
+            c["label"] = f"{a.key_prefix} {c[key_f]}"
             c["clock"] = [{"deviceId": device, "revision": 1}]
             batch.append(c)
         raw = json.dumps(batch).encode()
-        body = zlib.compress(raw)  # deflate RFC 1950, comme le client CSPro
+        # CSEntry envoie un flux zlib (RFC 1950) annonce "gzip" : seul en-tete compris
+        # par CSWeb 8.0 (8.1 accepte aussi "deflate").
+        body = zlib.compress(raw)
         hdr = {"Authorization": "Bearer " + tok, "Content-Type": "application/json",
-               "Content-Encoding": "deflate", "x-csw-device": device}
+               "Content-Encoding": "gzip", "x-csw-device": device}
         st, data, _, dt = call("POST", f"{a.url}/api/dictionaries/{a.dict}/cases", body, hdr, ctx)
         if st == 401:  # jeton expire
             tok = token(a, ctx, user, password) or tok
