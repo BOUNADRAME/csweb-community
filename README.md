@@ -36,13 +36,15 @@
 ## Quick Start
 
 ```bash
-# 1. Cloner le projet
-git clone https://github.com/BOUNADRAME/csweb-community.git
+# 1. Cloner la ligne 8.0.x (CSPro 8.0)
+git clone -b 8.0.x https://github.com/BOUNADRAME/csweb-community.git
 cd csweb-community
 
 # 2. Configurer l'environnement
 cp .env.example .env
-# Editer .env : renseigner les mots de passe et choisir BREAKOUT_DB_TYPE
+# Editer .env : renseigner les mots de passe (MYSQL_PASSWORD, MYSQL_ROOT_PASSWORD,
+# POSTGRES_PASSWORD, BREAKOUT_WEBHOOK_TOKEN) et choisir BREAKOUT_DB_TYPE.
+# Grande enquete ou recensement : voir la section PERFORMANCE TUNING du .env
 
 # 3. Lancer (voir section "Modes de deploiement" ci-dessous)
 docker compose --profile local-postgres up -d
