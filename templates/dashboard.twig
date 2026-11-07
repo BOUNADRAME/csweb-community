@@ -597,9 +597,12 @@
                 // Use the existing scheduler/run-now endpoint, but it requires a schedule id.
                 // For dictionaries without a schedule, we leave the button hidden (already done in render).
                 // Here we pass id=0 which scheduler validates; a fail is shown to the user.
+                // Community layer: fetch() does not get the X-CSRF-TOKEN header that
+                // base.twig adds to jQuery requests, so it is set here.
+                var csrfMeta = document.querySelector('meta[name="csrf-token"]');
                 fetch(URL_RUN_NOW, {
                     method: "POST", credentials: "same-origin",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": csrfMeta ? csrfMeta.getAttribute("content") : "" },
                     body: JSON.stringify({ id: 0, dictName: dict })
                 })
                 .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })

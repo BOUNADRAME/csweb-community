@@ -11,6 +11,9 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
+use Symfony\Component\Security\Csrf\CsrfToken;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use AppBundle\Security\ApiKeyUserProvider;
 use AppBundle\Service\OAuthHelper;
 use AppBundle\CSPro\CSProResponse;
@@ -19,7 +22,7 @@ use Symfony\Component\HttpFoundation\Request;
 //checks if the access token is available before handling a request
 class TokenSubscriber implements EventSubscriberInterface {
 
-    public function __construct(private ApiKeyUserProvider $apikeyUserProvider, private UrlGeneratorInterface $router, private TokenStorageInterface $tokenStorage,  private OAuthHelper $oauthService, string $timeZone, private LoggerInterface $logger) {
+    public function __construct(private ApiKeyUserProvider $apikeyUserProvider, private UrlGeneratorInterface $router, private TokenStorageInterface $tokenStorage,  private OAuthHelper $oauthService, string $timeZone, private LoggerInterface $logger, private CsrfTokenManagerInterface $csrfTokenManager) {
         // Set default timezone to avoid warnings when using date/time functions 
         // and timezone not set in php.ini
        date_default_timezone_set($timeZone);
@@ -74,6 +77,18 @@ class TokenSubscriber implements EventSubscriberInterface {
                 });
             } else {
                 $request = $event->getRequest();
+                // Community layer: CSRF protection on every request that changes
+                // data. The admin UI is authenticated by the access_token cookie,
+                // which a browser also sends on a request forged by another site;
+                // the X-CSRF-TOKEN header, read from the page, is what such a
+                // site cannot supply. Same token id as base.twig and as 8.1.x.
+                if (in_array($request->getMethod(), ['POST', 'PUT', 'DELETE', 'PATCH'], true)) {
+                    $tokenValue = $request->headers->get('X-CSRF-TOKEN');
+                    if (!$this->csrfTokenManager->isTokenValid(new CsrfToken('csweb_dashboard_token', $tokenValue))) {
+                        $this->logger->error('CSRF token missing or invalid for ' . $request->getMethod() . ' ' . $request->getPathInfo());
+                        throw new AccessDeniedHttpException('Invalid CSRF token.');
+                    }
+                }
                 $response = $this->verifyResourceRequest($request);
                 if ($response !== null) {
                     $event->setController(function()use($response) {
