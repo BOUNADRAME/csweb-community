@@ -159,7 +159,7 @@ services:
     ports:
       # Mapping HÔTE uniquement (accès externe optionnel). Découplé du port
       # interne pour éviter les conflits avec un mysqld natif sur l'hôte.
-      - "${MYSQL_HOST_PORT:-3306}:3306"
+      - "${DB_BIND_ADDRESS:-127.0.0.1}:${MYSQL_HOST_PORT:-3306}:3306"
 
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
@@ -218,7 +218,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${DB_BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
 
     environment:
       - POSTGRES_DB=${POSTGRES_DATABASE}
@@ -273,7 +273,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "${MYSQL_BREAKOUT_PORT:-3307}:3306"
+      - "${DB_BIND_ADDRESS:-127.0.0.1}:${MYSQL_BREAKOUT_PORT:-3307}:3306"
 
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_BREAKOUT_PASSWORD}
@@ -324,7 +324,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "${SQLSERVER_PORT:-1433}:1433"
+      - "${DB_BIND_ADDRESS:-127.0.0.1}:${SQLSERVER_PORT:-1433}:1433"
 
     environment:
       - ACCEPT_EULA=Y
@@ -367,7 +367,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "${PHPMYADMIN_PORT:-8081}:80"
+      - "${ADMIN_TOOLS_BIND_ADDRESS:-127.0.0.1}:${PHPMYADMIN_PORT:-8081}:80"
 
     environment:
       - PMA_HOST=mysql
@@ -399,7 +399,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "${PGADMIN_PORT:-8082}:80"
+      - "${ADMIN_TOOLS_BIND_ADDRESS:-127.0.0.1}:${PGADMIN_PORT:-8082}:80"
 
     environment:
       - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@csweb.local}

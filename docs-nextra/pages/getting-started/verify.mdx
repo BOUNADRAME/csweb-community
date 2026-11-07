@@ -22,10 +22,10 @@ docker compose ps
 | NAME | STATUS | PORTS |
 |------|--------|-------|
 | csweb-app | Up (healthy) | 0.0.0.0:8080->80/tcp |
-| csweb-mysql-metadata | Up (healthy) | 0.0.0.0:3306->3306/tcp |
-| csweb-postgres-breakout | Up (healthy) | 0.0.0.0:5432->5432/tcp |
-| phpmyadmin | Up | 0.0.0.0:8081->80/tcp |
-| pgadmin | Up | 0.0.0.0:8082->80/tcp |
+| csweb-mysql-metadata | Up (healthy) | 127.0.0.1:3306->3306/tcp |
+| csweb-postgres-breakout | Up (healthy) | 127.0.0.1:5432->5432/tcp |
+| phpmyadmin | Up | 127.0.0.1:8081->80/tcp |
+| pgadmin | Up | 127.0.0.1:8082->80/tcp |
 
  **Tous les services doivent être "Up"**
  **csweb-app, csweb-mysql-metadata, csweb-postgres-breakout doivent être "healthy"**
