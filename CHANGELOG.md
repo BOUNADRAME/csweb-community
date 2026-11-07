@@ -29,6 +29,17 @@ _Nothing yet._
 
 ---
 
+## [8.1.8] - 2026-11-07 (branch `8.1.x`)
+
+### Changed
+- Backup: the cron help was French text inside an English screen. It is
+  now a set of clickable shortcuts in English (Daily 02:00, Every 6 hours,
+  Sundays 02:00, Weekdays 03:30, 1st of month 02:00), the same pattern as
+  the Breakout Scheduler.
+- Backup: a Help link to the backup guide, like the other admin screens.
+
+---
+
 ## [8.1.7] - 2026-11-07 (branch `8.1.x`)
 
 ### Fixed

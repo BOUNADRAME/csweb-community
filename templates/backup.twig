@@ -34,6 +34,12 @@
         </li>
     {% endif %}
 {% endblock %}
+{% block helps %}
+<li class="nav-item mx-1" >
+    <a href="https://bounadrame.github.io/csweb-community/guides/deployment/backup" target="_blank" class="nav-text-cspro"><i class="far fa-question-circle"></i> Help</a>
+</li>
+{% endblock %}
+{# helps #}
 {% block content %}
     <div class="row">
         <div class="col-12">
@@ -103,15 +109,16 @@
                                         <label class="col-sm-3 col-form-label" for="backup-cron">Cron Expression</label>
                                         <div class="col-sm-6">
                                             <input type="text" class="form-control" id="backup-cron" placeholder="0 2 * * *">
-                                            <small class="form-text text-muted">
-                                                Format : <code>minute heure jour mois jour_semaine</code><br>
-                                                Exemples :
-                                                <code>0 2 * * *</code> tous les jours à 2h00 |
-                                                <code>0 2 * * 0</code> chaque dimanche à 2h00 |
-                                                <code>0 */6 * * *</code> toutes les 6 heures |
-                                                <code>0 2 1 * *</code> le 1er du mois à 2h00 |
-                                                <code>30 3 * * 1-5</code> lun-ven à 3h30
-                                            </small>
+                                            <small class="form-text text-muted">min hour day month weekday</small>
+                                            {# Community layer: same clickable shortcuts as the Breakout Scheduler. #}
+                                            <div class="mt-2">
+                                                <small class="text-muted d-block mb-1">Examples (click to use):</small>
+                                                <span class="badge badge-info backup-cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 2 * * *">Daily 02:00</span>
+                                                <span class="badge badge-info backup-cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 */6 * * *">Every 6 hours</span>
+                                                <span class="badge badge-info backup-cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 2 * * 0">Sundays 02:00</span>
+                                                <span class="badge badge-info backup-cron-example mr-1 mb-1" style="cursor:pointer" data-cron="30 3 * * 1-5">Weekdays 03:30</span>
+                                                <span class="badge badge-info backup-cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 2 1 * *">1st of month 02:00</span>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="form-group row">
@@ -326,6 +333,10 @@
         }
 
         $(document).ready(function () {
+            // Community layer: cron shortcuts fill the field.
+            $(document).on("click", ".backup-cron-example", function () {
+                $("#backup-cron").val($(this).data("cron")).trigger("input").focus();
+            });
             var $body = $("body");
             $(document).ajaxStart(function () { $body.addClass("loading"); });
             $(document).ajaxComplete(function () { $body.removeClass("loading"); });
