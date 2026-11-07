@@ -29,6 +29,25 @@ _Nothing yet._
 
 ---
 
+## [8.1.10] - 2026-11-07 (branch `8.1.x`)
+
+### Security
+- **Database ports listen on 127.0.0.1 by default.** The MySQL metadata
+  database, the local breakout databases (PostgreSQL, MySQL, SQL Server)
+  and phpMyAdmin / pgAdmin were published on 0.0.0.0, and Docker bypasses
+  the host firewall (UFW, firewalld): on a VM with a public IP they were
+  reachable from the Internet. CSWeb reaches them over the Docker network,
+  so nothing changes for the application. Set `DB_BIND_ADDRESS` or
+  `ADMIN_TOOLS_BIND_ADDRESS` to `0.0.0.0` to expose them on purpose;
+  an SSH tunnel (DBeaver has one built in) is the safer way to reach them
+  from another machine.
+
+### Changed
+- Docker build: skip pdo, mbstring and xml, which the PHP image already
+  has, compile extensions on every CPU, and build pdo_sqlsrv only.
+
+---
+
 ## [8.1.9] - 2026-11-07 (branch `8.1.x`)
 
 ### Changed
