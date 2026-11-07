@@ -34,6 +34,12 @@
         </li>
     {% endif %}
 {% endblock %}
+{% block helps %}
+<li class="nav-item mx-1" >
+    <a href="https://bounadrame.github.io/csweb-community/guides/deployment/backup" target="_blank" class="nav-text-cspro"><i class="far fa-question-circle"></i> Help</a>
+</li>
+{% endblock %}
+{# helps #}
 {% block content %}
     <div class="row">
         <div class="col-12">
@@ -103,15 +109,16 @@
                                         <label class="col-sm-3 col-form-label" for="backup-cron">Cron Expression</label>
                                         <div class="col-sm-6">
                                             <input type="text" class="form-control" id="backup-cron" placeholder="0 2 * * *">
-                                            <small class="form-text text-muted">
-                                                Format : <code>minute heure jour mois jour_semaine</code><br>
-                                                Exemples :
-                                                <code>0 2 * * *</code> tous les jours à 2h00 |
-                                                <code>0 2 * * 0</code> chaque dimanche à 2h00 |
-                                                <code>0 */6 * * *</code> toutes les 6 heures |
-                                                <code>0 2 1 * *</code> le 1er du mois à 2h00 |
-                                                <code>30 3 * * 1-5</code> lun-ven à 3h30
-                                            </small>
+                                            <small class="form-text text-muted">min hour day month weekday</small>
+                                            {# Community layer: same clickable shortcuts as the Breakout Scheduler. #}
+                                            <div class="mt-2">
+                                                <small class="text-muted d-block mb-1">Examples (click to use):</small>
+                                                <span class="badge badge-info backup-cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 2 * * *">Daily 02:00</span>
+                                                <span class="badge badge-info backup-cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 */6 * * *">Every 6 hours</span>
+                                                <span class="badge badge-info backup-cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 2 * * 0">Sundays 02:00</span>
+                                                <span class="badge badge-info backup-cron-example mr-1 mb-1" style="cursor:pointer" data-cron="30 3 * * 1-5">Weekdays 03:30</span>
+                                                <span class="badge badge-info backup-cron-example mr-1 mb-1" style="cursor:pointer" data-cron="0 2 1 * *">1st of month 02:00</span>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="form-group row">
@@ -326,6 +333,10 @@
         }
 
         $(document).ready(function () {
+            // Community layer: cron shortcuts fill the field.
+            $(document).on("click", ".backup-cron-example", function () {
+                $("#backup-cron").val($(this).data("cron")).trigger("input").focus();
+            });
             var $body = $("body");
             $(document).ajaxStart(function () { $body.addClass("loading"); });
             $(document).ajaxComplete(function () { $body.removeClass("loading"); });
@@ -352,8 +363,8 @@
                         } else {
                             $("#backup-status").html('<span class="badge badge-secondary backup-status-badge">Disabled</span>');
                         }
-                        $("#backup-last-run").text(data.last_run || "Never");
-                        $("#backup-next-run").text(data.next_run || "-");
+                        $("#backup-last-run").text(data.last_run ? cswebFormatDateTime(data.last_run) : "Never");
+                        $("#backup-next-run").text(cswebFormatDateTime(data.next_run));
 
                         if (data.last_exit_code === null || data.last_exit_code === undefined) {
                             $("#backup-last-exit").text("-");
@@ -498,11 +509,12 @@
                             rows += '<tr>' +
                                 '<td><input type="checkbox" class="backup-file-select" value="' + escapeHtml(f.filename) + '"></td>' +
                                 '<td><small>' + escapeHtml(f.filename) + '</small></td>' +
-                                '<td>' + escapeHtml(f.date) + '</td>' +
-                                '<td>' + escapeHtml(f.sizeFormatted) + '</td>' +
-                                '<td>' +
-                                    '<a class="btn btn-xs btn-success mr-1" href="{{ path('backupFileDownload') }}?file=' + encodeURIComponent(f.filename) + '" title="Download"><i class="fas fa-download"></i></a>' +
-                                    '<button class="btn btn-xs btn-danger delete-backup-file-btn" data-file="' + escapeHtml(f.filename) + '" title="Delete"><i class="fas fa-trash-alt"></i></button>' +
+                                '<td data-order="' + escapeHtml(f.date) + '">' + cswebFormatDateTime(f.date) + '</td>' +
+                                '<td data-order="' + (f.size || 0) + '">' + escapeHtml(f.sizeFormatted) + '</td>' +
+                                '<td class="text-nowrap"><div class="row-actions">' +
+                                    '<a class="btn btn-outline-secondary" href="{{ path('backupFileDownload') }}?file=' + encodeURIComponent(f.filename) + '" title="Download" aria-label="Download"><i class="fas fa-download"></i></a>' +
+                                    '<button type="button" class="btn btn-outline-danger delete-backup-file-btn" data-file="' + escapeHtml(f.filename) + '" title="Delete" aria-label="Delete"><i class="fas fa-trash-alt"></i></button>' +
+                                    '</div>' +
                                 '</td>' +
                                 '</tr>';
                         }
@@ -650,12 +662,12 @@
                             var log = logs[i];
                             rows += '<tr>' +
                                 '<td><small>' + escapeHtml(log.filename) + '</small></td>' +
-                                '<td>' + escapeHtml(log.date) + '</td>' +
-                                '<td>' + escapeHtml(log.sizeFormatted) + '</td>' +
-                                '<td>' +
-                                    '<button class="btn btn-xs btn-info view-backup-log-btn mr-1" data-file="' + escapeHtml(log.filename) + '" title="View"><i class="fas fa-eye"></i></button>' +
-                                    '<a class="btn btn-xs btn-success" href="{{ path('backupLogContent') }}?file=' + encodeURIComponent(log.filename) + '" target="_blank" title="Download"><i class="fas fa-download"></i></a>' +
-                                '</td>' +
+                                '<td data-order="' + escapeHtml(log.date) + '">' + cswebFormatDateTime(log.date) + '</td>' +
+                                '<td data-order="' + (log.size || 0) + '">' + escapeHtml(log.sizeFormatted) + '</td>' +
+                                '<td class="text-nowrap"><div class="row-actions">' +
+                                    '<button type="button" class="btn btn-outline-primary view-backup-log-btn" data-file="' + escapeHtml(log.filename) + '" title="View log" aria-label="View log"><i class="fas fa-eye"></i></button>' +
+                                    '<a class="btn btn-outline-secondary" href="{{ path('backupLogContent') }}?file=' + encodeURIComponent(log.filename) + '" target="_blank" title="Download" aria-label="Download"><i class="fas fa-download"></i></a>' +
+                                '</div></td>' +
                                 '</tr>';
                         }
                         tbody.html(rows);

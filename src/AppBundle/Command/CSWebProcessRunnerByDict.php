@@ -30,6 +30,9 @@ use Symfony\Component\Console\Input\InputArgument;
  */
 class CSWebProcessRunnerByDict extends Command {
 
+    /** @var array<string,int> Community layer: jobs started per dictionary, for the summary. */
+    private array $jobCounts = [];
+
     protected static $defaultName = 'csweb:process-cases-by-dict';
     use LockableTrait;
 
@@ -145,6 +148,15 @@ class CSWebProcessRunnerByDict extends Command {
                 break;
             }
         } while (!$stopProcess);
+        // Community layer: end-of-run summary, so a log read later says at a
+        // glance whether the run did something.
+        $elapsed = round(microtime(true) - $this->startTime, 1);
+        foreach ((array) $dictionnaires as $dictName) {
+            $jobs = $this->jobCounts[$dictName] ?? 0;
+            $output->writeln($jobs > 0
+                ? "Summary: $dictName - $jobs job(s) processed in {$elapsed}s."
+                : "Summary: $dictName - already up to date, nothing to process.");
+        }
         $this->release();
         $this->logger->info('Stopping process at ' . date("c"));
         return 0;
@@ -160,7 +172,6 @@ class CSWebProcessRunnerByDict extends Command {
         $dictionaryInfo = &$this->dictionaryMap[$dictName];
         $dictionarySchemaHelper = $dictionaryInfo->schemaHelper;
         $jobId = $dictionarySchemaHelper->processNextJob($this->maxCasesPerChunk);
-        $this->output->writeln('Creating process for dictionary ' . $dictName . ' jobID: ' . $jobId);
         $this->logger->debug('Creating process for dictionary ' . $dictName . ' jobID: ' . $jobId);
         if (!$this->phpBinaryPath) {
             $this->phpBinaryPath = (new PhpExecutableFinder())->find();
@@ -179,11 +190,15 @@ class CSWebProcessRunnerByDict extends Command {
                 '-j',
                 $jobId,
             ];
-            $this->output->writeln('Processing for dictionary ' . $dictName . ' jobID: ' . $jobId);
+            // Community layer: one readable line per job, and a count for the
+            // summary. jobID 0 means "no job left", not a job, so it is no
+            // longer printed as if a job were being created.
+            $this->jobCounts[$dictName] = ($this->jobCounts[$dictName] ?? 0) + 1;
+            $this->output->writeln('Starting job ' . $jobId . ' for dictionary ' . $dictName . ' (up to ' . $this->maxCasesPerChunk . ' cases)');
             $this->logger->debug('Processing for dictionary ' . $dictName . ' jobID: ' . $jobId);
             return new Process($cmd);
         }
-        $this->output->writeln('No jobs available to run for dictionary: ' . $dictName);
+        $this->output->writeln('No more cases to process for dictionary: ' . $dictName);
         //set process flag to false to stop creating threads for this dictionary
         $dictionaryInfo->processFlag = false;
         return null;

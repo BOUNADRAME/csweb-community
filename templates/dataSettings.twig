@@ -126,7 +126,7 @@
                         <div class="form-group row has-feedback">
                             <label class="col-sm-4 control-label" for="port">Port</label>
                             <div class="col-sm-8">
-                                <input type="number" class="form-control" name="targetPort" id="port" placeholder="Leave blank for default (PostgreSQL: 5432, MySQL: 3306, SQL Server: 1433)" min="1" max="65535">
+                                <input type="number" class="form-control" name="targetPort" id="port" placeholder="Default: 5432 / 3306 / 1433" title="Leave blank for the engine default: PostgreSQL 5432, MySQL 3306, SQL Server 1433" min="1" max="65535">
                                 <div class="help-block with-errors"></div>
                             </div>
                         </div>
@@ -265,7 +265,8 @@
                             <!-- form-group row -->
                         </div>
                         <!-- map-options -->
-                        <div class="modal-footer">
+                        <div class="modal-footer modal-footer-spacing-and-alignment">
+                            <button type="button" class="btn btn-outline-secondary mr-auto test-connection-btn" data-prefix="" title="Check the connection with these settings, without saving"><i class="fas fa-plug"></i> Test connection</button>
                             <button type="submit" class="btn btn-primary" id="add-button">Add</button>
                             <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
                         </div>  
@@ -346,7 +347,7 @@
                             <div class="form-group row has-feedback">
                                 <label class="col-sm-4 control-label" for="edit-port">Port</label>
                                 <div class="col-sm-8">
-                                    <input type="number" class="form-control" name="edit-targetPort" id="edit-port" placeholder="Leave blank for default (PostgreSQL: 5432, MySQL: 3306, SQL Server: 1433)" min="1" max="65535">
+                                    <input type="number" class="form-control" name="edit-targetPort" id="edit-port" placeholder="Default: 5432 / 3306 / 1433" title="Leave blank for the engine default: PostgreSQL 5432, MySQL 3306, SQL Server 1433" min="1" max="65535">
                                     <div class="help-block with-errors"></div>
                                 </div>
                             </div>
@@ -485,6 +486,7 @@
                             <!-- edit-map-options -->
                         </div>
                         <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary mr-auto test-connection-btn" data-prefix="edit-" title="Check the connection with these settings, without saving"><i class="fas fa-plug"></i> Test connection</button>
                             <button type="submit" class="btn btn-primary" id="update-button">Update</button>
                             <button type="button" class="btn btn-danger" id="edit-cancel-button" data-dismiss="modal">Cancel</button>
                             <button type="button" class="btn btn-primary hidden" id="view-additional-config-cancel-button">Cancel</button>
@@ -864,6 +866,9 @@
                                             <tr>
                                                 <th class="col-4">Data Label</th>
                                                 <th class="col-auto">Data Name</th>
+                                                {# Community layer: the target engine is per
+                                                   dictionary, so it belongs next to the target. #}
+                                                <th class="col-auto">DB Type</th>
                                                 <th class="col-3">Target Schema</th>
                                                 <th class="col-auto">Total Cases</th>
                                                 <th class="col-auto">Processed Cases</th>
@@ -884,12 +889,25 @@
                                                             {% endif %}
                                                         </td>
                                                         <td>{{ dataSetting.name}}</td>
-                                                        <td>{{ dataSetting.targetHostName}} | {{ dataSetting.targetSchemaName}}</td>
+                                                        {# Community layer: engine badge. dbType is null on
+                                                           rows created before the column existed, so fall
+                                                           back to the default DataSettings::resolveDriver() uses. #}
+                                                        {% set dbType = dataSetting.dbType|default('postgresql')|lower %}
+                                                        <td>
+                                                            {% if dbType == 'mysql' %}
+                                                                <span class="db-engine db-engine-mysql" title="MySQL / MariaDB"><i class="fas fa-database"></i>MySQL</span>
+                                                            {% elseif dbType == 'sqlserver' %}
+                                                                <span class="db-engine db-engine-sqlserver" title="Microsoft SQL Server"><i class="fas fa-server"></i>SQL Server</span>
+                                                            {% else %}
+                                                                <span class="db-engine db-engine-postgresql" title="PostgreSQL"><i class="fas fa-database"></i>PostgreSQL</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>{{ dataSetting.targetHostName}}{% if dataSetting.targetPort %}:{{ dataSetting.targetPort }}{% endif %} | {{ dataSetting.targetSchemaName}}</td>
                                                         <td>{{ dataSetting.totalCases}}</td>
                                                         <td>{{ dataSetting.processedCases}}</td>
-                                                        <td>{{ dataSetting.lastProcessedTime}}</td>
-                                                        <td style="text-align: center"><a href="javascript:;" class="edit-button-class"><i class="fas fa-pencil-alt fa-fw"></i></a></td>
-                                                        <td style="text-align: center"><a href="javascript:;" class="delete-button-class"><i class="fas fa-trash-alt fa-fw"></i></a></td>
+                                                        <td data-order="{{ dataSetting.lastProcessedTime }}" class="js-datetime" data-datetime="{{ dataSetting.lastProcessedTime }}">{{ dataSetting.lastProcessedTime}}</td>
+                                                        <td style="text-align: center"><button type="button" class="btn btn-sm btn-outline-secondary edit-button-class" title="Edit" aria-label="Edit"><i class="fas fa-pencil-alt"></i></button></td>
+                                                        <td style="text-align: center"><button type="button" class="btn btn-sm btn-outline-danger delete-button-class" title="Delete" aria-label="Delete"><i class="fas fa-trash-alt"></i></button></td>
                                                     </tr>
                                                 {% endif %}
                                             {% endfor %}
@@ -1269,7 +1287,9 @@
                 $('#data-config-table').DataTable({
                 columnDefs: [{
                     orderable: false,
-                    targets: [6,7]
+                    // Community layer: Edit and Delete, counted from the end so the
+                    // indexes survive the DB Type column and the next column change.
+                    targets: [-1, -2]
                     }]
                 });
                 var basemapSelect = $("#basemap-select");
@@ -2060,14 +2080,15 @@
                                         + '<td>' + s.label + ' (' + s.name + ')</td>'
                                         + '<td><code>' + s.cron_expression + '</code></td>'
                                         + '<td>' + statusBadge + '</td>'
-                                        + '<td>' + (s.last_run || '-') + '</td>'
-                                        + '<td>' + (s.next_run || '-') + '</td>'
+                                        + '<td data-order="' + (s.last_run || '') + '">' + cswebFormatDateTime(s.last_run) + '</td>'
+                                        + '<td data-order="' + (s.next_run || '') + '">' + cswebFormatDateTime(s.next_run) + '</td>'
                                         + '<td>'
-                                        + '<a href="javascript:;" class="schedule-toggle-btn mr-2" data-id="' + s.id + '">' + toggleIcon + '</a>'
-                                        + '<a href="javascript:;" class="schedule-run-btn mr-2" data-id="' + s.id + '" data-name="' + s.name + '"><i class="fas fa-rocket fa-fw" title="Run Now"></i></a>'
-                                        + '<a href="javascript:;" class="schedule-edit-btn mr-2" data-id="' + s.id + '" data-label="' + s.label + ' (' + s.name + ')" data-cron="' + s.cron_expression + '" data-enabled="' + s.enabled + '"><i class="fas fa-pencil-alt fa-fw" title="Edit"></i></a>'
-                                        + '<a href="javascript:;" class="schedule-delete-btn" data-id="' + s.id + '" data-label="' + s.label + ' (' + s.name + ')"><i class="fas fa-trash-alt fa-fw" title="Delete"></i></a>'
-                                        + '</td></tr>';
+                                        + '<div class="row-actions">'
+                                        + '<button type="button" class="btn btn-outline-secondary schedule-toggle-btn" data-id="' + s.id + '" title="' + (s.enabled == 1 ? 'Disable' : 'Enable') + '" aria-label="' + (s.enabled == 1 ? 'Disable' : 'Enable') + '">' + toggleIcon + '</button>'
+                                        + '<button type="button" class="btn btn-outline-primary schedule-run-btn" data-id="' + s.id + '" data-name="' + s.name + '" title="Run now" aria-label="Run now"><i class="fas fa-play"></i></button>'
+                                        + '<button type="button" class="btn btn-outline-secondary schedule-edit-btn" data-id="' + s.id + '" data-label="' + s.label + ' (' + s.name + ')" data-cron="' + s.cron_expression + '" data-enabled="' + s.enabled + '" title="Edit" aria-label="Edit"><i class="fas fa-pencil-alt"></i></button>'
+                                        + '<button type="button" class="btn btn-outline-danger schedule-delete-btn" data-id="' + s.id + '" data-label="' + s.label + ' (' + s.name + ')" title="Delete" aria-label="Delete"><i class="fas fa-trash-alt"></i></button>'
+                                        + '</div></td></tr>';
                                     tbody.append(row);
                                 });
                             } else {
@@ -2424,13 +2445,13 @@
                             '<td>' + escapeHtml(log.dictName) + '</td>' +
                             '<td><small>' + escapeHtml(log.filename) + '</small></td>' +
                             '<td>' + badge + '</td>' +
-                            '<td>' + escapeHtml(log.date) + '</td>' +
-                            '<td>' + formatSize(log.size) + '</td>' +
-                            '<td>' +
-                                '<button class="btn btn-xs btn-info view-log-btn mr-1" data-file="' + escapeHtml(log.filename) + '" data-dict="' + escapeHtml(log.dictName) + '" data-type="' + escapeHtml(log.type) + '" data-date="' + escapeHtml(log.date) + '" data-size="' + log.size + '" title="View"><i class="fas fa-eye"></i></button>' +
-                                '<button class="btn btn-xs btn-success download-log-btn mr-1" data-file="' + escapeHtml(log.filename) + '" title="Download"><i class="fas fa-download"></i></button>' +
-                                '<button class="btn btn-xs btn-danger delete-log-btn" data-file="' + escapeHtml(log.filename) + '" title="Delete"><i class="fas fa-trash-alt"></i></button>' +
-                            '</td>' +
+                            '<td data-order="' + escapeHtml(log.date) + '">' + cswebFormatDateTime(log.date) + '</td>' +
+                            '<td data-order="' + log.size + '">' + formatSize(log.size) + '</td>' +
+                            '<td class="text-nowrap"><div class="row-actions">' +
+                                '<button type="button" class="btn btn-outline-primary view-log-btn" data-file="' + escapeHtml(log.filename) + '" data-dict="' + escapeHtml(log.dictName) + '" data-type="' + escapeHtml(log.type) + '" data-date="' + escapeHtml(log.date) + '" data-size="' + log.size + '" title="View log" aria-label="View log"><i class="fas fa-eye"></i></button>' +
+                                '<button type="button" class="btn btn-outline-secondary download-log-btn" data-file="' + escapeHtml(log.filename) + '" title="Download" aria-label="Download"><i class="fas fa-download"></i></button>' +
+                                '<button type="button" class="btn btn-outline-danger delete-log-btn" data-file="' + escapeHtml(log.filename) + '" title="Delete" aria-label="Delete"><i class="fas fa-trash-alt"></i></button>' +
+                            '</div></td>' +
                             '</tr>';
                     }
                     tbody.html(rows);
@@ -2531,7 +2552,7 @@
                     } else {
                         $typeBadge.text("Scheduled").removeClass("badge-warning").addClass("badge-primary");
                     }
-                    $("#view-log-date").text(date);
+                    $("#view-log-date").text(cswebFormatDateTime(date));
                     $("#view-log-size").text(formatSize(size));
                     $("#view-log-lines").text("");
                     $("#view-log-status").text("");
@@ -2987,7 +3008,72 @@
                     });
                 });
             })();
+    
+            // Community layer: the active tab follows the URL hash (#scheduler,
+            // #logs, #applog), so a reload or a shared link opens the same tab.
+            (function () {
+                var tabs = {config: "#tab-link-data-config", scheduler: "#tab-link-scheduler", logs: "#tab-link-logs", applog: "#tab-link-applog"};
+                var open = function () {
+                    var key = (window.location.hash || "").replace("#", "");
+                    if (tabs[key] && $(tabs[key]).length) { $(tabs[key]).tab("show"); }
+                };
+                open();
+                $(window).on("hashchange", open);
+                $.each(tabs, function (key, sel) {
+                    $(sel).on("shown.bs.tab", function () {
+                        if (history.replaceState) { history.replaceState(null, "", key === "config" ? window.location.pathname : "#" + key); }
+                    });
+                });
+            })();
 
+            // Community layer: "Test connection" in Add / Edit Configuration.
+            (function () {
+                function resultBox($btn) {
+                    var $box = $btn.closest(".modal-content").find(".test-connection-result");
+                    if (!$box.length) {
+                        $box = $('<div class="test-connection-result alert small mb-0 mx-3 mt-0" role="status" style="display:none"></div>');
+                        $btn.closest(".modal-footer").before($box);
+                    }
+                    return $box;
+                }
+                $(document).on("click", ".test-connection-btn", function () {
+                    var $btn = $(this), p = $btn.data("prefix") || "";
+                    var $box = resultBox($btn);
+                    var payload = {
+                        targetHostName: $("#" + p + "host-name").val(),
+                        targetPort: $("#" + p + "port").val(),
+                        dbType: $("#" + p + "db-type").val(),
+                        targetSchemaName: $("#" + p + "target-db-name").val(),
+                        dbUserName: $("#" + p + "db-user-name").val(),
+                        dbPassword: $("#" + p + "db-password").val()
+                    };
+                    $btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Testing…');
+                    $box.hide();
+                    $.ajax({
+                        type: "POST",
+                        url: "{{ path('testConnection') }}",
+                        data: JSON.stringify(payload),
+                        contentType: "application/json",
+                        dataType: "json",
+                        global: false
+                    }).done(function (r) {
+                        $box.removeClass("alert-success alert-danger")
+                            .addClass(r.ok ? "alert-success" : "alert-danger")
+                            .html('<i class="fas ' + (r.ok ? 'fa-check-circle' : 'fa-times-circle') + ' mr-1"></i>'
+                                + $("<span>").text(r.message + (r.server ? " (" + r.server + ")" : "")).html())
+                            .show();
+                    }).fail(function (xhr) {
+                        var msg = (xhr.responseJSON && xhr.responseJSON.message) || "Connection test failed.";
+                        $box.removeClass("alert-success").addClass("alert-danger").text(msg).show();
+                    }).always(function () {
+                        $btn.prop("disabled", false).html('<i class="fas fa-plug"></i> Test connection');
+                    });
+                });
+                // Start each opening of the dialog without the previous result.
+                $("#add-config-modal, #edit-config-modal").on("show.bs.modal", function () {
+                    $(this).find(".test-connection-result").hide();
+                });
+            })();
     </script>
 {% endblock %}
 {# scripts #}

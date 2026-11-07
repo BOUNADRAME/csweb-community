@@ -23,6 +23,35 @@ _Nothing yet._
 
 ---
 
+## [8.0.2] - 2026-11-07 (branch `8.0.x`)
+
+Admin screens brought to the 8.1.x level: simpler, consistent, readable.
+
+### Added
+- **Test connection** in Add and Edit Configuration: checks the engine,
+  host, port, database and credentials before saving, and says why it
+  fails (wrong password, unknown database, nothing listening on the port).
+- Settings > Data opens the tab named in the URL (`#scheduler`, `#logs`,
+  `#applog`), so a reload or a shared link keeps the same tab.
+- A selective breakout run now ends with a one-line summary per
+  dictionary (jobs processed and duration, or "already up to date").
+
+### Changed
+- Settings > Data: a DB Type badge (PostgreSQL, MySQL, SQL Server), the
+  target port next to the host, and compact outline Edit / Delete buttons.
+- Dates on the admin screens (Data, Scheduler, Backup, Application Logs)
+  are shown in the browser's locale, e.g. "Nov 07, 2026, 10:38 AM", and
+  still sort correctly.
+- Row actions are single-line outline buttons with tooltips on the
+  Scheduler, Breakout Logs and Backup screens.
+- Breakout Health: search and status filters run on the server over every
+  page, and the KPI cards follow the filter, with a **Filtered** badge.
+- Backup: clickable cron shortcuts in English (same pattern as the
+  Breakout Scheduler) instead of French help text, and a Help link.
+- Shorter port placeholder in the configuration dialogs.
+
+---
+
 ## [8.0.1] - 2026-11-07 (branch `8.0.x`)
 
 Large-survey and census readiness for the 8.0 line (CSPro 8.0). Brings

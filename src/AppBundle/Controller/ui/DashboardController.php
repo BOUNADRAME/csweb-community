@@ -89,6 +89,17 @@ class DashboardController extends AbstractController implements TokenAuthenticat
             $filters['cron_enabled'] = false;
         }
 
+        // Community layer: search and status are applied server side so they
+        // cover every page and the KPI cards can follow the filter.
+        $search = trim((string) $request->query->get('search', ''));
+        if ($search !== '') {
+            $filters['search'] = mb_substr($search, 0, 100);
+        }
+        $status = (string) $request->query->get('status', 'all');
+        if (in_array($status, ['up_to_date', 'pending', 'error', 'running', 'not_configured', 'never_run'], true)) {
+            $filters['status'] = $status;
+        }
+
         $configured = $request->query->get('breakout_configured');
         if ($configured === 'true' || $configured === '1') {
             $filters['breakout_configured'] = true;

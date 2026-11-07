@@ -285,7 +285,7 @@
                             return '<small>' + msg + '</small>';
                         }
                     },
-                    { data: "created_time" }
+                    { data: "created_time", render: function (d, type) { return type === "display" ? cswebFormatDateTime(d) : d; } }
                 ],
                 order: [[0, "desc"]],
                 pageLength: 25,
@@ -349,7 +349,7 @@
                     success: function (row) {
                         $("#log-detail-channel").text(row.channel);
                         $("#log-detail-level").html(levelBadge(row.level_name));
-                        $("#log-detail-date").text(row.created_time);
+                        $("#log-detail-date").text(cswebFormatDateTime(row.created_time));
                         $("#log-detail-message").text(row.message);
 
                         var ctx = row.context || "";
