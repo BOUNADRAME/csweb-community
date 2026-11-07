@@ -147,6 +147,8 @@ class MySQLDictionarySchemaGenerator {
 
         //create a table using DBAL 
         $levelIdTable = $this->schema->createTable(static::quoteString($this->nomSchama.'_'.$levelName));
+        // Community layer: DYNAMIC row format — see the record tables below.
+        $levelIdTable->addOption('row_format', 'DYNAMIC');
         //add columns 
         $autoIncrementFlag = $parentLevel ? false : true;
         $levelIdTable->addColumn(static::quoteString($levelName) . "-id", "integer", ["unsigned" => true, "notnull" => true, "autoincrement" => $autoIncrementFlag]);
@@ -215,6 +217,13 @@ class MySQLDictionarySchemaGenerator {
 
         //create a table using DBAL 
         $recordTable = $this->schema->createTable(strtolower($this->nomSchama.'_'.$record->getName()));
+        // Community layer: record tables carry one column per questionnaire
+        // item, so a wide questionnaire hits InnoDB's 8126-byte row limit and
+        // CREATE TABLE fails with "Row size too large". DYNAMIC stores long
+        // values off-page instead of reserving room inline, which is what
+        // census-sized questionnaires need. DBAL emits ROW_FORMAT only on
+        // MySQL and ignores the option on PostgreSQL and SQL Server.
+        $recordTable->addOption('row_format', 'DYNAMIC');
         //add columns -added auto increment for MySQL for record-ids 
         $recordTable->addColumn(static::quoteString(strtolower($record->getName()) . "-id"), "integer", ["unsigned" => true, "notnull" => true, "autoincrement" => true]);
         //set primary key on id 
