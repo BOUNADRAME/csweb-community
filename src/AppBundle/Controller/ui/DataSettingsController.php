@@ -376,14 +376,27 @@ class DataSettingsController extends AbstractController implements TokenAuthenti
             $logFileName = $dictName . '_manual_' . $timestamp . '.log';
             $logFilePath = $logDir . '/' . $logFileName;
 
-            $shellCmd = sprintf(
-                '%s %s csweb:process-cases-by-dict %s --env=%s > %s 2>&1 &',
-                escapeshellarg($phpBinary),
-                escapeshellarg($consolePath),
-                escapeshellarg($dictName),
-                escapeshellarg($this->kernel->getEnvironment()),
-                escapeshellarg($logFilePath)
-            );
+            if ($id > 0) {
+                // Community layer: run the schedule through csweb:scheduler-run so
+                // its exit code and log are recorded when the breakout finishes.
+                $shellCmd = sprintf(
+                    '%s %s csweb:scheduler-run --id=%d --log-file=%s --env=%s > /dev/null 2>&1 &',
+                    escapeshellarg($phpBinary),
+                    escapeshellarg($consolePath),
+                    $id,
+                    escapeshellarg($logFileName),
+                    escapeshellarg($this->kernel->getEnvironment())
+                );
+            } else {
+                $shellCmd = sprintf(
+                    '%s %s csweb:process-cases-by-dict %s --env=%s > %s 2>&1 &',
+                    escapeshellarg($phpBinary),
+                    escapeshellarg($consolePath),
+                    escapeshellarg($dictName),
+                    escapeshellarg($this->kernel->getEnvironment()),
+                    escapeshellarg($logFilePath)
+                );
+            }
 
             exec($shellCmd);
 

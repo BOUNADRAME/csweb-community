@@ -5,6 +5,7 @@ namespace AppBundle\Command;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Command\LockableTrait;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\HttpKernel\KernelInterface;
@@ -24,6 +25,11 @@ class BackupRunCommand extends Command {
 
     protected function configure() {
         $this->setDescription('Run due MySQL backup (designed to be called every minute via crontab)');
+        // Community layer: "Run Now" in Settings > Backup runs through this
+        // command, so the file size, exit code and log are recorded at the end.
+        $this->addOption('now', null, InputOption::VALUE_NONE, 'Run a manual backup now, even if none is due');
+        $this->addOption('file', null, InputOption::VALUE_REQUIRED, 'Backup file name (with --now)');
+        $this->addOption('log-file', null, InputOption::VALUE_REQUIRED, 'Log file name (with --now)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
@@ -35,7 +41,8 @@ class BackupRunCommand extends Command {
         }
 
         $scheduler = new BackupScheduler($this->pdo, $this->logger);
-        $dueBackup = $scheduler->getDueBackup();
+        $manual = (bool) $input->getOption('now');
+        $dueBackup = $manual ? ($scheduler->getConfig() ?? ['retention_days' => 30]) : $scheduler->getDueBackup();
 
         if (!$dueBackup) {
             $io->text('No backup due.');
@@ -64,16 +71,34 @@ class BackupRunCommand extends Command {
         require_once $configPath;
 
         $timestamp = date('Y-m-d_H-i-s');
-        $backupFileName = 'csweb_metadata_' . $timestamp . '.sql.gz';
+        $backupFileName = 'csweb_metadata_' . ($manual ? 'manual_' : '') . $timestamp . '.sql.gz';
+        $logFileName = 'backup_' . ($manual ? 'manual_' : '') . $timestamp . '.log';
+        $forcedFile = $input->getOption('file');
+        $forcedLog = $input->getOption('log-file');
+        if ($forcedFile !== null) {
+            if (!preg_match('/^[A-Za-z0-9_.-]{1,128}\.sql\.gz$/', (string) $forcedFile)) {
+                $io->error('Invalid --file name.');
+                $this->release();
+                return Command::FAILURE;
+            }
+            $backupFileName = (string) $forcedFile;
+        }
+        if ($forcedLog !== null) {
+            if (!preg_match('/^[A-Za-z0-9_.-]{1,128}\.log$/', (string) $forcedLog)) {
+                $io->error('Invalid --log-file name.');
+                $this->release();
+                return Command::FAILURE;
+            }
+            $logFileName = (string) $forcedLog;
+        }
         $backupFilePath = $backupDir . '/' . $backupFileName;
-        $logFileName = 'backup_' . $timestamp . '.log';
         $logFilePath = $logDir . '/' . $logFileName;
 
         $io->text('Starting MySQL backup...');
         $this->logger->info('Backup: starting MySQL dump');
 
         // Register file in DB as in_progress
-        $scheduler->registerFile($backupFileName, 'scheduled', $logFileName);
+        $scheduler->registerFile($backupFileName, $manual ? 'manual' : 'scheduled', $logFileName);
 
         // Build mysqldump command piped to gzip
         $cmd = sprintf(
@@ -110,11 +135,14 @@ class BackupRunCommand extends Command {
 
         if ($exitCode === 0) {
             $size = filesize($backupFilePath);
+            // Retention only runs after scheduled backups, as before.
             $io->success("Backup completed: $backupFileName (" . $this->formatBytes($size) . ")");
 
             // Purge old backups
-            $retentionDays = (int) $dueBackup['retention_days'];
-            $this->purgeOldBackups($backupDir, $retentionDays, $io, $scheduler);
+            if (!$manual) {
+                $retentionDays = (int) $dueBackup['retention_days'];
+                $this->purgeOldBackups($backupDir, $retentionDays, $io, $scheduler);
+            }
         } else {
             $io->error("Backup failed (exit code: $exitCode). See log: $logFileName");
         }
