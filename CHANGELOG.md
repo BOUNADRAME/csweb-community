@@ -23,6 +23,50 @@ _Nothing yet._
 
 ---
 
+## [8.0.1] - 2026-11-07 (branch `8.0.x`)
+
+Large-survey and census readiness for the 8.0 line (CSPro 8.0). Brings
+over the 8.1.x fixes that do not depend on the CSWeb version.
+
+### Fixed
+- **Rate limiting blocked field teams sharing one public IP.** Logins
+  were limited to 5 per minute per IP and API calls to 60 per minute per
+  IP and route, shared by every tablet behind a carrier NAT or a training
+  centre's Wi-Fi. Logins are now counted per account (5/min) under a
+  per-IP ceiling (60/min), API calls per session (600/min), and all four
+  limits are configurable from `.env` (`RATE_LIMIT_LOGIN_PER_USER`,
+  `RATE_LIMIT_LOGIN_PER_IP`, `RATE_LIMIT_API_PER_MIN`,
+  `RATE_LIMIT_UI_PER_MIN`). Load test, 40 enumerators with one account
+  each: 3 cases/s and 36 of 40 logins refused before, 172 cases/s and no
+  error after.
+- **Breakout job claim.** Several workers per dictionary could take the
+  same job or create two jobs over the same case range. The claim now
+  runs under an exclusive lock per target and dictionary.
+- **Breakout to MySQL and SQL Server targets**: identifiers are quoted
+  by the target platform instead of PostgreSQL-style double quotes
+  (SQLSTATE 1064 on MySQL).
+- **Wide questionnaires on MySQL**: breakout tables use the DYNAMIC row
+  format, avoiding InnoDB's 8126-byte row limit.
+- **Breakout failures are visible**: a failing job is marked FAILED with
+  a readable error message in the target `_cspro_jobs` table and the UI,
+  and is retried on the next run.
+- **Run now** records the exit code, file size and log of a schedule or
+  a backup instead of staying "in progress".
+- **Breakout Health** and the status webhook count breakouts started
+  from the CLI or a webhook.
+- **Sync and Map Report** read the prefixed breakout tables.
+- **Processed Cases 0** on case-sensitive MySQL in Data Configuration.
+- **https behind a reverse proxy** (trusted proxy headers).
+- **Backups survive `docker compose up -d`** (new `csweb_backups` volume).
+- `MYSQL_HOST_PORT` decoupled from the internal MySQL port.
+
+### Added
+- Sync load-test tool `tools/loadtest/csweb_sync_load.py` (Python 3, no
+  dependency), compatible with the 8.0 and 8.1 case formats.
+- CI runs on the `8.0.x` maintenance branch.
+
+---
+
 ## [8.0.0] - 2026-05-06
 
 First tagged release of the Community fork. Aggregates the work that
