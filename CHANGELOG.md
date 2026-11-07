@@ -29,6 +29,15 @@ _Nothing yet._
 
 ---
 
+## [8.1.9] - 2026-11-07 (branch `8.1.x`)
+
+### Changed
+- Backup and Application Logs: confirmation dialogs translated from
+  French to English, in line with the rest of the interface.
+- `.env.example`: link to the sizing guide in the performance section.
+
+---
+
 ## [8.1.8] - 2026-11-07 (branch `8.1.x`)
 
 ### Changed
