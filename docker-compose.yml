@@ -36,6 +36,9 @@ services:
       - csweb_files:/var/www/html/files
       - csweb_logs:/var/www/html/var/logs
       - csweb_config:/var/www/html/config-persist
+      # Community layer: keep the Settings > Backup files when the container
+      # is recreated (docker compose up -d after a .env change, rebuild).
+      - csweb_backups:/var/www/html/var/backups
       # Templates for envsubst (processed at startup by docker-entrypoint.sh)
       - ./docker/apache/000-default.conf:/etc/templates/000-default.conf:ro
       - ./docker/apache/mpm_prefork.conf:/etc/templates/mpm_prefork.conf:ro
@@ -100,6 +103,13 @@ services:
       - APACHE_KEEP_ALIVE_TIMEOUT=${APACHE_KEEP_ALIVE_TIMEOUT:-5}
       - APACHE_MAX_KEEP_ALIVE_REQUESTS=${APACHE_MAX_KEEP_ALIVE_REQUESTS:-100}
       - APACHE_TIMEOUT=${APACHE_TIMEOUT:-300}
+
+      # Rate limiting (requests per minute). Raise the login ceilings for a
+      # census start or a training centre where many tablets share one IP.
+      - RATE_LIMIT_LOGIN_PER_USER=${RATE_LIMIT_LOGIN_PER_USER:-5}
+      - RATE_LIMIT_LOGIN_PER_IP=${RATE_LIMIT_LOGIN_PER_IP:-60}
+      - RATE_LIMIT_API_PER_MIN=${RATE_LIMIT_API_PER_MIN:-600}
+      - RATE_LIMIT_UI_PER_MIN=${RATE_LIMIT_UI_PER_MIN:-120}
 
       # Webhooks shared secret (used by breakout-*-webhook.php at repo root)
       - BREAKOUT_WEBHOOK_TOKEN=${BREAKOUT_WEBHOOK_TOKEN}
@@ -428,6 +438,11 @@ volumes:
     labels:
       - "com.csweb.volume=config"
       - "com.csweb.role=configuration"
+
+  csweb_backups:
+    driver: local
+    labels:
+      - "com.csweb.volume=backups"
 
   mysql_metadata:
     driver: local
