@@ -45,6 +45,30 @@ class MapDataRepository {
         return $conn;
     }
 
+    /**
+     * Community layer: breakout tables are prefixed per dictionary
+     * (<dict>_level-1, <dict>_<record>) so several dictionaries can share one
+     * target schema, and the target may be PostgreSQL or SQL Server. Same
+     * naming rule as MySQLQuestionnaireSerializer::tableName().
+     */
+    public static function tablePrefix(string $dictionaryName): string {
+        return strtolower(str_replace(" ", "_", str_replace("_DICT", "", $dictionaryName))) . '_';
+    }
+
+    /**
+     * Point the upstream (MySQL-flavoured) map-report SQL at the prefixed
+     * breakout tables, and swap MySQL backticks for the target platform's
+     * identifier quote when the target is not MySQL.
+     */
+    private function adaptSql(string $sql, $conn, string $dictionaryName): string {
+        $sql = str_replace('`level-1`', '`' . self::tablePrefix($dictionaryName) . 'level-1`', $sql);
+        $platform = $conn->getDatabasePlatform();
+        if (!($platform instanceof \Doctrine\DBAL\Platforms\AbstractMySQLPlatform)) {
+            $sql = str_replace('`', '"', $sql);
+        }
+        return $sql;
+    }
+
     public function getCaseMarkerItemList($dictionaryName) {
         $itemList = [];
         try {
@@ -123,7 +147,7 @@ class MapDataRepository {
                     }
                     $curIdItemName = strtolower($idItems[$curLevel]->getName());
                     $curLevelSelect = "SELECT DISTINCT  `$curIdItemName` as id, `$curIdItemName` as label FROM `level-1` $selCondition ORDER BY `id`";
-                    $idList["firstLevel"]["values"] = $conn->fetchAllAssociative($curLevelSelect, $bind);
+                    $idList["firstLevel"]["values"] = $conn->fetchAllAssociative($this->adaptSql($curLevelSelect, $conn, $dictionaryName), $bind);
                 } else {
                     $this->logger->error('Failed getting ID filter list for dictionary: ' . $dictionaryName, ["context" => (string) $e]);
                     throw $e;
@@ -160,7 +184,7 @@ class MapDataRepository {
                     $bind["idItemName$i"] = $ids[$i];
                 }
                 $caseSelect = "SELECT `case-id` FROM `level-1` $selCondition";
-                $caseGuids = $conn->fetchAllAssociative($caseSelect, $bind);
+                $caseGuids = $conn->fetchAllAssociative($this->adaptSql($caseSelect, $conn, $dictionaryName), $bind);
             } else {
                 $this->logger->error('Failed getting ID filter list for dictionary: ' . $dictionaryName, ["context" => (string) $e]);
                 throw $e;
@@ -224,7 +248,7 @@ class MapDataRepository {
                         $idList["firstLevel"]["label"] =$idItem1Label;
                         $idItemName = "`" . strtolower($idItem1Name) . "`";
                         $level1Labels = "SELECT DISTINCT  $idItemName as id, $idItemName as label from `level-1` ORDER BY `id`";
-                        $firstLevel = $conn->fetchAllAssociative($level1Labels);
+                        $firstLevel = $conn->fetchAllAssociative($this->adaptSql($level1Labels, $conn, $dictionaryName));
                         $this->logger->debug(print_r($firstLevel, true));
                         $idList["firstLevel"]["values"] = $firstLevel;
                     } elseif ((is_countable($ids) ? count($ids) : 0) > 0 && isset($idItem2)) {
@@ -235,11 +259,11 @@ class MapDataRepository {
                         $idList["secondLevel"]["name"] = $idItem2Name;
                         $idList["secondLevel"]["label"] = $idItem2Label;
                         $level1Labels = "SELECT DISTINCT  $idItemName1 as id, $idItemName1 as label from `level-1`  ORDER BY `id`";
-                        $firstLevel = $conn->fetchAllAssociative($level1Labels);
+                        $firstLevel = $conn->fetchAllAssociative($this->adaptSql($level1Labels, $conn, $dictionaryName));
 
                         $secondLevel = "SELECT DISTINCT  $idItemName2 as id, $idItemName2 as label from `level-1` WHERE $idItemName1 =  :idItemName1  ORDER BY `id`";
                         $bind = ["idItemName1" => $ids[0]];
-                        $secondLevel = $conn->fetchAllAssociative($secondLevel, $bind);
+                        $secondLevel = $conn->fetchAllAssociative($this->adaptSql($secondLevel, $conn, $dictionaryName), $bind);
 
                         $idList["firstLevel"]["values"] = $firstLevel;
                         $idList["secondLevel"]["values"] = $secondLevel;
@@ -276,12 +300,12 @@ class MapDataRepository {
             $isConnected = isset($conn) && $conn->connect();
             if ($isConnected === true) {
                 $totalCasesStm = "SELECT COUNT(*) FROM `level-1` ";
-                $totalCases = $conn->fetchOne($totalCasesStm);
+                $totalCases = $conn->fetchOne($this->adaptSql($totalCasesStm, $conn, $dictionaryName));
                 if ($totalCases > $maxMapPoints) {
                     return ['totalMapPoints' => $totalCases];
                 }
 
-                $stmt = $conn->prepare($stm);
+                $stmt = $conn->prepare($this->adaptSql($stm, $conn, $dictionaryName));
                 $resultSet = $stmt->execute($bind);
                 $mapPoints = $resultSet->fetchAllAssociative();
             }
@@ -337,9 +361,9 @@ class MapDataRepository {
                 $stm = "SELECT `level-1`.`case-id` as `guid` " . $strLatLongQuery;
             } elseif (isset($latList[1]) && isset($longList[1]) && $longList[1] === $latList[1]) {//non-id item assuming (lat/long should be from same record
                 $this->logger->debug("inside non-id");
-                $recordName = strtolower($longList[1]->getName());
+                $recordName = self::tablePrefix($dictName) . strtolower($longList[1]->getName());
                 $strLatLongQuery = "`$recordName`.`$latName` as  $latLabel, `$recordName`.`$longName` as $longLabel";
-                $stm = "SELECT `level-1`.`case-id` as `guid`, " . $strLatLongQuery . " FROM `$recordName` JOIN `level-1`  ON  `level-1`.`level-1-id` = $recordName.`level-1-id`  ";
+                $stm = "SELECT `level-1`.`case-id` as `guid`, " . $strLatLongQuery . " FROM `$recordName` JOIN `level-1`  ON  `level-1`.`level-1-id` = `$recordName`.`level-1-id`  ";
                 if($strWhereIds != "") {
                     $strWhereLocation .= " AND `$recordName`.`$latName` IS NOT NULL AND `$recordName`.`$longName` IS NOT NULL ";
                 }
