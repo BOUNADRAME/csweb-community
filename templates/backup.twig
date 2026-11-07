@@ -201,26 +201,26 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="run-backup-confirm-label"><i class="fas fa-play-circle"></i> Lancer un backup maintenant</h5>
+                    <h5 class="modal-title" id="run-backup-confirm-label"><i class="fas fa-play-circle"></i> Run a backup now</h5>
                     <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-warning mb-3">
-                        <i class="fas fa-exclamation-triangle"></i> <strong>Recommandations importantes</strong>
+                        <i class="fas fa-exclamation-triangle"></i> <strong>Before you start</strong>
                     </div>
                     <ul class="mb-3" style="line-height:1.8">
-                        <li><i class="fas fa-clock text-danger"></i> <strong>Ne pas lancer pendant les heures de travail</strong> (collecte ou saisie de donn&eacute;es en cours)</li>
-                        <li><i class="fas fa-database text-warning"></i> Le backup verrouille temporairement la base MySQL et peut <strong>ralentir les performances</strong></li>
-                        <li><i class="fas fa-moon text-info"></i> Privil&eacute;giez les <strong>cr&eacute;neaux hors production</strong> (nuit, week-end, pause d&eacute;jeuner)</li>
-                        <li><i class="fas fa-hdd text-secondary"></i> V&eacute;rifiez que l'espace disque est suffisant sur le serveur</li>
+                        <li><i class="fas fa-clock text-danger"></i> <strong>Avoid working hours</strong>, while data is being collected or entered</li>
+                        <li><i class="fas fa-database text-warning"></i> The backup briefly locks the MySQL database and can <strong>slow the server down</strong></li>
+                        <li><i class="fas fa-moon text-info"></i> Prefer <strong>quiet hours</strong>: night, weekend or lunch break</li>
+                        <li><i class="fas fa-hdd text-secondary"></i> Check that the server has enough free disk space</li>
                     </ul>
                     <div class="alert alert-info mb-0">
-                        <i class="fas fa-info-circle"></i> Pour les backups r&eacute;guliers, configurez plut&ocirc;t le <strong>planning automatique</strong> (Cron Expression) sur un cr&eacute;neau de nuit (ex: <code>0 2 * * *</code>).
+                        <i class="fas fa-info-circle"></i> For regular backups, set an <strong>automatic schedule</strong> (Cron Expression) at night instead, e.g. <code>0 2 * * *</code>.
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Annuler</button>
-                    <button type="button" class="btn btn-primary" id="confirm-run-backup-btn"><i class="fas fa-play"></i> Lancer le backup</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirm-run-backup-btn"><i class="fas fa-play"></i> Run backup</button>
                 </div>
             </div>
         </div>
@@ -231,18 +231,18 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-warning">
-                    <h5 class="modal-title" id="cleanup-confirm-label"><i class="fas fa-broom"></i> Purger les anciens backups</h5>
+                    <h5 class="modal-title" id="cleanup-confirm-label"><i class="fas fa-broom"></i> Delete old backups</h5>
                     <button type="button" class="close" data-dismiss="modal">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <p>Cette action va <strong>supprimer d&eacute;finitivement</strong> tous les fichiers de backup plus anciens que la p&eacute;riode de r&eacute;tention configur&eacute;e.</p>
+                    <p>This <strong>permanently deletes</strong> every backup file older than the retention period.</p>
                     <div class="alert alert-danger mb-0">
-                        <i class="fas fa-exclamation-triangle"></i> <strong>Action irr&eacute;versible</strong> &mdash; les fichiers supprim&eacute;s ne pourront pas &ecirc;tre r&eacute;cup&eacute;r&eacute;s.
+                        <i class="fas fa-exclamation-triangle"></i> <strong>This cannot be undone</strong>: deleted files cannot be recovered.
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Annuler</button>
-                    <button type="button" class="btn btn-warning" id="confirm-cleanup-btn"><i class="fas fa-broom"></i> Confirmer la purge</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Cancel</button>
+                    <button type="button" class="btn btn-warning" id="confirm-cleanup-btn"><i class="fas fa-broom"></i> Delete old backups</button>
                 </div>
             </div>
         </div>
@@ -253,19 +253,19 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title" id="delete-file-confirm-label"><i class="fas fa-trash-alt"></i> Supprimer un fichier de backup</h5>
+                    <h5 class="modal-title" id="delete-file-confirm-label"><i class="fas fa-trash-alt"></i> Delete a backup file</h5>
                     <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <p>Voulez-vous supprimer d&eacute;finitivement le fichier :</p>
+                    <p>Permanently delete this file?</p>
                     <p class="text-center"><strong><code id="delete-file-name"></code></strong></p>
                     <div class="alert alert-danger mb-0">
-                        <i class="fas fa-exclamation-triangle"></i> Cette action est <strong>irr&eacute;versible</strong>.
+                        <i class="fas fa-exclamation-triangle"></i> <strong>This cannot be undone.</strong>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Annuler</button>
-                    <button type="button" class="btn btn-danger" id="confirm-delete-file-btn"><i class="fas fa-trash-alt"></i> Supprimer</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-file-btn"><i class="fas fa-trash-alt"></i> Delete</button>
                 </div>
             </div>
         </div>
@@ -276,18 +276,18 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title" id="bulk-delete-confirm-label"><i class="fas fa-trash-alt"></i> Suppression multiple</h5>
+                    <h5 class="modal-title" id="bulk-delete-confirm-label"><i class="fas fa-trash-alt"></i> Delete selected files</h5>
                     <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <p>Voulez-vous supprimer d&eacute;finitivement <strong><span id="bulk-delete-count"></span> fichier(s)</strong> de backup s&eacute;lectionn&eacute;(s) ?</p>
+                    <p>Permanently delete the <strong><span id="bulk-delete-count"></span> selected backup file(s)</strong>?</p>
                     <div class="alert alert-danger mb-0">
-                        <i class="fas fa-exclamation-triangle"></i> Cette action est <strong>irr&eacute;versible</strong>.
+                        <i class="fas fa-exclamation-triangle"></i> <strong>This cannot be undone.</strong>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Annuler</button>
-                    <button type="button" class="btn btn-danger" id="confirm-bulk-delete-btn"><i class="fas fa-trash-alt"></i> Supprimer tout</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirm-bulk-delete-btn"><i class="fas fa-trash-alt"></i> Delete all</button>
                 </div>
             </div>
         </div>

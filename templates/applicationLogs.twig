@@ -146,18 +146,18 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title" id="purge-all-label"><i class="fas fa-exclamation-triangle"></i> Purger tous les logs</h5>
+                    <h5 class="modal-title" id="purge-all-label"><i class="fas fa-exclamation-triangle"></i> Delete all logs</h5>
                     <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <p>Cette action va supprimer d&eacute;finitivement <strong>TOUTES</strong> les entr&eacute;es de log (<strong><span id="purge-total-count">0</span></strong> entr&eacute;es).</p>
+                    <p>This <strong>permanently deletes all</strong> log entries (<strong><span id="purge-total-count">0</span></strong>).</p>
                     <div class="alert alert-danger mb-0">
-                        <i class="fas fa-exclamation-triangle"></i> <strong>Action irr&eacute;versible</strong> &mdash; les logs supprim&eacute;s ne pourront pas &ecirc;tre r&eacute;cup&eacute;r&eacute;s.
+                        <i class="fas fa-exclamation-triangle"></i> <strong>This cannot be undone</strong>: deleted logs cannot be recovered.
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Annuler</button>
-                    <button type="button" class="btn btn-danger" id="confirm-purge-btn"><i class="fas fa-trash-alt"></i> Supprimer tout</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirm-purge-btn"><i class="fas fa-trash-alt"></i> Delete all</button>
                 </div>
             </div>
         </div>
@@ -168,19 +168,19 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-warning">
-                    <h5 class="modal-title" id="delete-filtered-label"><i class="fas fa-eraser"></i> Supprimer les logs filtr&eacute;s</h5>
+                    <h5 class="modal-title" id="delete-filtered-label"><i class="fas fa-eraser"></i> Delete filtered logs</h5>
                     <button type="button" class="close" data-dismiss="modal">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <p>Cette action va supprimer les entr&eacute;es correspondant aux filtres actifs :</p>
+                    <p>This deletes the entries that match the active filters:</p>
                     <ul id="delete-filtered-summary"></ul>
                     <div class="alert alert-warning mb-0">
-                        <i class="fas fa-exclamation-triangle"></i> <strong>Action irr&eacute;versible.</strong>
+                        <i class="fas fa-exclamation-triangle"></i> <strong>This cannot be undone.</strong>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Annuler</button>
-                    <button type="button" class="btn btn-warning" id="confirm-delete-filtered-btn"><i class="fas fa-eraser"></i> Supprimer</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times"></i> Cancel</button>
+                    <button type="button" class="btn btn-warning" id="confirm-delete-filtered-btn"><i class="fas fa-eraser"></i> Delete</button>
                 </div>
             </div>
         </div>

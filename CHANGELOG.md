@@ -23,6 +23,28 @@ _Nothing yet._
 
 ---
 
+## [8.0.3] - 2026-11-07 (branch `8.0.x`)
+
+### Security
+- **CSRF protection on the admin screens.** The admin UI is
+  authenticated by a cookie, which a browser also sends on a request
+  forged by another site, and no CSRF token was checked: a page visited by
+  a logged-in administrator could change or delete configurations,
+  schedules, backups, users or roles. Every POST, PUT, DELETE and PATCH to
+  the admin controllers now needs the page's CSRF token (X-CSRF-TOKEN),
+  as on 8.1.x; requests without it get HTTP 403. API calls are not
+  affected (they use an Authorization header).
+
+### Changed
+- Backup and Application Logs: confirmation dialogs translated from
+  French to English, in line with the rest of the interface.
+- `.env.example`: performance guidance from 8.1.x (apply with
+  `docker compose up -d`, never `restart`; check with
+  `csweb:check-config`; reference values) and a link to the sizing guide,
+  replacing a reference to a file that does not exist.
+
+---
+
 ## [8.0.2] - 2026-11-07 (branch `8.0.x`)
 
 Admin screens brought to the 8.1.x level: simpler, consistent, readable.
