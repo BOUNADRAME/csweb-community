@@ -42,20 +42,22 @@ RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions for MySQL and PostgreSQL
-RUN docker-php-ext-install \
-    pdo \
+# Install PHP extensions for MySQL and PostgreSQL.
+# pdo, mbstring and xml are already compiled into the official php:8.3 image
+# (rebuilding them only added minutes and a "mbstring is already loaded"
+# warning). -j uses every CPU: compiling is the slowest step of the build.
+RUN docker-php-ext-install -j"$(nproc)" \
     pdo_mysql \
     pdo_pgsql \
     mysqli \
     pgsql \
-    mbstring \
-    xml \
     zip \
     opcache
 
-# Install PHP SQL Server extension (pdo_sqlsrv only — sqlsrv standalone not available on PHP 8.3)
-RUN pecl install sqlsrv pdo_sqlsrv \
+# Install PHP SQL Server extension. Only pdo_sqlsrv is used (DBAL and the
+# Breakout Health connections go through PDO), so the standalone sqlsrv
+# extension is no longer compiled.
+RUN MAKEFLAGS="-j$(nproc)" pecl install pdo_sqlsrv \
     && docker-php-ext-enable pdo_sqlsrv
 
 # Enable Apache modules
