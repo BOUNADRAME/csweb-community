@@ -4,6 +4,7 @@
   "description": "CSWeb Community Platform - Documentation officielle",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/latest-releases.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

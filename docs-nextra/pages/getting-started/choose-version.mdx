@@ -4,6 +4,7 @@ description: Matrice de compatibilité CSPro / CSWeb et critères de choix entre
 ---
 
 import { Callout } from 'nextra/components'
+import { LatestReleases, CloneCommand } from '../../components'
 
 # Choisir entre 8.0 et 8.1
 
@@ -127,6 +128,10 @@ divergence sont signalés en ligne par un encart :
 | **8.1.x** | 🟢 **Current** | `8.1.x` | Version recommandée pour CSPro 8.1. Validée sous Docker et sur hébergement mutualisé cPanel (PHP 8.3, MariaDB 10.6). |
 | **8.0.x** | 🔵 **LTS** | `8.0.x` | Maintenue pour les parcs CSPro 8.0 : corrections de bugs et de sécurité. |
 
+Dernière version publiée de chaque ligne :
+
+<LatestReleases />
+
 **8.0 reste maintenue tant qu'une part significative des parcs CSPro terrain n'est pas
 passée en 8.1.** Aucune date de fin de support n'est fixée à ce jour ; elle sera
 annoncée avec au moins six mois de préavis.
@@ -142,22 +147,49 @@ ligne impose de mettre à jour CSPro sur tous les appareils en même temps.
 
 ## Installer la version choisie
 
-La branche clonée détermine la version installée :
+Clonez le **tag de la dernière version** de la ligne choisie : vous savez exactement
+ce qui est installé (`cat VERSION`), et vous montez de version quand vous le décidez.
 
-```bash
-# CSWeb 8.1 — Current, pour CSPro 8.1
-git clone -b 8.1.x https://github.com/BOUNADRAME/csweb-community.git
+CSWeb 8.1 — Current, pour CSPro 8.1 :
 
-# CSWeb 8.0 — LTS, pour CSPro 8.0 et antérieur
-git clone -b 8.0.x https://github.com/BOUNADRAME/csweb-community.git
-```
+<CloneCommand line="8.1" />
+
+CSWeb 8.0 — LTS, pour CSPro 8.0 et antérieur :
+
+<CloneCommand line="8.0" />
+
+Cloner la branche (`git clone -b 8.1.x …` ou `-b 8.0.x …`) installe aussi la dernière
+version de la ligne, puisque chaque version est publiée au bout de sa branche.
 
 **Hébergement mutualisé (cPanel), sans ligne de commande :** la 8.1 existe aussi en zip
 prêt à déposer — [⬇ csweb-8.1.0-cpanel.zip](https://github.com/BOUNADRAME/csweb-community/releases/download/v8.1.0/csweb-8.1.0-cpanel.zip),
 voir [Hébergement mutualisé (cPanel)](/getting-started/shared-hosting).
 
-Sans `-b`, c'est la branche de développement qui est récupérée — pas une version
-publiée. Toujours nommer la branche.
+Sans `-b`, c'est la branche de la documentation qui est récupérée, pas une version
+publiée. Toujours nommer le tag ou la branche.
+
+### Mettre à jour vers une nouvelle version de la même ligne
+
+Les versions d'une même ligne (8.0.4 → 8.0.5, 8.1.10 → 8.1.11) se mettent à jour
+sans réinstallation : le schéma de base ne change pas, et le `.env` existant reste
+valable (une nouvelle variable a toujours une valeur par défaut). Lisez quand même
+le [Changelog](https://github.com/BOUNADRAME/csweb-community/blob/master/CHANGELOG.md)
+de la version visée.
+
+```bash
+cd /chemin/vers/csweb
+git describe --tags                          # version actuelle
+cp .env .env.bak-$(date +%F)                 # sauvegarde du .env
+# sauvegarde de la base (mysqldump) avant toute mise à jour
+git fetch --tags origin
+git status --short                           # doit être vide
+git checkout v8.0.5                          # remplacez par le tag visé (tableau ci-dessus)
+docker compose up -d --build
+cat VERSION                                  # vérification
+```
+
+Restez sur les tags de votre ligne : prendre un tag `v8.1.*` sur un serveur 8.0
+couperait la synchronisation des appareils CSPro 8.0.
 
 Pour changer de ligne sur un dépôt déjà cloné :
 

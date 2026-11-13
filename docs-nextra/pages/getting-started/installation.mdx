@@ -4,6 +4,7 @@ description: Installer CSWeb Community Platform en 5 minutes avec Docker
 ---
 
 import { Tabs, Callout } from "nextra/components";
+import { LatestReleases, CloneCommand } from "../../components";
 
 # Installation CSWeb Community Platform
 
@@ -79,22 +80,43 @@ docker compose version
 
 ### Étape 1 : Cloner le Projet
 
-La branche détermine la version installée, et celle-ci doit correspondre à la
-version de **CSPro déployée sur vos appareils de collecte** :
+La ligne détermine la version installée, et celle-ci doit correspondre à la
+version de **CSPro déployée sur vos appareils de collecte**. Dernières versions
+publiées :
 
-| CSPro sur le terrain | Commande |
-|---|---|
-| CSPro 8.1 | `git clone -b 8.1.x ...` (Current) |
-| CSPro 8.0 et antérieur | `git clone -b 8.0.x ...` (LTS) |
+<LatestReleases />
+
+**En production, clonez le tag de la dernière version** : vous savez exactement
+ce qui est installé, et vous montez de version quand vous le décidez.
+
+CSWeb 8.1 (Current), pour CSPro 8.1 :
+
+<CloneCommand line="8.1" />
+
+CSWeb 8.0 (LTS), pour un parc encore en CSPro 8.0 :
+
+<CloneCommand line="8.0" />
+
+Cloner la branche (`git clone -b 8.1.x …` ou `-b 8.0.x …`) installe aussi la
+dernière version de la ligne : chaque version est publiée au bout de sa branche.
+Le tag reste préférable en production.
+
+Pour un hébergement mutualisé cPanel, voir [Hébergement mutualisé (cPanel)](/getting-started/shared-hosting).
+
+<details>
+<summary>Connaître la version installée ou la dernière version publiée</summary>
 
 ```bash
-# CSWeb 8.1 — Current, pour CSPro 8.1
-git clone -b 8.1.x https://github.com/BOUNADRAME/csweb-community.git
-cd csweb-community
+# Version installée (dans le dossier de CSWeb)
+cat VERSION
+git describe --tags
+
+# Dernière version publiée d'une ligne, sans rien cloner
+git ls-remote --tags --refs https://github.com/BOUNADRAME/csweb-community.git 'v8.0.*' \
+  | awk -F/ '{print $3}' | sort -V | tail -1     # 'v8.1.*' pour la ligne 8.1
 ```
 
-Pour un parc encore en CSPro 8.0, remplacez `8.1.x` par `8.0.x` (ligne LTS). Pour un
-hébergement mutualisé cPanel, voir [Hébergement mutualisé (cPanel)](/getting-started/shared-hosting).
+</details>
 
 <Callout type="warning">
 **CSPro 8.0 et antérieur ne peuvent pas synchroniser avec CSWeb 8.1.** Se
