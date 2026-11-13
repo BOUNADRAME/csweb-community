@@ -3,7 +3,7 @@
 <div align="center">
 
 ![CSWeb Logo](https://img.shields.io/badge/CSWeb-Community-blue?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-8.1.10-green?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-8.1.11-green?style=for-the-badge)
 ![CSWeb](https://img.shields.io/badge/CSWeb-8.1.2-blue?style=for-the-badge)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-Nextra-brightgreen?style=for-the-badge)](https://bounadrame.github.io/csweb-community/)

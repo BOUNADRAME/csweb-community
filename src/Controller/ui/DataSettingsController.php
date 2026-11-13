@@ -405,6 +405,10 @@ class DataSettingsController extends AbstractController implements TokenAuthenti
 
             if ($isDeleted) {
                 $result['description'] = 'Deleted configuration. Dictionary Id: ' . $dictionaryId;
+                if ($this->dataSettings->lastDeleteWarning) {
+                    $result['description'] .= '. ' . $this->dataSettings->lastDeleteWarning;
+                    $result['warning'] = $this->dataSettings->lastDeleteWarning;
+                }
                 $result['code'] = 200;
                 $this->logger->debug($result['description']);
                 $response = new Response(json_encode($result, JSON_THROW_ON_ERROR), Response::HTTP_OK);

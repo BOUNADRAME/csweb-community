@@ -12,6 +12,9 @@ use Doctrine\DBAL\DBALException;
 
 class DataSettings {
 
+    /** Set by deleteDataSetting() when the configuration was removed but the target could not be cleared. */
+    public ?string $lastDeleteWarning = null;
+
     public function __construct(private PdoHelper $pdo, private LoggerInterface $logger)
     {
     }
@@ -407,11 +410,13 @@ class DataSettings {
             // Build the helper before the DELETE: it reads the connection
             // parameters from cspro_dictionaries_schema, the very row about to
             // be removed.
+            $this->lastDeleteWarning = null;
             $dictionarySchemaHelper = new DictionarySchemaHelper($dictName, $this->pdo, $this->logger);
             $canDropTables = false;
             try {
                 $canDropTables = $dictionarySchemaHelper->initialize();
             } catch (\Throwable $connect) {
+                $this->lastDeleteWarning = 'The breakout target could not be reached, so its tables were left as they are.';
                 $this->logger->warning(
                     'Target database unreachable for ' . $dictName . ', its tables will be left in place.',
                     ['context' => (string) $connect]
@@ -438,6 +443,7 @@ class DataSettings {
                 try {
                     $dictionarySchemaHelper->dropSchema();
                 } catch (\Throwable $cleanup) {
+                    $this->lastDeleteWarning = 'The breakout target tables could not be dropped: they may need dropping by hand.';
                     $this->logger->warning(
                         'Configuration removed, but the target tables could not be dropped for ' . $dictName
                         . ' — they may need dropping by hand.',

@@ -2024,7 +2024,8 @@
                             if (response.code === 200) {
                                 var dictionaryLabel = $(tr).data("dictlabel");
                                 var dictionaryName = $(tr).data("dictname");
-                                var alertMsg = 'Configuration "' + dictionaryLabel + ' (' + dictionaryName + ')" deleted.';
+                                var alertMsg = 'Configuration "' + dictionaryLabel + ' (' + dictionaryName + ')" deleted.'
+                                    + (response.warning ? ' ' + response.warning : '');
                                 sessionStorage.setItem("add-config-success", alertMsg);
                                 location.reload();
                             } else {
@@ -2034,10 +2035,13 @@
                         error: function (response) {
                             if (response.status === 401 || response.status === 405) {
                                 window.location.href = "{{ path('logout') }}";
+                                return;
                             }
-                        },
-                        failure: function (errMsg) {
-                            alert("error!");
+                            // Never fail silently: say what the server answered.
+                            var msg = (response.responseJSON && response.responseJSON.description)
+                                ? response.responseJSON.description
+                                : "Failed deleting configuration (HTTP " + response.status + ").";
+                            showAlert(msg, "alert alert-danger");
                         }
                     });
                 });

@@ -29,6 +29,36 @@ _Nothing yet._
 
 ---
 
+## [8.1.11] - 2026-11-13 (branch `8.1.x`)
+
+Breakout Health always answers, whatever the state of the breakout targets.
+
+### Fixed
+
+- **Breakout Health stayed on "Loading…" for 30 s or more** when a breakout
+  target database did not answer (firewall, host down). The connect attempt
+  is now capped at 3 s, an unreachable target is remembered for 60 s so the
+  next loads answer at once, and each dictionary shows why its target cannot
+  be reached (`target_status`, `target_error`).
+- **Deleting a breakout configuration hung** on an unreachable target before
+  removing it, and the page showed nothing on failure. Target connections are
+  now capped at 10 s, the page says when the target tables were left in place,
+  and any delete error is shown on screen.
+- **Global completion showed 0 %** when a target was unreachable or some
+  dictionaries were not configured. It is now measured on the dictionaries
+  whose target answered.
+- A failed dashboard request now shows an error with a **Retry** button
+  instead of an endless "Loading…".
+
+### Added
+
+- Breakout Health: "Target unreachable" status filter (server side), side
+  card and `dicts_unreachable` counter on the Cases processed tile.
+
+No database or `.env` change.
+
+---
+
 ## [8.1.10] - 2026-11-07 (branch `8.1.x`)
 
 ### Security
