@@ -96,7 +96,7 @@ class DashboardController extends AbstractController implements TokenAuthenticat
             $filters['search'] = mb_substr($search, 0, 100);
         }
         $status = (string) $request->query->get('status', 'all');
-        if (in_array($status, ['up_to_date', 'pending', 'error', 'running', 'not_configured', 'never_run'], true)) {
+        if (in_array($status, ['up_to_date', 'pending', 'error', 'running', 'not_configured', 'never_run', 'unreachable'], true)) {
             $filters['status'] = $status;
         }
 

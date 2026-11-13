@@ -12,6 +12,9 @@ use Doctrine\DBAL\DBALException;
 
 class DataSettings {
 
+    /** Set by deleteDataSetting() when the configuration was removed but the target could not be cleared. */
+    public ?string $lastDeleteWarning = null;
+
     public function __construct(private PdoHelper $pdo, private LoggerInterface $logger)
     {
     }
@@ -416,13 +419,23 @@ public function getDataCounts(&$dataSettings) {
             $bind['id'] = $dictionaryId;
             $dictName = $this->pdo->fetchValue($stm, $bind);
             
-            // drop tables and recreate them. this will delete data (processed cases).
-            $dictionarySchemaHelper = new DictionarySchemaHelper($dictName, $this->pdo, $this->logger);
-            $dictionarySchemaHelper->regenerateSchema();
-            
+            // Drop and recreate the target tables: this deletes the processed
+            // cases. If the target cannot be reached (host down, firewall,
+            // wrong credentials), the configuration is still removed: a dead
+            // target must never lock a dictionary into its breakout settings.
+            // Its tables are then left untouched and the caller is told so.
+            $this->lastDeleteWarning = null;
+            try {
+                $dictionarySchemaHelper = new DictionarySchemaHelper($dictName, $this->pdo, $this->logger);
+                $dictionarySchemaHelper->regenerateSchema();
+            } catch (\Throwable $e) {
+                $this->lastDeleteWarning = 'The breakout target could not be reached, so its tables were left as they are.';
+                $this->logger->warning('Deleting configuration without clearing the target. Dictionary Id: ' . $dictionaryId, ["context" => (string) $e]);
+            }
+
             $stm = 'DELETE FROM `cspro_dictionaries_schema` WHERE `dictionary_id` = :id';
             $row_count = $this->pdo->fetchAffected($stm, $bind);
-            return $row_count;
+            return (bool) $row_count;
         } catch (\Exception $e) {
             $this->logger->error('Failed deleting configuration. Dictionary Id: ' . $dictionaryId, ["context" => (string) $e]);
             throw $e;

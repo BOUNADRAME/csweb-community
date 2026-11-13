@@ -42,6 +42,9 @@ class DictionarySchemaHelper {
     private $connectionParams;
     private $initialized;
 
+    /** Seconds to wait for the breakout target when opening a connection. */
+    public const CONNECT_TIMEOUT = 10;
+
     public function __construct(private string $dictionaryName, private PdoHelper $pdo, private LoggerInterface $logger) {
         $this->initialized = false;
         $this->dictionary = null;
@@ -70,6 +73,11 @@ class DictionarySchemaHelper {
             ];
             if ($resolved['port'] !== null) {
                 $this->connectionParams['port'] = $resolved['port'];
+            }
+            // Cap the connect attempt: an unreachable target (firewall dropping
+            // packets) must fail in seconds, not hang the request for minutes.
+            if ($driver !== 'pdo_sqlsrv') {
+                $this->connectionParams['driverOptions'] = [\PDO::ATTR_TIMEOUT => self::CONNECT_TIMEOUT];
             }
             return true;
         } else {

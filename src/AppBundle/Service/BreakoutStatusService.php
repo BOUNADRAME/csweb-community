@@ -4,6 +4,7 @@ namespace AppBundle\Service;
 
 use PDO;
 use Psr\Log\LoggerInterface;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
@@ -20,11 +21,22 @@ use Symfony\Contracts\Cache\ItemInterface;
  *  - Target-DB PDO connections are cached for the lifetime of one service
  *    instance, keyed on host|port|db_type|schema, so 100 dicts pointing to
  *    the same target schema reuse a single connection.
+ *  - A target that cannot be reached never blocks the dashboard: the connect
+ *    attempt is capped at TARGET_CONNECT_TIMEOUT seconds, the failure is
+ *    remembered for TARGET_DOWN_TTL seconds across requests, and every entry
+ *    reports it (target_status = "unreachable" + target_error) instead of
+ *    silently showing 0 processed cases.
  */
 class BreakoutStatusService {
 
     /** @var array<string, ?PDO> */
     private array $targetConnections = [];
+
+    /** @var array<string, string> connection key => short reason the target could not be reached */
+    private array $targetErrors = [];
+
+    /** Set by a fresh (nocache) load: retry targets even if recently found down. */
+    private bool $retryDownTargets = false;
 
     /** Per-instance memoization to avoid repeating COUNTs within one request. */
     private array $memoSourceCount    = [];
@@ -34,6 +46,15 @@ class BreakoutStatusService {
     private const TTL_DICTIONARIES = 30;
     /** Above this threshold, source COUNT(*) is replaced by INFORMATION_SCHEMA estimate. */
     private const SOURCE_COUNT_EXACT_LIMIT = 5_000_000;
+    /** Seconds to wait for a breakout target before reporting it unreachable. */
+    private const TARGET_CONNECT_TIMEOUT = 3;
+    /** Seconds an unreachable target is remembered, so the next loads answer at once. */
+    private const TARGET_DOWN_TTL = 60;
+
+    public const TARGET_OK             = 'ok';
+    public const TARGET_UNREACHABLE    = 'unreachable';
+    public const TARGET_INCOMPLETE     = 'incomplete';
+    public const TARGET_NOT_CONFIGURED = 'not_configured';
 
     public function __construct(
         private PdoHelper $pdo,
@@ -52,6 +73,7 @@ class BreakoutStatusService {
         $page  = max(1, $page);
         $limit = min(100, max(1, $limit));
 
+        $this->retryDownTargets = $this->retryDownTargets || $bypassCache;
         if ($this->cache && !$bypassCache) {
             $key = 'breakout_dash_list_' . md5(json_encode([$filters, $page, $limit]));
             return $this->cache->get($key, function (ItemInterface $item) use ($filters, $page, $limit) {
@@ -156,6 +178,7 @@ class BreakoutStatusService {
      * }
      */
     public function getGlobalSummary(bool $bypassCache = false): array {
+        $this->retryDownTargets = $this->retryDownTargets || $bypassCache;
         if ($this->cache && !$bypassCache) {
             return $this->cache->get('breakout_dash_summary', function (ItemInterface $item) {
                 $item->expiresAfter(self::TTL_SUMMARY);
@@ -190,6 +213,11 @@ class BreakoutStatusService {
         $processedCases = 0;
         $pendingCases = 0;
         $dictsWithPending = 0;
+        $dictsUnreachable = 0;
+        // Completion is measured on the dictionaries whose target answered:
+        // unconfigured or unreachable dictionaries would otherwise drag the
+        // rate down to a misleading 0 %.
+        $measuredCases = 0;
 
         $allRows = $this->pdo->query("
             SELECT
@@ -221,17 +249,20 @@ class BreakoutStatusService {
                 $proc = $this->countProcessedCases($r);
                 if ($proc !== null) {
                     $processedCases += $proc;
+                    $measuredCases  += $tot;
                     $pending = max(0, $tot - $proc);
                     $pendingCases += $pending;
                     if ($pending > 0) {
                         $dictsWithPending++;
                     }
+                } elseif ($this->targetError($r) !== null) {
+                    $dictsUnreachable++;
                 }
             }
         }
 
-        $completionRate = $totalCases > 0
-            ? round($processedCases / $totalCases * 100, 2)
+        $completionRate = $measuredCases > 0
+            ? round(min($processedCases, $measuredCases) / $measuredCases * 100, 2)
             : null;
 
         return [
@@ -245,6 +276,7 @@ class BreakoutStatusService {
             'dicts_in_error'          => (int) $row['dicts_in_error'],
             'dicts_running'           => (int) $row['dicts_running'],
             'dicts_never_run'         => $neverRunCount,
+            'dicts_unreachable'       => $dictsUnreachable,
             'last_activity'           => $lastActivity,
         ];
     }
@@ -258,6 +290,7 @@ class BreakoutStatusService {
      * @return array{errors:array<int,array>, pending:array<int,array>, neverRun:array<int,array>}
      */
     public function getTopProblems(int $limit = 5, bool $bypassCache = false): array {
+        $this->retryDownTargets = $this->retryDownTargets || $bypassCache;
         if ($this->cache && !$bypassCache) {
             $key = 'breakout_dash_problems_' . $limit;
             return $this->cache->get($key, function (ItemInterface $item) use ($limit) {
@@ -324,10 +357,22 @@ class BreakoutStatusService {
         $candidates = $this->pdo->query($candidatesSql)->fetchAll(PDO::FETCH_ASSOC);
 
         $scored = [];
+        $unreachable = [];
         foreach ($candidates as $c) {
             $tot = $this->countSourceCases($c['dictionary_name']);
             $proc = $c['schema_password_plain'] ? $this->countProcessedCases($c) : null;
-            if ($proc === null) continue;
+            if ($proc === null) {
+                $err = $this->targetError($c);
+                if ($err !== null && count($unreachable) < $limit) {
+                    $unreachable[] = [
+                        'dictionary_name'  => $c['dictionary_name'],
+                        'dictionary_label' => $c['dictionary_label'],
+                        'target_host'      => $c['host_name'] . ($c['port'] ? ':' . $c['port'] : ''),
+                        'target_error'     => $err,
+                    ];
+                }
+                continue;
+            }
             $pending = max(0, $tot - $proc);
             if ($pending <= 0) continue;
             $scored[] = [
@@ -342,9 +387,10 @@ class BreakoutStatusService {
         $pending = array_slice($scored, 0, $limit);
 
         return [
-            'errors'   => $errors,
-            'pending'  => $pending,
-            'neverRun' => $neverRun,
+            'errors'      => $errors,
+            'pending'     => $pending,
+            'neverRun'    => $neverRun,
+            'unreachable' => $unreachable,
         ];
     }
 
@@ -385,13 +431,18 @@ class BreakoutStatusService {
 
         $total = count($entries);
         $collected = 0; $processed = 0; $pendingCases = 0; $dictsPending = 0; $inError = 0; $configured = 0;
+        $measured = 0; $unreachableCount = 0;
         foreach ($entries as $e) {
             $collected += (int) $e['total_cases'];
             if ($e['breakout_configured']) {
                 $configured++;
             }
+            if ($e['target_status'] === self::TARGET_UNREACHABLE) {
+                $unreachableCount++;
+            }
             if ($e['processed_cases'] !== null) {
                 $processed += (int) $e['processed_cases'];
+                $measured  += (int) $e['total_cases'];
                 $pendingCases += (int) $e['cases_pending'];
                 if ($e['cases_pending'] > 0) {
                     $dictsPending++;
@@ -413,10 +464,11 @@ class BreakoutStatusService {
                 'dictionaries_configured' => $configured,
                 'total_cases'             => $collected,
                 'processed_cases'         => $processed,
-                'completion_rate'         => $collected > 0 ? round($processed / $collected * 100, 2) : null,
+                'completion_rate'         => $measured > 0 ? round(min($processed, $measured) / $measured * 100, 2) : null,
                 'pending_cases'           => $pendingCases,
                 'dicts_with_pending'      => $dictsPending,
                 'dicts_in_error'          => $inError,
+                'dicts_unreachable'       => $unreachableCount,
             ],
         ];
     }
@@ -425,6 +477,7 @@ class BreakoutStatusService {
     public static function statusKey(array $e): string {
         if (!$e['breakout_configured']) return 'not_configured';
         if ($e['last_exit_code'] === -1) return 'running';
+        if (in_array($e['target_status'] ?? null, [self::TARGET_UNREACHABLE, self::TARGET_INCOMPLETE], true)) return 'unreachable';
         if ($e['last_exit_code'] !== null && $e['last_exit_code'] !== 0) return 'error';
         if ($e['last_run'] === null) return 'never_run';
         if ($e['is_up_to_date'] === false) return 'pending';
@@ -505,6 +558,18 @@ class BreakoutStatusService {
             : ($totalCases === 0 && $processedCases !== null ? 100.0 : null);
         $isUpToDate     = ($processedCases !== null) ? ($casesPending === 0) : null;
 
+        $targetError  = null;
+        if (!$configured) {
+            $targetStatus = self::TARGET_NOT_CONFIGURED;
+        } elseif (!$row['schema_password_plain']) {
+            $targetStatus = self::TARGET_INCOMPLETE;
+            $targetError  = 'Breakout target has no stored password: edit it in Settings > Data.';
+        } elseif (($targetError = $this->targetError($row)) !== null) {
+            $targetStatus = self::TARGET_UNREACHABLE;
+        } else {
+            $targetStatus = self::TARGET_OK;
+        }
+
         return [
             'dictionary'           => $dictName,
             'label'                => $row['dictionary_label'],
@@ -529,6 +594,10 @@ class BreakoutStatusService {
             // Message clair du dernier job en échec (null si aucun). Alimente le
             // badge/indicateur d'erreur de l'UI sans exposer de stack trace.
             'last_error'           => $lastError,
+            // ok | unreachable | incomplete | not_configured — lets the UI say
+            // WHY processed/pending are empty instead of showing a bare dash.
+            'target_status'        => $targetStatus,
+            'target_error'         => $targetError,
         ];
     }
 
@@ -673,6 +742,23 @@ class BreakoutStatusService {
         return strtolower(preg_replace('/_DICT$/', '', $dictName)) . '_';
     }
 
+    /**
+     * Why the target of $row could not be reached during this request, or null
+     * when it answered (or was never tried).
+     *
+     * @param array<string,mixed> $row
+     */
+    private function targetError(array $row): ?string {
+        $key = $this->connectionKey($row);
+        return $this->targetErrors[$key] ?? null;
+    }
+
+    /** @param array<string,mixed> $row */
+    private function connectionKey(array $row): string {
+        $resolved = BreakoutConnectionResolver::resolve($row);
+        return $resolved['host'] . '|' . $resolved['port'] . '|' . ($row['db_type'] ?? '') . '|' . ($row['schema_name'] ?? '');
+    }
+
     /** @param array<string,mixed> $row */
     private function getTargetConnection(array $row): ?PDO {
         // Resolve effective host/port based on BREAKOUT_CONNECTION_MODE
@@ -682,10 +768,28 @@ class BreakoutStatusService {
         $effHost = $resolved['host'];
         $effPort = $resolved['port'];
 
-        $key = $effHost . '|' . $effPort . '|' . ($row['db_type'] ?? '') . '|' . ($row['schema_name'] ?? '');
+        $key = $this->connectionKey($row);
         if (array_key_exists($key, $this->targetConnections)) {
             return $this->targetConnections[$key];
         }
+
+        // A target found down by a recent request is not retried for
+        // TARGET_DOWN_TTL seconds: every dashboard load then answers at once.
+        $downKey = 'breakout_target_down_' . md5($key);
+        if ($this->cache instanceof CacheItemPoolInterface && !$this->retryDownTargets) {
+            try {
+                $item = $this->cache->getItem($downKey);
+                if ($item->isHit()) {
+                    $this->targetErrors[$key]      = (string) $item->get();
+                    $this->targetConnections[$key] = null;
+                    return null;
+                }
+            } catch (\Throwable $e) {
+                // cache unavailable: just try the connection
+            }
+        }
+
+        $timeout = self::TARGET_CONNECT_TIMEOUT;
         try {
             $driver = match (strtolower($row['db_type'] ?? 'postgresql')) {
                 'mysql'     => 'mysql',
@@ -695,20 +799,60 @@ class BreakoutStatusService {
             if ($driver === 'mysql') {
                 $dsn = 'mysql:host=' . $effHost . ($effPort ? ';port=' . $effPort : '') . ';dbname=' . $row['schema_name'] . ';charset=utf8mb4';
             } elseif ($driver === 'sqlsrv') {
-                $dsn = 'sqlsrv:Server=' . $effHost . ($effPort ? ',' . $effPort : '') . ';Database=' . $row['schema_name'];
+                $dsn = 'sqlsrv:Server=' . $effHost . ($effPort ? ',' . $effPort : '') . ';Database=' . $row['schema_name'] . ';LoginTimeout=' . $timeout;
             } else {
-                $dsn = 'pgsql:host=' . $effHost . ($effPort ? ';port=' . $effPort : '') . ';dbname=' . $row['schema_name'];
+                $dsn = 'pgsql:host=' . $effHost . ($effPort ? ';port=' . $effPort : '') . ';dbname=' . $row['schema_name'] . ';connect_timeout=' . $timeout;
             }
-            $conn = new PDO($dsn, $row['schema_user_name'], $row['schema_password_plain'], [
+            $options = [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            ]);
+            ];
+            if ($driver !== 'sqlsrv') {
+                $options[PDO::ATTR_TIMEOUT] = $timeout;
+            }
+            $conn = new PDO($dsn, $row['schema_user_name'], $row['schema_password_plain'], $options);
             $this->targetConnections[$key] = $conn;
             return $conn;
         } catch (\Throwable $e) {
+            $reason = self::describeConnectError($e, $effHost . ($effPort ? ':' . $effPort : ''), $timeout);
             $this->logger->warning('Target DB unreachable for ' . ($row['dictionary_name'] ?? '?') . ': ' . $e->getMessage());
             $this->targetConnections[$key] = null;
+            $this->targetErrors[$key]      = $reason;
+            if ($this->cache instanceof CacheItemPoolInterface) {
+                try {
+                    $item = $this->cache->getItem($downKey);
+                    $item->set($reason);
+                    $item->expiresAfter(self::TARGET_DOWN_TTL);
+                    $this->cache->save($item);
+                } catch (\Throwable $ignored) {
+                }
+            }
             return null;
         }
+    }
+
+    /**
+     * One readable line for the UI. Never includes credentials: PDO messages
+     * carry the host and the user name at most, and we keep only the gist.
+     */
+    private static function describeConnectError(\Throwable $e, string $target, int $timeout): string {
+        $msg = $e->getMessage();
+        if (preg_match('/timed? ?out|timeout expired|2002 .*Connection timed out/i', $msg)) {
+            return "Breakout target $target did not answer within {$timeout} s (firewall or host down).";
+        }
+        if (preg_match('/refused/i', $msg)) {
+            return "Breakout target $target refused the connection (nothing listening on that port).";
+        }
+        if (preg_match('/getaddrinfo|Name or service not known|could not translate host name|Unknown host/i', $msg)) {
+            return "Breakout target host $target cannot be resolved.";
+        }
+        if (preg_match('/Access denied|password authentication failed|Login failed/i', $msg)) {
+            return "Breakout target $target rejected the user name or password.";
+        }
+        if (preg_match('/Unknown database|does not exist|Cannot open database/i', $msg)) {
+            return "Breakout target $target has no such database.";
+        }
+        $short = preg_replace('/\s+/', ' ', $msg);
+        return "Breakout target $target unreachable: " . mb_substr((string) $short, 0, 160);
     }
 }
