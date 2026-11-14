@@ -138,7 +138,7 @@ EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD curl -f http://localhost/api/ || exit 1
+    CMD c=$(curl -s -o /dev/null -w '%{http_code}' http://localhost/api/server); [ "$c" = 200 ] || [ "$c" = 401 ] || { [ ! -f /var/www/html/src/config.php ] && curl -fsS -o /dev/null http://localhost/setup/; } || exit 1
 
 # Entrypoint handles permissions + cache, then starts Apache
 ENTRYPOINT ["docker-entrypoint.sh"]

@@ -46,6 +46,29 @@ chown -R www-data:www-data /var/www/html/config-persist
 
 # Clear Symfony cache if config.php exists (app is configured)
 if [ -f /var/www/html/src/config.php ]; then
+    # Wait for the metadata database: when both containers start together
+    # (first boot, update, server reboot) MySQL needs a few seconds, and the
+    # one-time checks below used to fail with "Connection refused".
+    echo "[CSWeb] Waiting for the metadata database..."
+    db_ready=0
+    for i in $(seq 1 60); do
+        if php -r "
+            require '/var/www/html/src/config.php';
+            \$port = defined('DBPORT') ? DBPORT : 3306;
+            try { new PDO('mysql:host=' . DBHOST . ';dbname=' . DBNAME . ';port=' . \$port, DBUSER, DBPASS, [PDO::ATTR_TIMEOUT => 2]); exit(0); }
+            catch (Throwable \$e) { exit(1); }
+        " 2>/dev/null; then
+            db_ready=1
+            break
+        fi
+        sleep 2
+    done
+    if [ "$db_ready" = "1" ]; then
+        echo "[CSWeb] Metadata database ready."
+    else
+        echo "[CSWeb] WARNING: metadata database not reachable after 120 s; continuing (check DBHOST in config.php and the mysql container)."
+    fi
+
     echo "[CSWeb] config.php found, clearing Symfony cache..."
     rm -rf /var/www/html/var/cache/*
     su -s /bin/bash www-data -c "php /var/www/html/bin/console cache:warmup --env=prod --no-debug" 2>/dev/null || true
