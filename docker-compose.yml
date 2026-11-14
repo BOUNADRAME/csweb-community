@@ -131,13 +131,18 @@ services:
       - "host.docker.internal:host-gateway"
 
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
 
     networks:
       - csweb-network
 
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/api/"]
+      # /api/server is the first call CSEntry makes. It answers 200, or 401
+      # when the server requires a token: either way Apache, PHP and the
+      # application are up. Before the setup wizard has run, the setup page
+      # is enough. (The former test on /api/ always got a 404.)
+      test: ["CMD-SHELL", "c=$$(curl -s -o /dev/null -w '%{http_code}' http://localhost/api/server); [ \"$$c\" = 200 ] || [ \"$$c\" = 401 ] || { [ ! -f /var/www/html/src/AppBundle/config.php ] && curl -fsS -o /dev/null http://localhost/setup/; }"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -23,6 +23,26 @@ _Nothing yet._
 
 ---
 
+## [8.0.6] - 2026-11-14 (branch `8.0.x`)
+
+Docker: the container waits for its database and reports its real health.
+
+### Fixed
+
+- **csweb-app was always "unhealthy"**: its health check called `/api/`, which
+  has no route and always answered 404. It now calls `/api/server` (the first
+  request CSEntry makes; 200, or 401 when a token is required) and, before the
+  setup wizard has run, the setup page.
+- **"Connection refused" at start-up** when CSWeb and MySQL start together
+  (first boot, update, server reboot): the start-up checks ran before MySQL
+  was ready. CSWeb now starts once MySQL is healthy, and the entrypoint waits
+  up to 120 s for the metadata database before its checks.
+
+No database or `.env` change. Run `docker compose up -d` once after updating
+so the new health check and start order are applied.
+
+---
+
 ## [8.0.5] - 2026-11-13 (branch `8.0.x`)
 
 Breakout Health always answers, whatever the state of the breakout targets.
