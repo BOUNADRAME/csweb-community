@@ -97,8 +97,13 @@ class DashboardController extends AbstractController implements TokenAuthenticat
             $filters['search'] = mb_substr($search, 0, 100);
         }
         $status = (string) $request->query->get('status', 'all');
-        if (in_array($status, ['up_to_date', 'pending', 'error', 'running', 'not_configured', 'never_run', 'unreachable'], true)) {
+        if (in_array($status, ['up_to_date', 'pending', 'error', 'running', 'not_configured', 'never_run', 'unreachable', 'overdue'], true)) {
             $filters['status'] = $status;
+        }
+
+        $hideEmpty = $request->query->get('hide_empty');
+        if ($hideEmpty === '1' || $hideEmpty === 'true') {
+            $filters['hide_empty'] = true;
         }
 
         $configured = $request->query->get('breakout_configured');

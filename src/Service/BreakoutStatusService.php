@@ -48,6 +48,8 @@ class BreakoutStatusService {
     private const SOURCE_COUNT_EXACT_LIMIT = 5_000_000;
     /** Seconds to wait for a breakout target before reporting it unreachable. */
     private const TARGET_CONNECT_TIMEOUT = 3;
+    /** A schedule whose next run is this many seconds in the past is reported overdue. */
+    private const OVERDUE_GRACE = 900;
     /** Seconds an unreachable target is remembered, so the next loads answer at once. */
     private const TARGET_DOWN_TTL = 60;
 
@@ -97,6 +99,7 @@ class BreakoutStatusService {
         // cards then match the table instead of always showing the totals.
         $status = isset($filters['status']) ? (string) $filters['status'] : 'all';
         $filtering = $status !== 'all'
+            || !empty($filters['hide_empty'])
             || (isset($filters['search']) && trim((string) $filters['search']) !== '')
             || (array_key_exists('cron_enabled', $filters) && $filters['cron_enabled'] !== null);
         if ($filtering) {
@@ -424,6 +427,11 @@ class BreakoutStatusService {
         $entries = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $entry = $this->buildStatusEntry($row);
+            // "Hide empty": dictionaries with no case and no breakout (menus,
+            // lookups, log-in screens) only add noise on a large survey.
+            if (!empty($filters['hide_empty']) && !$entry['breakout_configured'] && (int) $entry['total_cases'] === 0) {
+                continue;
+            }
             if ($status === 'all' || self::statusKey($entry) === $status) {
                 $entries[] = $entry;
             }
@@ -479,6 +487,7 @@ class BreakoutStatusService {
         if ($e['last_exit_code'] === -1) return 'running';
         if (in_array($e['target_status'] ?? null, [self::TARGET_UNREACHABLE, self::TARGET_INCOMPLETE], true)) return 'unreachable';
         if ($e['last_exit_code'] !== null && $e['last_exit_code'] !== 0) return 'error';
+        if (!empty($e['is_overdue'])) return 'overdue';
         if ($e['last_run'] === null) return 'never_run';
         if ($e['is_up_to_date'] === false) return 'pending';
         return 'up_to_date';
@@ -558,6 +567,18 @@ class BreakoutStatusService {
             : ($totalCases === 0 && $processedCases !== null ? 100.0 : null);
         $isUpToDate     = ($processedCases !== null) ? ($casesPending === 0) : null;
 
+        // Overdue: the schedule is on but its next run is well in the past,
+        // so the scheduler is not running (stopped cron, container down).
+        $isOverdue = false;
+        $overdueSeconds = null;
+        if ($configured && !empty($row['cron_enabled']) && !empty($row['next_run'])) {
+            $due = strtotime((string) $row['next_run']);
+            if ($due !== false && time() - $due > self::OVERDUE_GRACE) {
+                $isOverdue = true;
+                $overdueSeconds = time() - $due;
+            }
+        }
+
         $targetError  = null;
         if (!$configured) {
             $targetStatus = self::TARGET_NOT_CONFIGURED;
@@ -596,6 +617,8 @@ class BreakoutStatusService {
             'last_error'           => $lastError,
             // ok | unreachable | incomplete | not_configured — lets the UI say
             // WHY processed/pending are empty instead of showing a bare dash.
+            'is_overdue'           => $isOverdue,
+            'overdue_seconds'      => $overdueSeconds,
             'target_status'        => $targetStatus,
             'target_error'         => $targetError,
         ];
