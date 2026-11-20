@@ -29,6 +29,20 @@ _Nothing yet._
 
 ---
 
+## [8.1.13] - 2026-11-20 (branch `8.1.x`)
+
+### Fixed
+
+- **"/bin/sh: 1: www-data: not found" every minute** in `scheduler-cron.log`
+  and `backup-cron.log`. The cron file was installed twice: in `/etc/cron.d`
+  (correct) and as www-data's own crontab, where the user field was read as a
+  command. The breakout scheduler and the backups were not affected; only the
+  logs filled up. Rebuild the image (`docker compose up -d --build`) to apply.
+
+No database or `.env` change.
+
+---
+
 ## [8.1.12] - 2026-11-14 (branch `8.1.x`)
 
 Docker: the container waits for its database and reports its real health.
