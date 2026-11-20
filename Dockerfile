@@ -97,8 +97,10 @@ RUN echo "* * * * * www-data /usr/local/bin/php /var/www/html/bin/console csweb:
     > /etc/cron.d/csweb-scheduler \
     && echo "* * * * * www-data /usr/local/bin/php /var/www/html/bin/console csweb:backup-run >> /var/www/html/var/logs/backup-cron.log 2>&1" \
     >> /etc/cron.d/csweb-scheduler \
-    && chmod 0644 /etc/cron.d/csweb-scheduler \
-    && crontab -u www-data /etc/cron.d/csweb-scheduler || true
+    && chmod 0644 /etc/cron.d/csweb-scheduler
+# /etc/cron.d already runs both jobs as www-data (user field). Installing the
+# same file as www-data's own crontab ran them a second time with "www-data"
+# taken as the command: "/bin/sh: 1: www-data: not found" every minute.
 
 # Copy and set entrypoint (auto: permissions, cache clear)
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
