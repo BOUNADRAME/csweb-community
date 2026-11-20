@@ -4,6 +4,48 @@ Surveiller et diagnostiquer les jobs de breakout en temps réel.
 
 ## Monitoring via l'Interface Web
 
+### Breakout Health (tableau de bord)
+
+Menu **Breakout Health** : l'état de chaque dictionnaire en un écran, pensé pour
+suivre une enquête avec beaucoup de dictionnaires. Les colonnes Total cases et
+Processed arrivent en 8.0.8 / 8.1.14 ; le statut « Schedule overdue » et le filtre
+« Hide empty » en 8.0.9 / 8.1.15.
+
+**Cartes du haut** : dictionnaires configurés, cas collectés (CSWeb), cas traités
+(base de breakout), taux global, cas en attente, erreurs. Avec un filtre actif,
+elles portent sur les dictionnaires filtrés.
+
+**Colonnes du tableau**
+
+| Colonne | Contenu |
+|---|---|
+| Total cases | Cas présents dans CSWeb pour ce dictionnaire (nombre exact) |
+| Processed | Cas écrits dans la base de breakout. En orange s'il est inférieur au total ; « — » si le comptage est impossible (non configuré, cible injoignable : la raison s'affiche au survol) |
+| Completion | Processed / Total cases |
+| Pending | Cas restant à traiter |
+| Last run / Next run | Dernier passage, prochain passage. « off » : pas de planning actif. « late 2h » : planning en retard |
+| Exit | Code de sortie du dernier passage (0 = succès) |
+
+**Statuts** (pastille de couleur et filtre « All statuses »)
+
+| Statut | Signification | Action |
+|---|---|---|
+| Up-to-date | Tous les cas sont traités | — |
+| Pending | Des cas restent à traiter | Attendre le prochain passage ou **Run now** |
+| Schedule overdue | Le planning est actif mais son passage prévu date de plus de 15 min : le planificateur ne tourne pas | Vérifier le conteneur (`docker compose ps`) et `var/logs/scheduler-cron.log` |
+| Target unreachable | La base de breakout ne répond pas (pare-feu, hôte, port, mot de passe) | Lire la cause affichée sous le nom du dictionnaire |
+| Error | Le dernier passage a échoué | Ouvrir le journal (icône à droite) |
+| Never run | Configuré mais jamais lancé | **Run now** ou activer le planning |
+| Not configured | Pas de breakout pour ce dictionnaire | Settings → Data → Add Configuration |
+
+**Filtres** : statut, planning (Cron enabled / disabled), recherche par nom, et
+**Hide empty** (coché par défaut, mémorisé par navigateur) qui masque les
+dictionnaires sans aucun cas ni breakout : menus, listes de référence, écrans de
+connexion.
+
+Une base de breakout injoignable ne bloque jamais la page : la connexion est
+coupée après 3 s et le résultat gardé 60 s. **Refresh** refait le test aussitôt.
+
 ### Onglet Breakout Logs
 
 La page **Settings > Data**, onglet **Breakout Logs** offre un monitoring complet :

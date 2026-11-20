@@ -2,7 +2,26 @@
 
 Historique des modifications de CSWeb Community Platform.
 
-## Version Actuelle
+## Versions actuelles
+
+Chaque ligne a sa branche et ses tags : **8.1** (Current, CSPro 8.1) et **8.0**
+(LTS, CSPro 8.0). Le détail complet est dans le `CHANGELOG.md` de chaque branche :
+[8.1.x](https://github.com/BOUNADRAME/csweb-community/blob/8.1.x/CHANGELOG.md) ·
+[8.0.x](https://github.com/BOUNADRAME/csweb-community/blob/8.0.x/CHANGELOG.md).
+Mise à jour au sein d'une ligne : [Choisir 8.0 ou 8.1](/getting-started/choose-version).
+
+| 8.1 | 8.0 | Date | Contenu |
+|---|---|---|---|
+| 8.1.15 | 8.0.9 | 2026-11-20 | Breakout Health : statut « Schedule overdue » (planning en retard), « off » quand aucun planning n'est actif, filtre « Hide empty » |
+| 8.1.14 | 8.0.8 | 2026-11-20 | Ajout de plusieurs dictionnaires d'un coup ; Breakout Health : colonnes Total cases / Processed |
+| 8.1.13 | 8.0.7 | 2026-11-20 | Fin de l'erreur cron « www-data: not found » chaque minute |
+| 8.1.12 | 8.0.6 | 2026-11-14 | Docker : contrôle de santé corrigé (`/api/server`), démarrage après MySQL |
+| 8.1.11 | 8.0.5 | 2026-11-13 | Breakout Health ne bloque plus sur une base injoignable ; suppression d'une configuration possible dans ce cas |
+
+Aucune de ces versions ne modifie le schéma de la base ni le `.env` : mise à jour par
+`git checkout <tag>` puis `docker compose up -d --build`.
+
+## Historique (avant la numérotation 8.x)
 
 ### [1.1.0] - 2026-03-19
 

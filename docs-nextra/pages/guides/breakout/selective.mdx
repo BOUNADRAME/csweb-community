@@ -3,6 +3,8 @@ title: Breakout Sélectif par Dictionnaire
 description: Innovation majeure de CSWeb Community Platform pour le traitement ciblé des données
 ---
 
+import { Callout } from 'nextra/components'
+
 # Breakout Sélectif par Dictionnaire
 
 > **Innovation** : Développée par **Assietou DIAGNE** (ANSD, Sénégal) et validée en production lors du **RGPH5 Sénégal**.
@@ -80,6 +82,31 @@ php bin/console csweb:process-cases-by-dict SONDAGE_SANTE
 # Résultat : 4/5 dictionnaires breakés et utilisables
 # Flexibilité : Corriger RECENSEMENT sans impacter les autres
 ```
+
+---
+
+## Configurer plusieurs dictionnaires vers une même base
+
+Depuis la 8.0.8 et la 8.1.14, **Settings → Data → Add Configuration** configure
+plusieurs dictionnaires en une fois :
+
+1. Choisissez le premier dictionnaire dans **Source data**.
+2. Cliquez sur **Add other dictionaries to the same database**, puis cochez les
+   autres dictionnaires (ou **Select all**).
+3. Renseignez une seule fois la base cible : type, hôte, port, base, utilisateur,
+   mot de passe. Le bouton devient « Add N configurations ».
+
+Chaque dictionnaire a ses propres tables dans la base, préfixées par son nom.
+Le **Map Report** et les **options additionnelles** ne s'appliquent qu'au premier
+dictionnaire, car ils dépendent de ses variables. Les configurations sont créées
+l'une après l'autre : si l'une échoue, les autres sont ajoutées et un récapitulatif
+donne la cause de chaque échec.
+
+<Callout type="info">
+Base de breakout dans le **même MySQL** que CSWeb (Docker) : hôte `mysql`, port
+`3306` dans CSWeb. Le port publié sur la machine (`MYSQL_HOST_PORT`, par exemple
+3307) ne sert qu'aux outils externes comme DBeaver.
+</Callout>
 
 ---
 
