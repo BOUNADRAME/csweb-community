@@ -41,6 +41,11 @@ _Nothing yet._
   options apply to the first dictionary only. The configurations are added
   one after the other; a summary lists those added and, for each failure,
   its reason.
+- **Breakout Health shows the counts behind each percentage**: new
+  "Total cases" (cases in CSWeb) and "Processed" (cases in the breakout
+  target) columns, as exact numbers. Processed is highlighted when it is
+  below the total, and shows "—" with the reason (not configured, target
+  unreachable) when it cannot be counted.
 
 No database or `.env` change: the page calls the existing `addSetting`
 endpoint once per dictionary.

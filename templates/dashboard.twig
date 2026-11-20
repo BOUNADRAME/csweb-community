@@ -27,6 +27,7 @@
         .status-dot.s-running  { background: #36b9cc; animation: pulse 1.4s infinite; }
         .status-dot.s-unconfig { background: #b7b9cc; }
         .status-dot.s-never    { background: #858796; }
+        .col-num { white-space: nowrap; font-variant-numeric: tabular-nums; width: 1%; }
         .status-dot.s-down     { background: #e74a3b; box-shadow: 0 0 0 2px #fde2df; }
         .target-note { display: block; margin-top: 2px; font-size: 0.78rem; }
         .table-message td { padding: 1.25rem !important; }
@@ -161,6 +162,8 @@
                                 <tr>
                                     <th class="col-status"></th>
                                     <th>Dictionary</th>
+                                    <th class="col-num text-right" title="Cases in CSWeb (source database)">Total cases</th>
+                                    <th class="col-num text-right" title="Cases written to the breakout target database">Processed</th>
                                     <th class="col-pct">Completion</th>
                                     <th>Pending</th>
                                     <th>Last run</th>
@@ -170,7 +173,7 @@
                                 </tr>
                             </thead>
                             <tbody id="breakout-dashboard-body">
-                                <tr><td colspan="8" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>
+                                <tr><td colspan="10" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -239,6 +242,13 @@
 
             // ----- Helpers -----
             function escapeHtml(s) { var d = document.createElement("div"); d.appendChild(document.createTextNode(s == null ? "" : String(s))); return d.innerHTML; }
+
+            // Exact count with thousands separators (table cells: 1,999 not 2.0K).
+            function fmtExact(n) {
+                if (n == null || n === "") return "—";
+                n = Number(n);
+                return isNaN(n) ? "—" : n.toLocaleString("en-US");
+            }
 
             function fmtNumber(n) {
                 if (n == null) return "—";
@@ -386,7 +396,7 @@
                 else if (state.lastSummary) renderKpis(state.lastSummary, false);
                 var tbody = document.getElementById("breakout-dashboard-body");
                 if (!rows.length) {
-                    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">No dictionaries match the current filters.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-3">No dictionaries match the current filters.</td></tr>';
                 } else {
                     tbody.innerHTML = rows.map(function (d) {
                         var st = statusFor(d);
@@ -399,6 +409,12 @@
                         var totalNum     = Number(d.total_cases || 0);
                         var exitNum      = d.last_exit_code == null ? null : Number(d.last_exit_code);
                         var targetDown = st.key === "unreachable";
+                        // Community layer: show the counts behind the percentage.
+                        var processedHtml = d.processed_cases == null
+                            ? '<span class="text-muted" title="' + escapeHtml(d.target_error || (d.breakout_configured ? "Target not checked" : "Not configured")) + '">—</span>'
+                            : (Number(d.processed_cases) < Number(d.total_cases || 0)
+                                ? '<span class="text-warning font-weight-bold">' + fmtExact(d.processed_cases) + '</span>'
+                                : fmtExact(d.processed_cases));
                         var compHtml = compPct == null
                             ? (targetDown
                                 ? '<span class="text-danger" title="' + escapeHtml(d.target_error || "") + '"><i class="fas fa-plug"></i> unavailable</span>'
@@ -428,6 +444,8 @@
                                     + '<small class="target-note text-muted">' + escapeHtml(d.target_host || "") + (d.target_schema ? ' / ' + escapeHtml(d.target_schema) : '') + '</small>'
                                   : '')
                             +  '</td>'
+                            +  '<td class="col-num text-right">' + fmtExact(d.total_cases) + '</td>'
+                            +  '<td class="col-num text-right">' + processedHtml + '</td>'
                             +  '<td class="col-pct">' + compHtml + '</td>'
                             +  '<td>' + pending + '</td>'
                             +  '<td>' + fmtRelative(d.last_run) + '</td>'
@@ -460,7 +478,7 @@
                 var safe = escapeHtml(message);
                 if (section === "list") {
                     document.getElementById("breakout-dashboard-body").innerHTML =
-                        '<tr class="table-message"><td colspan="8" class="text-center text-danger">'
+                        '<tr class="table-message"><td colspan="10" class="text-center text-danger">'
                         + '<i class="fas fa-exclamation-triangle"></i> ' + safe
                         + ' <button type="button" class="btn btn-link btn-sm dash-retry">Retry</button></td></tr>';
                     document.getElementById("dash-list-summary").textContent = "—";
