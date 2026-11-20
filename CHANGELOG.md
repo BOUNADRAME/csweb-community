@@ -29,6 +29,22 @@ _Nothing yet._
 
 ---
 
+## [8.1.15] - 2026-11-20 (branch `8.1.x`)
+
+### Added
+
+- **"Schedule overdue" status**: a dictionary whose schedule is on but whose
+  next run is more than 15 minutes in the past turns orange, with "late 2h"
+  in Next run, even at 100 %. It means the scheduler is not running.
+  Next run shows "off" when a configured dictionary has no active schedule.
+- **"Hide empty"** (on by default, remembered per browser): hides
+  dictionaries with no case and no breakout (menus, lookups, log-in
+  screens), which only add noise on a large survey.
+
+No database or `.env` change.
+
+---
+
 ## [8.1.14] - 2026-11-20 (branch `8.1.x`)
 
 ### Added
@@ -46,13 +62,6 @@ _Nothing yet._
   target) columns, as exact numbers. Processed is highlighted when it is
   below the total, and shows "—" with the reason (not configured, target
   unreachable) when it cannot be counted.
-- **"Schedule overdue" status**: a dictionary whose schedule is on but whose
-  next run is more than 15 minutes in the past turns orange, with "late 2h"
-  in Next run, even at 100 %. It means the scheduler is not running.
-  Next run shows "off" when a configured dictionary has no active schedule.
-- **"Hide empty"** (on by default, remembered per browser): hides
-  dictionaries with no case and no breakout (menus, lookups, log-in
-  screens), which only add noise on a large survey.
 
 No database or `.env` change: the page calls the existing `addSetting`
 endpoint once per dictionary.
