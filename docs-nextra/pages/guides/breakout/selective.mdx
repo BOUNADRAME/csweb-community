@@ -102,11 +102,33 @@ dictionnaire, car ils dépendent de ses variables. Les configurations sont cré�
 l'une après l'autre : si l'une échoue, les autres sont ajoutées et un récapitulatif
 donne la cause de chaque échec.
 
-<Callout type="info">
-Base de breakout dans le **même MySQL** que CSWeb (Docker) : hôte `mysql`, port
-`3306` dans CSWeb. Le port publié sur la machine (`MYSQL_HOST_PORT`, par exemple
-3307) ne sert qu'aux outils externes comme DBeaver.
-</Callout>
+### Base de breakout dans le MySQL de CSWeb : le mapping de ports
+
+Docker publie le MySQL du conteneur sur la machine avec cette ligne de
+`docker-compose.yml` :
+
+```yaml
+ports:
+  - "${DB_BIND_ADDRESS:-127.0.0.1}:${MYSQL_HOST_PORT:-3306}:3306"
+#      adresse d'écoute sur la machine : port sur la machine : port dans le conteneur
+```
+
+Deux portes mènent donc à la même base :
+
+| Qui se connecte | D'où | Hôte | Port |
+|---|---|---|---|
+| CSWeb (configuration du breakout) | réseau Docker interne | `mysql` (nom du service) | `3306`, toujours |
+| Un outil externe (DBeaver, script) | Internet ou votre poste | IP du serveur | `MYSQL_HOST_PORT` du `.env` (par exemple `3307`) |
+
+- Dans **Settings → Data**, mettez toujours `mysql` et `3306` : CSWeb ne passe pas
+  par la machine, et ces valeurs ne changent pas quel que soit le `.env`.
+- `MYSQL_HOST_PORT` ne sert qu'à l'accès depuis l'extérieur ; on le change quand
+  le port 3306 de la machine est déjà pris (un autre MySQL, par exemple).
+- `DB_BIND_ADDRESS` dit qui peut entrer par cette porte : `127.0.0.1` (défaut,
+  la machine seule) ou `0.0.0.0` (toutes les adresses). Avec `0.0.0.0`, limitez
+  le port à vos IP dans le pare-feu (`ufw allow from <IP> to any port 3307`).
+- Pour vérifier le mapping en place : `docker port csweb-mysql-metadata`
+  (par exemple `3306/tcp -> 0.0.0.0:3307`).
 
 ---
 
