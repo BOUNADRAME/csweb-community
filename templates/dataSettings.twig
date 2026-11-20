@@ -90,6 +90,24 @@
                                         {% endif %}
                                     {% endfor %}
                                 </select>
+                                <!-- Community layer: configure several dictionaries at once,
+                                     all sent to the same target database (one table prefix each). -->
+                                <div id="extra-dicts-block" class="mt-2">
+                                    <a href="#" id="extra-dicts-toggle" class="small">
+                                        <i class="fas fa-layer-group"></i> Add other dictionaries to the same database
+                                    </a>
+                                    <div id="extra-dicts-panel" class="hidden border rounded p-2 mt-1" style="max-height: 180px; overflow-y: auto;">
+                                        <div class="form-check mb-1">
+                                            <input type="checkbox" class="form-check-input" id="extra-dicts-all">
+                                            <label class="form-check-label small font-weight-bold" for="extra-dicts-all">Select all</label>
+                                        </div>
+                                        <div id="extra-dicts-list"></div>
+                                        <small class="form-text text-muted">
+                                            Each dictionary gets its own tables (prefixed by its name) in this database.
+                                            Map report and additional options apply to the first dictionary only.
+                                        </small>
+                                    </div>
+                                </div>
                                 <div class="help-block with-errors"></div>
                             </div>
                         </div>
@@ -1588,6 +1606,53 @@
         }); #}
 
 
+            // Community layer: extra dictionaries sharing the target database.
+            function renderExtraDicts() {
+                var primary = $('#config').val();
+                var checked = {};
+                $('#extra-dicts-list input:checked').each(function () { checked[$(this).val()] = true; });
+                var html = '';
+                $('#config option').each(function () {
+                    var id = $(this).val();
+                    if (id === primary) return;
+                    var name = $(this).attr('dictname') || $(this).text();
+                    var safeId = 'extra-dict-' + String(id).replace(/[^A-Za-z0-9_-]/g, '');
+                    html += '<div class="form-check">'
+                        +   '<input type="checkbox" class="form-check-input extra-dict" id="' + safeId + '" value="' + $('<div>').text(id).html() + '"'
+                        +     ' data-label="' + $('<div>').text($(this).text()).html() + '"' + (checked[id] ? ' checked' : '') + '>'
+                        +   '<label class="form-check-label small" for="' + safeId + '" title="' + $('<div>').text($(this).attr('title') || '').html() + '">'
+                        +     $('<div>').text(name).html() + '</label>'
+                        + '</div>';
+                });
+                $('#extra-dicts-list').html(html || '<small class="text-muted">No other dictionary to configure.</small>');
+                syncExtraDicts();
+            }
+
+            function selectedExtraDicts() {
+                return $('#extra-dicts-list input.extra-dict:checked').map(function () {
+                    return { id: $(this).val(), label: $(this).data('label') };
+                }).get();
+            }
+
+            function syncExtraDicts() {
+                var all = $('#extra-dicts-list input.extra-dict');
+                var n = all.filter(':checked').length;
+                $('#extra-dicts-all').prop('checked', all.length > 0 && n === all.length);
+                $('#extra-dicts-toggle').html('<i class="fas fa-layer-group"></i> '
+                    + (n > 0 ? (n + 1) + ' dictionaries will use this database' : 'Add other dictionaries to the same database'));
+                $('#add-button').text(n > 0 ? 'Add ' + (n + 1) + ' configurations' : 'Add');
+            }
+
+            $('#extra-dicts-toggle').on('click', function (e) {
+                e.preventDefault();
+                $('#extra-dicts-panel').toggleClass('hidden');
+            });
+            $('#extra-dicts-all').on('change', function () {
+                $('#extra-dicts-list input.extra-dict').prop('checked', this.checked);
+                syncExtraDicts();
+            });
+            $('#extra-dicts-list').on('change', 'input.extra-dict', syncExtraDicts);
+
             // Add configuration
             $("#configure-dictionary-button").click(function () {
                 if ($('#config option').length == 0) {
@@ -1603,6 +1668,9 @@
                     document.getElementById('map-options').classList.add('hidden');
                     document.getElementById('map-enable').checked = false;
                     document.getElementById('basemap-key').required = false;
+                    $('#extra-dicts-panel').addClass('hidden');
+                    $('#extra-dicts-list').empty();
+                    renderExtraDicts();
                     $("#add-config-modal").modal("show");
                 }
 
@@ -1622,6 +1690,7 @@
             $("#config").on('input', (e) => {
                 var dictname = $("#config option:selected").attr("dictname");
                 updateLocationItems(dictname);
+                renderExtraDicts();
                 var addConfigForm = $("#add-config-form");
                 var formGroups = addConfigForm.find('.form-group');
                 formGroups.each((child) => {
@@ -1730,41 +1799,79 @@
                         dataSetting['mapInfo'] = {enabled: false};
                     }
                     $modal.modal("hide");
-                    $.ajax({
-                        type: "POST",
-                        url: "{{ path('addSetting') }}",
-                        data: JSON.stringify(dataSetting),
-                        contentType: "application/json; charset=utf-8",
-                        dataType: "json",
-                        success: function (response) {
-                            if (response.code === 200) {
-                                var alertMsg = "The configuration for " + dataSetting['label'] + " was successfully added.";
-                                sessionStorage.setItem("add-config-success", alertMsg);
-                                location.reload();
-                                //showAlert("The configuration " + dataSetting['label'] + " was successfully added.", "alert alert-success");
-                            } else {
-                                var alertMsg = "Failed adding the configuration for " + dataSetting['label'] + "<br>" +
-                                        response.description + "</br>";
-                                sessionStorage.setItem("add-config-failure", alertMsg);
-                                showAlert(sessionStorage.getItem("add-config-failure"), "alert alert-danger");
-                            }
-                        },
-                        error: function (response) {
-                            //in case of  timeout  the redirect response comes with html content and status code as 200
-                            //this causes an error as the response text is not json but datatype in ajax is set to json
-                            //in this case redirect to logout
-                            if (response.status === 200 || response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            } else {
-                                var errResponse = JSON.parse(response.responseText);
-                                var message = errResponse.description != null ? errResponse.description : response.responseText;
-                                showAlert(message, "alert alert-danger");
-                            }
-                        },
-                        failure: function (errMsg) {
-                            alert("error!");
+
+                    // Community layer: the first dictionary keeps its map report and
+                    // additional options; the others get the same target database
+                    // without them (those options name items of one dictionary).
+                    var queue = [dataSetting].concat(selectedExtraDicts().map(function (d) {
+                        return Object.assign({}, dataSetting, {
+                            id: d.id, label: d.label, additionalConfig: null, mapInfo: {enabled: false}
+                        });
+                    }));
+                    var added = [], failed = [];
+
+                    function finish() {
+                        if (failed.length === 0) {
+                            var names = added.map(function (l) { return $('<div>').text(l).html(); });
+                            var okMsg = names.length === 1
+                                ? "The configuration for " + names[0] + " was successfully added."
+                                : names.length + " configurations were successfully added: " + names.join(", ") + ".";
+                            sessionStorage.setItem("add-config-success", okMsg);
+                            location.reload();
+                            return;
                         }
-                    });
+                        var msg = (added.length ? "Added: " + added.map(function (l) { return $('<div>').text(l).html(); }).join(", ") + ".<br>" : "")
+                            + "Failed:<br>" + failed.map(function (f) {
+                                return "&bull; " + $('<div>').text(f.label).html() + " — " + $('<div>').text(f.message).html();
+                            }).join("<br>");
+                        if (added.length) {
+                            sessionStorage.setItem("add-config-failure", msg);
+                            location.reload();
+                        } else {
+                            sessionStorage.setItem("add-config-failure", msg);
+                            showAlert(msg, "alert alert-danger");
+                        }
+                    }
+
+                    function next(i) {
+                        if (i >= queue.length) { finish(); return; }
+                        var item = queue[i];
+                        if (queue.length > 1) {
+                            showAlert("Adding configuration " + (i + 1) + " of " + queue.length + ": " + $('<div>').text(item.label).html() + "…", "alert alert-info");
+                        }
+                        $.ajax({
+                            type: "POST",
+                            url: "{{ path('addSetting') }}",
+                            data: JSON.stringify(item),
+                            contentType: "application/json; charset=utf-8",
+                            dataType: "json",
+                            success: function (response) {
+                                if (response.code === 200) {
+                                    added.push(item.label);
+                                } else {
+                                    failed.push({label: item.label, message: response.description || "Unknown error"});
+                                }
+                                next(i + 1);
+                            },
+                            error: function (response) {
+                                //in case of  timeout  the redirect response comes with html content and status code as 200
+                                //this causes an error as the response text is not json but datatype in ajax is set to json
+                                //in this case redirect to logout
+                                if (response.status === 200 || response.status === 401 || response.status === 405) {
+                                    window.location.href = "{{ path('logout') }}";
+                                    return;
+                                }
+                                var message = response.responseText;
+                                try {
+                                    var errResponse = JSON.parse(response.responseText);
+                                    if (errResponse.description != null) message = errResponse.description;
+                                } catch (ignored) {}
+                                failed.push({label: item.label, message: message || ("HTTP " + response.status)});
+                                next(i + 1);
+                            }
+                        });
+                    }
+                    next(0);
                 }
 
                 // Public

@@ -29,6 +29,24 @@ _Nothing yet._
 
 ---
 
+## [8.1.14] - 2026-11-20 (branch `8.1.x`)
+
+### Added
+
+- **Configure several dictionaries at once** (Settings → Data → Add
+  Configuration): "Add other dictionaries to the same database" lists the
+  dictionaries not yet configured, with a "Select all" box. They all get the
+  target entered once (database type, host, port, database, user, password),
+  each with its own tables prefixed by its name. Map report and additional
+  options apply to the first dictionary only. The configurations are added
+  one after the other; a summary lists those added and, for each failure,
+  its reason.
+
+No database or `.env` change: the page calls the existing `addSetting`
+endpoint once per dictionary.
+
+---
+
 ## [8.1.13] - 2026-11-20 (branch `8.1.x`)
 
 ### Fixed
