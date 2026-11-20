@@ -141,12 +141,16 @@
                             <option value="not_configured">Not configured</option>
                             <option value="never_run">Never run</option>
                             <option value="unreachable">Target unreachable</option>
+                            <option value="overdue">Schedule overdue</option>
                         </select>
                         <select class="form-control form-control-sm" id="dash-filter-cron" style="max-width:170px">
                             <option value="">Cron: all</option>
                             <option value="true">Cron: enabled</option>
                             <option value="false">Cron: disabled</option>
                         </select>
+                        <label class="small mb-0 text-nowrap" title="Hide dictionaries with no case and no breakout (menus, lookups, log-in)">
+                            <input type="checkbox" id="dash-hide-empty" checked> Hide empty
+                        </label>
                         <input type="text" class="form-control form-control-sm" id="dash-filter-search"
                                placeholder="Search dictionary…" style="max-width:240px">
                         <select class="form-control form-control-sm ml-auto" id="dash-page-size" style="max-width:100px">
@@ -216,6 +220,7 @@
                 limit: 25,
                 statusFilter: "all",
                 cronFilter: "",
+                hideEmpty: readHideEmpty(),
                 filteredSummary: null,
                 search: "",
                 live: false,
@@ -285,12 +290,30 @@
                 return '<span title="' + escapeHtml(iso) + '">' + rel + '</span>';
             }
 
+            // Community layer: "Hide empty" is a per-viewer preference.
+            function readHideEmpty() {
+                try { return localStorage.getItem("csweb.dash.hideEmpty") !== "0"; } catch (e) { return true; }
+            }
+
+            // Next run, saying why there is none, and flagging a late schedule.
+            function nextRunHtml(d) {
+                if (!d.breakout_configured) return '<span class="text-muted">—</span>';
+                if (!d.cron_enabled) return '<span class="text-muted" title="No active schedule: enable it in Settings > Data > Breakout Scheduler">off</span>';
+                if (d.is_overdue) {
+                    var h = Math.round((d.overdue_seconds || 0) / 3600);
+                    var late = h >= 1 ? h + "h" : Math.round((d.overdue_seconds || 0) / 60) + "m";
+                    return '<span class="text-warning font-weight-bold" title="Due ' + escapeHtml(d.next_run || "") + '. Check the scheduler (container, cron).">late ' + late + '</span>';
+                }
+                return fmtFuture(d.next_run);
+            }
+
             function statusFor(d) {
                 if (!d.breakout_configured) return { key: "not_configured", cls: "s-unconfig", label: "Not configured" };
                 if (d.last_exit_code === -1) return { key: "running", cls: "s-running", label: "Running" };
                 if (d.target_status === "unreachable" || d.target_status === "incomplete")
                     return { key: "unreachable", cls: "s-down", label: d.target_error || "Target unreachable" };
                 if (d.last_exit_code != null && d.last_exit_code !== 0) return { key: "error", cls: "s-error", label: "Error (exit " + d.last_exit_code + ")" };
+                if (d.is_overdue) return { key: "overdue", cls: "s-pending", label: "Schedule overdue: the scheduler has not run since " + (d.next_run || "?") };
                 if (d.last_run == null)    return { key: "never_run", cls: "s-never", label: "Never run" };
                 if (d.is_up_to_date === false) return { key: "pending", cls: "s-pending", label: "Pending" };
                 return { key: "up_to_date", cls: "s-ok", label: "Up-to-date" };
@@ -449,7 +472,7 @@
                             +  '<td class="col-pct">' + compHtml + '</td>'
                             +  '<td>' + pending + '</td>'
                             +  '<td>' + fmtRelative(d.last_run) + '</td>'
-                            +  '<td>' + (d.cron_enabled ? fmtFuture(d.next_run) : '<span class="text-muted">—</span>') + '</td>'
+                            +  '<td>' + nextRunHtml(d) + '</td>'
                             +  '<td>' + exitTxt + '</td>'
                             +  '<td class="col-actions text-center">'
                             +    '<div class="row-actions">'
@@ -530,6 +553,7 @@
                 if (state.cronFilter !== "") qs += "&cron_enabled=" + encodeURIComponent(state.cronFilter);
                 if (state.statusFilter && state.statusFilter !== "all") qs += "&status=" + encodeURIComponent(state.statusFilter);
                 if (state.search) qs += "&search=" + encodeURIComponent(state.search);
+                if (state.hideEmpty) qs += "&hide_empty=1";
                 if (opts.nocache) qs += "&nocache=1";
                 return URL_DICTIONARIES + qs;
             }
@@ -678,6 +702,18 @@
                     loadAll();
                 });
             });
+
+            // Hide empty dictionaries
+            (function () {
+                var box = document.getElementById("dash-hide-empty");
+                box.checked = state.hideEmpty;
+                box.addEventListener("change", function () {
+                    state.hideEmpty = box.checked;
+                    try { localStorage.setItem("csweb.dash.hideEmpty", box.checked ? "1" : "0"); } catch (e) {}
+                    state.page = 1;
+                    loadAll({});
+                });
+            })();
 
             // Retry after a failed load
             document.getElementById("breakout-dashboard-body").addEventListener("click", function (e) {
