@@ -3,6 +3,8 @@ title: Comparaison des Solutions Docker
 description: CSWeb Community Platform vs autres solutions Docker CSWeb
 ---
 
+import { CloneCommand, LatestTag } from '../../components'
+
 # Comparaison des Solutions Docker pour CSWeb
 
 Cette page compare les différentes approches pour déployer CSWeb avec Docker.
@@ -258,10 +260,10 @@ docker compose exec mysql mysqldump -u root -p cspro > backup.sql
 
 ### 2. Cloner CSWeb Community
 
-```bash
-git clone -b 8.0.x https://github.com/BOUNADRAME/csweb-community.git
-cd csweb-community
-```
+<CloneCommand line="8.1" />
+
+Parc CSPro 8.0 : même commande avec le tag <LatestTag line="8.0" />.
+
 
 ### 3. Configurer le .env
 

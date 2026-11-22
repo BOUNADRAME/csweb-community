@@ -3,6 +3,8 @@ title: Transformation CSWeb PostgreSQL
 description: Guide technique complet de la transformation de CSWeb pour supporter PostgreSQL
 ---
 
+import { CloneCommand, LatestTag } from '../../../components'
+
 
 
 # Transformation CSWeb PostgreSQL
@@ -808,10 +810,11 @@ SELECT * FROM eval_producteurs_cspro_meta;
 
 ### Code PHP Complet Le code complet de transformation est disponible dans le repository CSWeb Community v2.0 :
 
-```bash
-# Cloner le repository
-git clone -b 8.0.x https://github.com/BOUNADRAME/csweb-community.git
+<CloneCommand line="8.1" />
 
+Parc CSPro 8.0 : même commande avec le tag <LatestTag line="8.0" />.
+
+```bash
 # Fichiers clés transformés
 src/AppBundle/CSPro/DictionarySchemaGenerator/MySQLDictionarySchemaGenerator.php
 src/AppBundle/Service/DictionarySchemaHelper.php

@@ -1,3 +1,5 @@
+import { CloneCommand, LatestTag } from '../../../components'
+
 # Migration depuis CSWeb Vanilla Guide de migration de **CSWeb vanilla** vers **CSWeb Community Platform v2.0**.
 
 ## Compatibilité
@@ -51,11 +53,13 @@ scp backup_vanilla_files.tar.gz user@new-server:/tmp/
 
 ```bash
 # Sur nouveau serveur
+```
 
-# Clone repository
-git clone -b 8.0.x https://github.com/BOUNADRAME/csweb-community.git
-cd csweb-community
+<CloneCommand line="8.1" />
 
+Parc CSPro 8.0 : même commande avec le tag <LatestTag line="8.0" />.
+
+```bash
 # Installation
 ./install.sh
 # Choisir: PostgreSQL (pour breakout)

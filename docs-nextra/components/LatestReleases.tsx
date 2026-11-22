@@ -1,3 +1,4 @@
+import { Pre, Code } from 'nextra/components'
 import releases from '../latest-releases.json'
 
 type Line = { tag: string; version: string; branch: string; status: string }
@@ -63,6 +64,42 @@ export function LatestVersion({ line }: { line: string }) {
 }
 
 /**
+ * Shell lines rendered like Nextra's own code blocks (same colours, copy
+ * button, word-wrap toggle), for commands built at build time.
+ */
+function ShellBlock({ text }: { text: string }) {
+  const token = (t: string, color: string, k: number) => (
+    <span key={k} style={{ color: `var(--shiki-${color})` }}>{t}</span>
+  )
+  return (
+    <Pre hasCopyCode data-language="bash" data-theme="default">
+      <Code data-language="bash" data-theme="default">
+        {text.split('\n').map((line, i) => {
+          const hash = line.search(/(^|\s)#/)
+          const code = hash >= 0 ? line.slice(0, hash) : line
+          const comment = hash >= 0 ? line.slice(hash) : ''
+          const parts = code.split(/(\s+)/)
+          let first = true
+          const spans = parts.map((p, k) => {
+            if (!p || /^\s+$/.test(p)) return p
+            if (first) { first = false; return token(p, 'token-function', k) }
+            if (/^-/.test(p) || /^v?\d/.test(p)) return token(p, 'token-constant', k)
+            return token(p, 'token-string', k)
+          })
+          return (
+            <span key={i} data-line="">
+              {spans}
+              {comment && token(comment, 'token-comment', 999)}
+              {'\n'}
+            </span>
+          )
+        })}
+      </Code>
+    </Pre>
+  )
+}
+
+/**
  * Ready-to-paste clone command for the latest release of a line.
  * `then`: extra command lines appended after `cd csweb-community`
  * (they replace the `cat VERSION` check).
@@ -71,10 +108,5 @@ export function CloneCommand({ line, then }: { line: string; then?: string }) {
   const l = lines[line]
   const ref = l ? l.tag : `${line}.x`
   const tail = then ?? `cat VERSION        # affiche ${l ? l.version : 'la version installée'}`
-  const text = `git clone -b ${ref} --depth 1 ${REPO}.git\ncd csweb-community\n${tail}`
-  return (
-    <pre style={{ padding: '0.9rem 1rem', borderRadius: 6, overflowX: 'auto', background: 'rgba(127,127,127,0.08)', margin: '0.75rem 0' }}>
-      <code>{text}</code>
-    </pre>
-  )
+  return <ShellBlock text={`git clone -b ${ref} --depth 1 ${REPO}.git\ncd csweb-community\n${tail}`} />
 }
