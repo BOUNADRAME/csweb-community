@@ -18,6 +18,8 @@ Guide de déploiement Docker pour **environnement de production**.
 
 ---
 
+import { CloneCommand, LatestTag } from '../../../components'
+
 ## Configuration Production
 
 ### Fichier .env Production
@@ -99,11 +101,12 @@ su - csweb
 
 ### Étape 2: Clone & Configuration
 
-```bash
-# Clone repository
-git clone -b 8.0.x https://github.com/BOUNADRAME/csweb-community.git
-cd csweb-community
+En production, clonez le **tag** de la dernière version de votre ligne :
+CSWeb 8.1 ci-dessous, ou <LatestTag line="8.0" /> pour un parc CSPro 8.0.
 
+<CloneCommand line="8.1" />
+
+```bash
 # Copier .env
 cp .env.example .env
 

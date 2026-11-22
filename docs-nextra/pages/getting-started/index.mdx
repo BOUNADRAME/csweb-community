@@ -3,6 +3,8 @@ title: Bienvenue - Getting Started
 description: Introduction à CSWeb Community Platform
 ---
 
+import { CloneCommand, LatestTag } from '../../components'
+
 
 
 # Bienvenue sur CSWeb Community Platform
@@ -96,14 +98,12 @@ Stocke les données breakées des questionnaires :
 
 **Objectif :** Tester CSWeb sur votre laptop
 
-**Setup :**
-```bash
-# -b 8.0.x : version courante, pour CSPro 8.0 et anterieur.
-# Pour un parc CSPro 8.1, utiliser -b 8.1.x (voir "Choisir 8.0 ou 8.1").
-git clone -b 8.0.x https://github.com/BOUNADRAME/csweb-community.git
-cd csweb-community
-docker compose --profile local-postgres up -d
-```
+**Setup :** dernière version de CSWeb 8.1 (Current, pour CSPro 8.1).
+
+<CloneCommand line="8.1" then="docker compose --profile local-postgres up -d" />
+
+Parc encore en CSPro 8.0 : même commande avec le tag <LatestTag line="8.0" />
+(voir [Choisir 8.0 ou 8.1](/getting-started/choose-version)).
 
 **Base breakout :** PostgreSQL local (port 5432)
 

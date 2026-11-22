@@ -56,11 +56,22 @@ export function LatestReleases() {
   )
 }
 
-/** Ready-to-paste clone command for the latest release of a line. */
-export function CloneCommand({ line }: { line: string }) {
+/** Latest version number of a line as plain text, e.g. <LatestVersion line="8.1" /> -> 8.1.15 */
+export function LatestVersion({ line }: { line: string }) {
+  const l = lines[line]
+  return <>{l ? l.version : line}</>
+}
+
+/**
+ * Ready-to-paste clone command for the latest release of a line.
+ * `then`: extra command lines appended after `cd csweb-community`
+ * (they replace the `cat VERSION` check).
+ */
+export function CloneCommand({ line, then }: { line: string; then?: string }) {
   const l = lines[line]
   const ref = l ? l.tag : `${line}.x`
-  const text = `git clone -b ${ref} --depth 1 ${REPO}.git\ncd csweb-community\ncat VERSION        # affiche ${l ? l.version : 'la version installée'}`
+  const tail = then ?? `cat VERSION        # affiche ${l ? l.version : 'la version installée'}`
+  const text = `git clone -b ${ref} --depth 1 ${REPO}.git\ncd csweb-community\n${tail}`
   return (
     <pre style={{ padding: '0.9rem 1rem', borderRadius: 6, overflowX: 'auto', background: 'rgba(127,127,127,0.08)', margin: '0.75rem 0' }}>
       <code>{text}</code>
