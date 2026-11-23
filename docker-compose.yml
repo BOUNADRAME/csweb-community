@@ -26,6 +26,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # 0 = image without the SQL Server driver (no Microsoft repository at build)
+        WITH_SQLSERVER: ${WITH_SQLSERVER:-1}
     container_name: csweb-app
     restart: unless-stopped
 

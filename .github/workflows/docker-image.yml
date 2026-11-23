@@ -1,0 +1,112 @@
+name: Docker image
+
+# Builds the image, checks that it starts, and reports its size and build
+# times as annotations on the run (visible on the workflow page).
+on:
+  push:
+    branches: [ 8.0.x, 8.1.x, 'perf/**' ]
+    paths:
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'docker-compose.yml'
+      - 'docker-entrypoint.sh'
+      - 'composer.lock'
+      - '.github/workflows/docker-image.yml'
+  pull_request:
+    branches: [ 8.0.x, 8.1.x ]
+    paths:
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'docker-entrypoint.sh'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build, start and measure
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Build from scratch (WITH_SQLSERVER=1)
+        run: |
+          start=$(date +%s)
+          docker build --pull -t csweb:ci .
+          echo "FULL=$(( $(date +%s) - start ))" >> "$GITHUB_ENV"
+
+      - name: Rebuild after a code change (build cache)
+        run: |
+          echo "// ci $(date +%s)" >> src/ci-cache-probe.php
+          start=$(date +%s)
+          docker build -t csweb:ci-rebuild .
+          echo "REBUILD=$(( $(date +%s) - start ))" >> "$GITHUB_ENV"
+          git checkout -- . && rm -f src/ci-cache-probe.php
+
+      - name: Build without SQL Server (WITH_SQLSERVER=0)
+        run: |
+          start=$(date +%s)
+          docker build --build-arg WITH_SQLSERVER=0 -t csweb:ci-nosql .
+          echo "NOSQL=$(( $(date +%s) - start ))" >> "$GITHUB_ENV"
+
+      - name: Baseline, previous Dockerfile (for comparison)
+        continue-on-error: true
+        run: |
+          git show HEAD~1:Dockerfile > /tmp/Dockerfile.previous 2>/dev/null || exit 0
+          cmp -s /tmp/Dockerfile.previous Dockerfile && exit 0
+          start=$(date +%s)
+          docker build --no-cache -f /tmp/Dockerfile.previous -t csweb:previous .
+          echo "PREV=$(( $(date +%s) - start ))" >> "$GITHUB_ENV"
+
+      - name: Check the image contents
+        run: |
+          docker run --rm --entrypoint php csweb:ci -m > mods.txt
+          for m in pdo_mysql pdo_pgsql pdo_sqlsrv mysqli pgsql zip "Zend OPcache"; do
+            grep -qi "^$m$" mods.txt || { echo "::error::missing PHP module $m"; exit 1; }
+          done
+          docker run --rm --entrypoint php csweb:ci-nosql -m | grep -qi '^pdo_sqlsrv$' \
+            && { echo "::error::pdo_sqlsrv enabled although WITH_SQLSERVER=0"; exit 1; } || true
+          docker run --rm --entrypoint sh csweb:ci -c '
+            set -e
+            for f in bower_components/jquery/dist/jquery.min.js \
+                     bower_components/datatables/media/js/jquery.dataTables.min.js \
+                     bower_components/datatables/media/js/dataTables.bootstrap4.min.js \
+                     bower_components/datatables/media/css/jquery.dataTables.min.css \
+                     bower_components/datatables/media/css/dataTables.bootstrap4.min.css \
+                     bower_components/datatables/media/images/sort_both.png \
+                     bower_components/bootstrap/dist/css/bootstrap.min.css \
+                     vendor/autoload.php bin/console; do
+              test -s "$f" || { echo "missing $f"; exit 1; }
+            done
+            command -v mysqldump envsubst autossh cron >/dev/null
+            ! command -v node && ! command -v npm && ! command -v gcc
+            php bin/console --version'
+
+      - name: Start the container and open the setup page
+        run: |
+          docker run -d --name csweb-ci -p 8080:80 csweb:ci
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/setup/ || true)
+            [ "$code" = 200 ] && break; sleep 2
+          done
+          echo "setup page: HTTP $code"
+          docker logs --tail 30 csweb-ci
+          [ "$code" = 200 ] || { echo "::error::setup page answered HTTP $code"; exit 1; }
+          curl -fsS -o /dev/null http://localhost:8080/bower_components/jquery/dist/jquery.min.js
+
+      - name: Report
+        if: always()
+        run: |
+          size() { docker image inspect -f '{{.Size}}' "$1" 2>/dev/null | awk '{printf "%.0f MB", $1/1000/1000}'; }
+          echo "::notice title=Image size::with SQL Server $(size csweb:ci) - without $(size csweb:ci-nosql)"
+          echo "::notice title=Build time::from scratch ${FULL:-?}s - after a code change ${REBUILD:-?}s - without SQL Server ${NOSQL:-?}s"
+          [ -n "${PREV:-}" ] && echo "::notice title=Previous Dockerfile::build ${PREV}s - image $(size csweb:previous)"
+          {
+            echo "| Measure | Value |"; echo "|---|---|"
+            echo "| Image (SQL Server) | $(size csweb:ci) |"
+            echo "| Image (no SQL Server) | $(size csweb:ci-nosql) |"
+            echo "| Build from scratch | ${FULL:-?} s |"
+            echo "| Rebuild after a code change | ${REBUILD:-?} s |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          docker history csweb:ci --format '{{.Size}}\t{{.CreatedBy}}' | head -25 || true
