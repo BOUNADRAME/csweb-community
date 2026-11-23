@@ -29,6 +29,45 @@ _Nothing yet._
 
 ---
 
+## [8.1.16] - 2026-11-23 (branch `8.1.x`)
+
+Faster, smaller Docker image. Same application, same `.env`, same data.
+
+### Changed
+
+- **Multi-stage Dockerfile**: PHP extensions, Composer dependencies and
+  front-end files are built in separate stages; the image that runs keeps
+  runtime libraries only (no compiler, no `-dev` packages, no Node.js).
+  Measured in CI (GitHub runner):
+
+  | | Before | 8.1.16 |
+  |---|---|---|
+  | Image size | 389 MB | 212 MB |
+  | Build from scratch | 110 s | 73 s |
+  | Rebuild after a code change | full rebuild | 3 s |
+
+- Build cache: apt cache mounts, Composer reinstalled only when
+  `composer.lock` changes, code copied last; front-end files from the CSWeb 8.1 release archive in a cached stage (downloaded once, not at every build);
+  files copied with `--chown` (no second copy from `chown -R`).
+
+### Added
+
+- **`WITH_SQLSERVER`** in `.env` (default `1`): `0` builds without the SQL
+  Server driver and never contacts packages.microsoft.com, for filtered
+  networks (210 MB image). The driver itself is about 8 MB.
+- CI workflow "Docker image": builds, starts the container, checks the PHP
+  modules and files, and reports size and build times.
+
+### Requires
+
+- Docker with BuildKit (Docker Engine 23 or later, or `docker compose` v2),
+  for the build cache mounts.
+
+After updating: `docker compose up -d --build`, then `docker image prune -f`
+to free the space of the previous image layers.
+
+---
+
 ## [8.1.15] - 2026-11-20 (branch `8.1.x`)
 
 ### Added
