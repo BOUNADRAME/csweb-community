@@ -116,6 +116,28 @@ nano .env
 # IMPORTANT: Vérifier secrets générés
 ```
 
+### Construction de l'image
+
+Depuis 8.0.10 / 8.1.16, l'image est construite en plusieurs étapes : l'image qui
+tourne ne contient que l'exécution (pas de compilateur, pas de Node.js). Mesures CI :
+
+| | Avant | 8.0.10 / 8.1.16 |
+|---|---|---|
+| Taille de l'image | ~390 Mo | ~210 Mo |
+| Build complet | ~110–125 s | ~75 s |
+| Rebuild après une modification du code | build complet | 2–3 s |
+
+Les étapes lourdes (extensions PHP, dépendances Composer, fichiers front-end) sont
+gardées en cache : seuls les fichiers modifiés sont recopiés. Docker 23+ (BuildKit)
+est requis.
+
+**Sans SQL Server** : sur un réseau filtré qui bloque `packages.microsoft.com`,
+ajoutez `WITH_SQLSERVER=0` au `.env` avant le build. Le pilote SQL Server (environ
+8 Mo) n'est alors pas installé ; MySQL et PostgreSQL restent disponibles.
+
+Après une mise à jour, libérez la place des anciennes couches :
+`docker image prune -f`.
+
 ### Étape 3: Démarrer
 
 ```bash
