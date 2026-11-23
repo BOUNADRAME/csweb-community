@@ -68,7 +68,7 @@ jobs:
           docker run --rm --entrypoint php csweb:ci-nosql -m | grep -qi '^pdo_sqlsrv$' \
             && { echo "::error::pdo_sqlsrv enabled although WITH_SQLSERVER=0"; exit 1; } || true
           docker run --rm --entrypoint sh csweb:ci -c '
-            set -e
+            fail=0
             for f in bower_components/jquery/dist/jquery.min.js \
                      bower_components/datatables/media/js/jquery.dataTables.min.js \
                      bower_components/datatables/media/js/dataTables.bootstrap4.min.js \
@@ -77,11 +77,17 @@ jobs:
                      bower_components/datatables/media/images/sort_both.png \
                      bower_components/bootstrap/dist/css/bootstrap.min.css \
                      vendor/autoload.php bin/console; do
-              test -s "$f" || { echo "missing $f"; exit 1; }
+              test -s "$f" || { echo "::error::missing file $f"; fail=1; }
             done
-            command -v mysqldump envsubst autossh cron >/dev/null
-            ! command -v node && ! command -v npm && ! command -v gcc
-            php bin/console --version'
+            for c in mysqldump envsubst autossh cron curl; do
+              command -v "$c" >/dev/null || { echo "::error::missing command $c"; fail=1; }
+            done
+            for c in node npm bower; do
+              command -v "$c" >/dev/null && { echo "::error::$c should not be in the image"; fail=1; }
+            done
+            php -r "require \"vendor/autoload.php\"; exit(class_exists(\"Symfony\\\\Component\\\\HttpKernel\\\\Kernel\") ? 0 : 1);" \
+              || { echo "::error::vendor autoload broken"; fail=1; }
+            exit $fail'
 
       - name: Start the container and open the setup page
         run: |
