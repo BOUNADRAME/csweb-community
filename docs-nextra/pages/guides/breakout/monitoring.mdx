@@ -10,11 +10,17 @@ Menu **Breakout Health** : l'état de chaque dictionnaire en un écran, pensé p
 suivre une enquête avec beaucoup de dictionnaires. Les colonnes Total cases et
 Processed arrivent en 8.0.8 / 8.1.14 ; le statut « Schedule overdue » et le filtre
 « Hide empty » en 8.0.9 / 8.1.15 ; les compteurs calculés en arrière-plan en
-8.0.11 / 8.1.17.
+8.0.11 / 8.1.17 ; les chiffres exacts dans les cartes en 8.0.12 / 8.1.18.
 
 **Cartes du haut** : dictionnaires configurés, cas collectés (CSWeb), cas traités
 (base de breakout), taux global, cas en attente, erreurs. Avec un filtre actif,
 elles portent sur les dictionnaires filtrés.
+
+Les nombres sont exacts jusqu'à 999 999 (`3,798` et `3,772`, avec l'écart de 26
+visible dans Pending) ; au-delà, ils s'affichent en millions avec deux décimales
+(`2.91M`) et le chiffre exact apparaît au survol. Avant 8.0.12 / 8.1.18, les
+cartes arrondissaient à une décimale : 3 798 et 3 772 s'affichaient tous deux
+« 3.8K ».
 
 **Colonnes du tableau**
 
@@ -23,7 +29,7 @@ elles portent sur les dictionnaires filtrés.
 | Total cases | Cas présents dans CSWeb pour ce dictionnaire (nombre exact) |
 | Processed | Cas écrits dans la base de breakout. En orange s'il est inférieur au total ; « — » si le comptage est impossible (non configuré, cible injoignable : la raison s'affiche au survol) |
 | Completion | Processed / Total cases |
-| Pending | Cas restant à traiter |
+| Pending | Cas restant à traiter (nombre exact) |
 | Last run / Next run | Dernier passage, prochain passage. « off » : pas de planning actif. « late 2h » : planning en retard |
 | Exit | Code de sortie du dernier passage (0 = succès) |
 
