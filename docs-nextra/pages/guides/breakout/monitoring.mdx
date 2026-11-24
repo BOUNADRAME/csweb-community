@@ -9,7 +9,8 @@ Surveiller et diagnostiquer les jobs de breakout en temps réel.
 Menu **Breakout Health** : l'état de chaque dictionnaire en un écran, pensé pour
 suivre une enquête avec beaucoup de dictionnaires. Les colonnes Total cases et
 Processed arrivent en 8.0.8 / 8.1.14 ; le statut « Schedule overdue » et le filtre
-« Hide empty » en 8.0.9 / 8.1.15.
+« Hide empty » en 8.0.9 / 8.1.15 ; les compteurs calculés en arrière-plan en
+8.0.11 / 8.1.17.
 
 **Cartes du haut** : dictionnaires configurés, cas collectés (CSWeb), cas traités
 (base de breakout), taux global, cas en attente, erreurs. Avec un filtre actif,
@@ -45,6 +46,46 @@ connexion.
 
 Une base de breakout injoignable ne bloque jamais la page : la connexion est
 coupée après 3 s et le résultat gardé 60 s. **Refresh** refait le test aussitôt.
+
+#### Compteurs calculés en arrière-plan (8.0.11 / 8.1.17)
+
+Compter les cas de chaque dictionnaire, dans CSWeb et dans la base de breakout,
+est la seule opération coûteuse de la page. Depuis 8.0.11 / 8.1.17, ce comptage
+se fait en arrière-plan et la page ne fait que lire le résultat : elle s'ouvre
+instantanément, quel que soit le nombre de dictionnaires.
+
+| 100 dictionnaires, 2,9 millions de cas | Avant | 8.0.11 / 8.1.17 |
+|---|---|---|
+| Ouverture de la page | 10 s | 0,01 s |
+| Filtre (ex. « Pending ») | 11 s | 0,01 s |
+
+Les compteurs sont recalculés :
+
+- toutes les 2 minutes (tâche planifiée incluse dans l'image Docker) ;
+- après chaque breakout planifié, pour le dictionnaire concerné ;
+- au clic sur **Refresh** ;
+- dès qu'un dictionnaire est ajouté ou que sa base de breakout est modifiée.
+
+La barre d'outils indique leur âge (« Counts updated 1m ago ») et affiche
+« Updating counts… » pendant un recalcul ; les chiffres se mettent à jour seuls
+à la fin.
+
+Les compteurs sont stockés dans la table `cspro_breakout_metrics`, créée
+automatiquement : aucune étape de mise à jour n'est nécessaire.
+
+**Hors Docker** (hébergement mutualisé), la tâche `csweb:scheduler-run` déjà
+planifiée recalcule les compteurs quand ils ont plus de 3 minutes. Pour des
+chiffres plus frais, ajoutez :
+
+```bash
+*/2 * * * * php /chemin/vers/csweb/bin/console csweb:breakout-metrics
+```
+
+Lancement manuel, par exemple pour vérifier le temps de calcul :
+
+```bash
+docker compose exec csweb php bin/console csweb:breakout-metrics -v
+```
 
 ### Onglet Breakout Logs
 
