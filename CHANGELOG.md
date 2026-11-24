@@ -29,6 +29,18 @@ _Nothing yet._
 
 ---
 
+## [8.1.19] - 2026-11-24 (branch `8.1.x`)
+
+### Fixed
+
+- **Breakout Health: "Global completion" showed 100.0% with cases still
+  pending.** 3,881 processed out of 3,883 is 99.95 %, which rounded up to
+  "100.0%" next to "Pending 2". Percentages are now rounded down (99.9 %), so
+  100.0 % only ever means nothing is left to process. Same rule for the
+  Completion column and for millions in the cards (2,999,999 shows 2.99M).
+
+---
+
 ## [8.1.18] - 2026-11-24 (branch `8.1.x`)
 
 ### Fixed
