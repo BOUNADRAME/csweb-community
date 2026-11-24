@@ -7,13 +7,16 @@ use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\KernelInterface;
+use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Routing\Annotation\Route;
 
 class DashboardController extends AbstractController implements TokenAuthenticatedController {
 
     public function __construct(
         private BreakoutStatusService $breakoutStatus,
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
+        private KernelInterface $kernel
     ) {
     }
 
@@ -26,11 +29,25 @@ class DashboardController extends AbstractController implements TokenAuthenticat
     #[Route('/breakout/dashboard/summary', name: 'breakoutDashboardSummary', methods: ['GET'])]
     public function summary(Request $request): Response {
         $this->denyAccessUnlessGranted('ROLE_DASHBOARD_ALL');
-        $bypass = $this->wantsFreshData($request);
+        $force  = $this->wantsFreshData($request);
+        $bypass = $force || $this->wantsReload($request);
         try {
+            // Case counts are pre-computed in the background. Refresh (nocache)
+            // or old counters start a recount without making the page wait;
+            // where background processes are not allowed, Refresh counts here.
+            $metrics = $this->breakoutStatus->metricsInfo();
+            $refreshing = false;
+            if ($force || $metrics['stale']) {
+                $refreshing = $this->startBackgroundRefresh($force);
+                if ($force && !$refreshing) {
+                    $this->breakoutStatus->refreshMetrics();
+                    $metrics = $this->breakoutStatus->metricsInfo();
+                }
+            }
             $payload = [
                 'summary'      => $this->breakoutStatus->getGlobalSummary($bypass),
                 'topProblems'  => $this->breakoutStatus->getTopProblems(5, $bypass),
+                'metrics'      => $metrics + ['refreshing' => $refreshing],
                 'generated_at' => gmdate('Y-m-d\TH:i:s\Z'),
                 'cache'        => $bypass ? 'bypass' : 'hit-or-fresh',
             ];
@@ -52,7 +69,7 @@ class DashboardController extends AbstractController implements TokenAuthenticat
             $page  = max(1, (int) $request->query->get('page', 1));
             $limit = min(100, max(1, (int) $request->query->get('limit', 25)));
 
-            $bypass = $this->wantsFreshData($request);
+            $bypass = $this->wantsFreshData($request) || $this->wantsReload($request);
             $payload = $this->breakoutStatus->getStatusList($filters, $page, $limit, $bypass);
             $payload['generated_at'] = date('Y-m-d H:i:s');
             $payload['cache']        = $bypass ? 'bypass' : 'hit-or-fresh';
@@ -118,6 +135,43 @@ class DashboardController extends AbstractController implements TokenAuthenticat
     private function wantsFreshData(Request $request): bool {
         $v = $request->query->get('nocache');
         return $v === '1' || $v === 'true';
+    }
+
+    /** Skip the short response cache without starting a recount. */
+    private function wantsReload(Request $request): bool {
+        return $request->query->get('reload') === '1';
+    }
+
+    /**
+     * Start `csweb:breakout-metrics` in the background. Returns false when
+     * the server does not allow it (exec disabled), true when a recount is
+     * running or was started less than a minute ago.
+     */
+    private function startBackgroundRefresh(bool $force): bool {
+        $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+        if (!function_exists('exec') || in_array('exec', $disabled, true)) {
+            return false;
+        }
+        if (!$this->breakoutStatus->claimRefreshSlot(60) && !$force) {
+            return true;
+        }
+        $php = (new PhpExecutableFinder())->find();
+        $console = realpath($this->kernel->getProjectDir() . '/bin/console');
+        if (!$php || !$console) {
+            return false;
+        }
+        try {
+            exec(sprintf(
+                '%s %s csweb:breakout-metrics --env=%s > /dev/null 2>&1 &',
+                escapeshellarg($php),
+                escapeshellarg($console),
+                escapeshellarg($this->kernel->getEnvironment())
+            ));
+        } catch (\Throwable $e) {
+            $this->logger->warning('Could not start the breakout counters refresh: ' . $e->getMessage());
+            return false;
+        }
+        return true;
     }
 
     /**

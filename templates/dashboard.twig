@@ -79,6 +79,7 @@
         <div class="toolbar-left">
             <h5 class="m-0"><i class="fas fa-tachometer-alt"></i> Breakout Health</h5>
             <span class="updated-hint" id="dash-updated-hint">Last update: —</span>
+            <span class="updated-hint ml-2" id="dash-metrics-hint" style="display:none" title="Case counts are computed in the background every few minutes and after each breakout"></span>
             <span class="badge badge-pill badge-info ml-2" id="kpi-filter-badge" style="display:none" title="The cards show the dictionaries that match the filters"><i class="fas fa-filter"></i> Filtered</span>
         </div>
         <div class="toolbar-right">
@@ -232,7 +233,8 @@
                 // AbortControllers per request type — a new request cancels any
                 // in-flight one to avoid out-of-order rendering when the user
                 // clicks pagination, search, filters or refresh in quick succession.
-                inflight: { summary: null, list: null }
+                inflight: { summary: null, list: null },
+                metricsPoll: null
             };
             // path() output is already URL-safe but we keep these in HTML
             // attributes via string concatenation downstream — escapeHtml the
@@ -337,7 +339,41 @@
                 if (!state.filteredSummary) renderKpis(s, false);
                 renderProblems(p);
                 setUpdated(payload.generated_at);
+                renderMetrics(payload.metrics);
                 setSectionError("summary", null);
+            }
+
+            // Case counts are pre-computed on the server. Say how old they are
+            // and, while a recount runs, reload the page data when it is done.
+            function renderMetrics(m) {
+                var el = document.getElementById("dash-metrics-hint");
+                if (!m || !m.available) { el.style.display = "none"; return; }
+                el.style.display = "";
+                if (m.refreshing) {
+                    el.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Updating counts…';
+                    watchMetrics(m.oldest);
+                } else {
+                    el.innerHTML = '<i class="fas fa-database"></i> Counts updated ' + fmtRelative(m.oldest);
+                }
+            }
+
+            function watchMetrics(since) {
+                if (state.metricsPoll) return;
+                var started = Date.now();
+                state.metricsPoll = setInterval(function () {
+                    if (Date.now() - started > 180000) { clearInterval(state.metricsPoll); state.metricsPoll = null; loadAll({ reload: true }); return; }
+                    fetch(URL_SUMMARY + "?reload=1", { credentials: "same-origin" })
+                        .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+                        .then(function (payload) {
+                            var m = payload.metrics || {};
+                            if (m.oldest && m.oldest !== since) {
+                                clearInterval(state.metricsPoll); state.metricsPoll = null;
+                                renderSummary(payload);
+                                loadList({ reload: true });
+                            }
+                        })
+                        .catch(function () {});
+                }, 4000);
             }
 
             // Community layer: the KPI cards follow the table filters.
@@ -555,12 +591,13 @@
                 if (state.search) qs += "&search=" + encodeURIComponent(state.search);
                 if (state.hideEmpty) qs += "&hide_empty=1";
                 if (opts.nocache) qs += "&nocache=1";
+                else if (opts.reload) qs += "&reload=1";
                 return URL_DICTIONARIES + qs;
             }
 
             function buildSummaryUrl(opts) {
                 opts = opts || {};
-                return URL_SUMMARY + (opts.nocache ? "?nocache=1" : "");
+                return URL_SUMMARY + (opts.nocache ? "?nocache=1" : (opts.reload ? "?reload=1" : ""));
             }
 
             function abortable(slot) {
