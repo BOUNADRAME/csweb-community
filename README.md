@@ -260,6 +260,7 @@ Documentation complete : **https://bounadrame.github.io/csweb-community/**
 - [Portfolio](https://bounadrame.github.io/portfolio/)
 
 **Assietou Diagne** - Developer, ANSD
+- GitHub: [@assieetou](https://github.com/assieetou)
 - Breakout selectif par dictionnaire
 
 **Oumar DIOP** - Census & Survey ICT Expert / International Consultant
