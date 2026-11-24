@@ -257,12 +257,15 @@
                 return isNaN(n) ? "—" : n.toLocaleString("en-US");
             }
 
-            function fmtNumber(n) {
-                if (n == null) return "—";
-                if (typeof n !== "number") n = Number(n);
-                if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + "M";
-                if (n >= 1e3) return (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + "K";
-                return String(n);
+            // KPI cards: exact up to 999,999 so collected and processed never
+            // look equal when they differ (3,798 vs 3,772, not 3.8K vs 3.8K);
+            // millions keep 2 decimals. The exact value is in the tooltip.
+            function setKpi(sel, n) {
+                var el = document.querySelector(sel);
+                if (n == null || n === "" || isNaN(Number(n))) { el.textContent = "—"; el.removeAttribute("title"); return; }
+                n = Number(n);
+                el.textContent = n >= 1e6 ? (n / 1e6).toFixed(2) + "M" : fmtExact(n);
+                el.title = fmtExact(n);
             }
 
             function fmtRelative(iso) {
@@ -383,8 +386,8 @@
                 document.querySelector("#kpi-dicts .kpi-value").textContent = s.dictionaries_configured + " / " + s.dictionaries_total;
                 document.getElementById("kpi-dicts-sub").textContent = filtered ? "configured / matching" : "configured / total";
 
-                document.querySelector("#kpi-collected .kpi-value").textContent = fmtNumber(s.total_cases);
-                document.querySelector("#kpi-processed .kpi-value").textContent = fmtNumber(s.processed_cases);
+                setKpi("#kpi-collected .kpi-value", s.total_cases);
+                setKpi("#kpi-processed .kpi-value", s.processed_cases);
                 var down = Number(s.dicts_unreachable || 0);
                 var procCard = document.getElementById("kpi-processed");
                 procCard.classList.remove("kpi-error");
@@ -403,7 +406,7 @@
                 compCard.classList.remove("kpi-good", "kpi-warn", "kpi-error", "kpi-muted");
                 compCard.classList.add(s.completion_rate == null ? "kpi-muted" : pct >= 95 ? "kpi-good" : pct >= 80 ? "kpi-warn" : "kpi-error");
 
-                document.querySelector("#kpi-pending .kpi-value").textContent = fmtNumber(s.pending_cases);
+                setKpi("#kpi-pending .kpi-value", s.pending_cases);
                 document.getElementById("kpi-pending-sub").textContent = s.dicts_with_pending + " dict(s)";
                 var pendCard = document.getElementById("kpi-pending");
                 pendCard.classList.remove("kpi-good", "kpi-warn", "kpi-error", "kpi-muted");
@@ -438,7 +441,7 @@
 
                 var $pen = document.getElementById("problems-pending");
                 if (!p.pending.length) { $pen.innerHTML = '<span class="empty">Nothing pending.</span>'; }
-                else { $pen.innerHTML = p.pending.map(function (e) { return row(e.dictionary_name, fmtNumber(e.cases_pending) + " cases", e.dictionary_name); }).join(""); }
+                else { $pen.innerHTML = p.pending.map(function (e) { return row(e.dictionary_name, fmtExact(e.cases_pending) + " cases", e.dictionary_name); }).join(""); }
 
                 var $nev = document.getElementById("problems-never");
                 if (!p.neverRun.length) { $nev.innerHTML = '<span class="empty">All have been run.</span>'; }
@@ -485,7 +488,7 @@
                                     : exitNum === -1 ? '<span class="text-info">running</span>'
                                     : exitNum === 0  ? '<span class="text-success">0</span>'
                                     : '<span class="text-danger">' + exitNum + '</span>';
-                        var pending = d.cases_pending == null ? '<span class="text-muted">—</span>' : fmtNumber(d.cases_pending);
+                        var pending = d.cases_pending == null ? '<span class="text-muted">—</span>' : fmtExact(d.cases_pending);
                         // Indicateur d'échec : badge rouge avec le message clair
                         // du dernier job en erreur (au survol). Affiché seulement
                         // si last_error est présent.

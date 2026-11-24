@@ -23,6 +23,18 @@ _Nothing yet._
 
 ---
 
+## [8.0.12] - 2026-11-24 (branch `8.0.x`)
+
+### Fixed
+
+- **Breakout Health: "Cases collected" and "Cases processed" looked equal when
+  they were not.** The cards rounded to one decimal (3,798 and 3,772 both
+  showed "3.8K") while Pending showed 26. Cards now show exact figures up to
+  999,999 and millions with two decimals (2.91M); hovering shows the exact
+  number. Pending in the table and side panel is exact too.
+
+---
+
 ## [8.0.11] - 2026-11-24 (branch `8.0.x`)
 
 Breakout Health opens instantly, whatever the number of dictionaries.
