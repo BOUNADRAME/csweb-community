@@ -45,3 +45,6 @@ logs/
 .env
 .env.local
 .env.*.local
+
+# Screenshots for documentation (never needed in the image)
+screenshots/

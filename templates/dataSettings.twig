@@ -37,24 +37,31 @@
     </style>
 {% endblock %}
 {% block navSettings %}
-    {% if is_granted('ROLE_SETTINGS_ALL') == true %}
+    {% if is_granted('ROLE_LOGIN') and (is_granted('ROLE_SETTINGS') or is_granted('ROLE_SETTINGS.READ'))  %}
         <li id="settings-nav-item" class="nav-item active">
             <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseSettings"
                aria-expanded="true" aria-controls="collapseSettings">
                 <i class="fas fa-fw fa-cog"></i>
                 <span>Settings</span>
             </a>
-            <div id="collapseSettings" class="collapse show" aria-labelledby="headingSettings" data-parent="#side-menu">
+            <div id="collapseSettings" class="collapse show" aria-labelledby="headingTwo" data-parent="#side-menu">
                 <div class="bg-white collapse-inner rounded">
                     <a class="collapse-item active" href="{{ path('dataSettings') }}">
                         <i class="fas fa-fw fa-database"></i>
                         Data</a>
-                    <a class="collapse-item" href="{{ path('backup') }}">
-                        <i class="fas fa-fw fa-hdd"></i>
-                        Backup</a>
-                    <a class="collapse-item" href="{{ path('applicationLogs') }}">
-                        <i class="fas fa-fw fa-clipboard-list"></i>
-                        Logs</a>
+                    {# Community layer: same three entries as backup.twig and
+                       applicationLogs.twig, so the Settings submenu holds the
+                       same items whichever of its pages is open. #}
+                    {% if is_granted('ROLE_BACKUP') or is_granted('ROLE_BACKUP.READ') %}
+                        <a class="collapse-item" href="{{ path('backup') }}">
+                            <i class="fas fa-fw fa-hdd"></i>
+                            Backup</a>
+                    {% endif %}
+                    {% if is_granted('ROLE_LOGS') or is_granted('ROLE_LOGS.READ') %}
+                        <a class="collapse-item" href="{{ path('applicationLogs') }}">
+                            <i class="fas fa-fw fa-clipboard-list"></i>
+                            Logs</a>
+                    {% endif %}
                 </div>
             </div>
         </li>
@@ -71,13 +78,6 @@
                 </div>
                 <!-- /.modal-header -->
                 <div class="modal-body">
-                    {% if connectionMode == 'tunnel' and tunnelInfo %}
-                    <div class="alert alert-info py-2" role="alert">
-                        <i class="fas fa-network-wired"></i>
-                        <strong>Tunnel mode active.</strong>
-                        Hostname / port fields are stored for display, but CSWeb routes the actual connection through the SSH tunnel to <code>{{ tunnelInfo.host }}</code>.
-                    </div>
-                    {% endif %}
                     <form class="form-horizontal" id="add-config-form" role="form">
                         <!-- form-group row -->
                         <div class="form-group row has-feedback">
@@ -121,18 +121,6 @@
                         </div>
                         <!-- form-group row -->
                         <div class="form-group row has-feedback">
-                            <label class="col-sm-4 control-label" for="db-type">Database type</label>
-                            <div class="col-sm-8">
-                                <select class="form-control" name="dbType" id="db-type">
-                                    <option value="postgresql">PostgreSQL</option>
-                                    <option value="mysql">MySQL</option>
-                                    <option value="sqlserver">SQL Server</option>
-                                </select>
-                                <div class="help-block with-errors"></div>
-                            </div>
-                        </div>
-                        <!-- form-group row -->
-                        <div class="form-group row has-feedback">
                             <label class="col-sm-4 control-label" for="host-name">Hostname</label>
                             <div class="col-sm-8">
                                 <input type="text" class="form-control" name="targetHostName" id="host-name" placeholder="Hostname of database server (e.g. localhost)."
@@ -140,11 +128,25 @@
                                 <div class="help-block with-errors"></div>
                             </div>
                         </div>
-                        <!-- form-group row -->
+                        {# Community layer: the breakout target may be PostgreSQL
+                           or SQL Server, on a non-default port. Upstream assumes
+                           MySQL on the default port. #}
                         <div class="form-group row has-feedback">
-                            <label class="col-sm-4 control-label" for="port">Port</label>
+                            <label class="col-sm-4 control-label" for="db-type">Database type</label>
                             <div class="col-sm-8">
-                                <input type="number" class="form-control" name="targetPort" id="port" placeholder="Default: 5432 / 3306 / 1433" title="Leave blank for the engine default: PostgreSQL 5432, MySQL 3306, SQL Server 1433" min="1" max="65535">
+                                <select class="form-control" name="dbType" id="db-type">
+                                    <option value="postgresql" selected>PostgreSQL</option>
+                                    <option value="mysql">MySQL / MariaDB</option>
+                                    <option value="sqlserver">SQL Server</option>
+                                </select>
+                                <div class="help-block with-errors"></div>
+                            </div>
+                        </div>
+                        <div class="form-group row has-feedback">
+                            <label class="col-sm-4 control-label" for="target-port">Port</label>
+                            <div class="col-sm-8">
+                                <input type="number" class="form-control" name="targetPort" id="target-port" min="1" max="65535"
+                                       placeholder="Leave empty for the driver default (5432 / 3306 / 1433).">
                                 <div class="help-block with-errors"></div>
                             </div>
                         </div>
@@ -287,7 +289,7 @@
                             <button type="button" class="btn btn-outline-secondary mr-auto test-connection-btn" data-prefix="" title="Check the connection with these settings, without saving"><i class="fas fa-plug"></i> Test connection</button>
                             <button type="submit" class="btn btn-primary" id="add-button">Add</button>
                             <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
-                        </div>  
+                        </div>
                         <!-- form-group row -->
                     </form>
                     <!-- form-horizontal -->
@@ -310,13 +312,6 @@
                 </div>
                 <!-- /.modal-header -->
                 <div class="modal-body">
-                    {% if connectionMode == 'tunnel' and tunnelInfo %}
-                    <div class="alert alert-info py-2" role="alert">
-                        <i class="fas fa-network-wired"></i>
-                        <strong>Tunnel mode active.</strong>
-                        Hostname / port fields are stored for display, but CSWeb routes the actual connection through the SSH tunnel to <code>{{ tunnelInfo.host }}</code>.
-                    </div>
-                    {% endif %}
                     <form class="form-horizontal" id="edit-config-form" role="form">
                         <div id="view-additional-config-json">
                             <pre id="additional-config-json-text-holder">
@@ -342,18 +337,6 @@
                             </div>
                             <!-- form-group row -->
                             <div class="form-group row has-feedback">
-                                <label class="col-sm-4 control-label" for="edit-db-type">Database type</label>
-                                <div class="col-sm-8">
-                                    <select class="form-control" name="edit-dbType" id="edit-db-type">
-                                        <option value="postgresql">PostgreSQL</option>
-                                        <option value="mysql">MySQL</option>
-                                        <option value="sqlserver">SQL Server</option>
-                                    </select>
-                                    <div class="help-block with-errors"></div>
-                                </div>
-                            </div>
-                            <!-- form-group row -->
-                            <div class="form-group row has-feedback">
                                 <label class="col-sm-4 control-label" for="host-name">Hostname</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control" name="edit-targetHostName" id="edit-host-name" placeholder="Hostname of database server (e.g. localhost)."
@@ -361,11 +344,23 @@
                                     <div class="help-block with-errors"></div>
                                 </div>
                             </div>
-                            <!-- form-group row -->
+                            {# Community layer: see the add-configuration form. #}
                             <div class="form-group row has-feedback">
-                                <label class="col-sm-4 control-label" for="edit-port">Port</label>
+                                <label class="col-sm-4 control-label" for="edit-db-type">Database type</label>
                                 <div class="col-sm-8">
-                                    <input type="number" class="form-control" name="edit-targetPort" id="edit-port" placeholder="Default: 5432 / 3306 / 1433" title="Leave blank for the engine default: PostgreSQL 5432, MySQL 3306, SQL Server 1433" min="1" max="65535">
+                                    <select class="form-control" name="edit-dbType" id="edit-db-type">
+                                        <option value="postgresql">PostgreSQL</option>
+                                        <option value="mysql">MySQL / MariaDB</option>
+                                        <option value="sqlserver">SQL Server</option>
+                                    </select>
+                                    <div class="help-block with-errors"></div>
+                                </div>
+                            </div>
+                            <div class="form-group row has-feedback">
+                                <label class="col-sm-4 control-label" for="edit-target-port">Port</label>
+                                <div class="col-sm-8">
+                                    <input type="number" class="form-control" name="edit-targetPort" id="edit-target-port" min="1" max="65535"
+                                           placeholder="Leave empty for the driver default (5432 / 3306 / 1433).">
                                     <div class="help-block with-errors"></div>
                                 </div>
                             </div>
@@ -508,7 +503,7 @@
                             <button type="submit" class="btn btn-primary" id="update-button">Update</button>
                             <button type="button" class="btn btn-danger" id="edit-cancel-button" data-dismiss="modal">Cancel</button>
                             <button type="button" class="btn btn-primary hidden" id="view-additional-config-cancel-button">Cancel</button>
-                        </div>  
+                        </div>
                         <!-- modal-footer -->
                     </form>
                     <!-- form-horizontal -->
@@ -540,6 +535,7 @@
         </div>
         <!-- /.modal-dialog -->
     </div>
+    {# Community layer: scheduler and breakout-log modals, restored from 8.0.x #}
     <!-- Add Schedule Modal -->
     <div id="add-schedule-modal" class="modal fade" role="dialog" aria-labelledby="add-schedule-modal-label">
         <div class="modal-dialog modal-lg">
@@ -783,26 +779,6 @@
             </div>
         </div>
     </div>
-    <!-- Delete Application Log Confirmation Modal -->
-    <div id="delete-applog-modal" class="modal fade" role="dialog" aria-labelledby="delete-applog-modal-label">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title" id="delete-applog-modal-label"><i class="fas fa-trash-alt text-danger"></i> Delete Application Log</h4>
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p>Are you sure you want to permanently delete this application log file?</p>
-                    <p class="mb-0"><code id="delete-applog-filename"></code></p>
-                    <small class="text-muted" id="delete-applog-meta"></small>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" id="confirm-delete-applog"><i class="fas fa-trash-alt"></i> Delete</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
 {% endblock %}
 {# modal #}
 {% block helps %}
@@ -821,117 +797,102 @@
         <!-- /.col-12 -->
     </div>
     <!-- /.row -->
-
-    {% if connectionMode == 'tunnel' and tunnelInfo %}
-    <div class="row">
-        <div class="col-12">
-            <div class="alert alert-info d-flex align-items-center" role="alert" style="border-left:4px solid #36b9cc;">
-                <i class="fas fa-network-wired fa-lg mr-3"></i>
-                <div class="flex-grow-1">
-                    <strong>Tunnel mode active.</strong>
-                    All breakout connections are routed through SSH to
-                    <code>{{ tunnelInfo.host }}</code> →
-                    <code>{{ tunnelInfo.remoteHost }}:{{ tunnelInfo.remotePort }}</code>
-                    (local port <code>{{ tunnelInfo.localPort }}</code>).
-                    <br>
-                    <small class="text-muted">
-                        The hostname / port you set below are stored as-is for display, but CSWeb rewrites them to <code>127.0.0.1:{{ tunnelInfo.localPort }}</code> at connection time.
-                        Switch back to <code>direct</code> mode in <code>.env</code> (<code>BREAKOUT_CONNECTION_MODE=direct</code>) to disable.
-                    </small>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
+    {% set canManageSettings = is_granted('ROLE_SETTINGS') or is_granted('ROLE_SETTINGS.WRITE') %}
     <div class="row">
         <div class="col-12">
             <div class="card shadow mb-4">
+                {# Community layer: Data Configuration, Breakout Scheduler and Breakout
+                   Logs share one tabbed card, as in 8.0.x. The active tab is kept in
+                   the URL hash (#scheduler, #logs) so a reload or a shared link opens
+                   the same tab. #}
                 <div class="card-header p-0">
                     <ul class="nav nav-tabs card-header-tabs cspro-tabs" role="tablist">
                         <li class="nav-item">
-                            <a class="nav-link active" id="tab-link-data-config" data-toggle="tab" href="#tab-data-config" role="tab" aria-controls="tab-data-config" aria-selected="true">
+                            <a class="nav-link active" id="tab-link-data-config" data-toggle="tab" href="#tab-data-config" data-hash="config" role="tab" aria-controls="tab-data-config" aria-selected="true">
                                 <i class="fas fa-database"></i> Data Configuration
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" id="tab-link-scheduler" data-toggle="tab" href="#tab-scheduler" role="tab" aria-controls="tab-scheduler" aria-selected="false">
-                                <i class="fas fa-clock"></i> Breakout Scheduler
+                            <a class="nav-link" id="tab-link-scheduler" data-toggle="tab" href="#tab-scheduler" data-hash="scheduler" role="tab" aria-controls="tab-scheduler" aria-selected="false">
+                                <i class="fas fa-clock"></i> Breakout Scheduler <span class="badge badge-pill badge-light ml-1 d-none" id="scheduler-count-badge"></span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" id="tab-link-logs" data-toggle="tab" href="#tab-logs" role="tab" aria-controls="tab-logs" aria-selected="false">
+                            <a class="nav-link" id="tab-link-logs" data-toggle="tab" href="#tab-logs" data-hash="logs" role="tab" aria-controls="tab-logs" aria-selected="false">
                                 <i class="fas fa-file-alt"></i> Breakout Logs
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" id="tab-link-applog" data-toggle="tab" href="#tab-applog" role="tab" aria-controls="tab-applog" aria-selected="false">
-                                <i class="fas fa-scroll"></i> Application Log
                             </a>
                         </li>
                     </ul>
                 </div>
                 <div class="card-body p-0">
                     <div class="tab-content">
-                        {# ── Tab 1 : Data Configuration ── #}
                         <div class="tab-pane fade show active" id="tab-data-config" role="tabpanel" aria-labelledby="tab-link-data-config">
                             <div class="cspro-tab-toolbar">
-                                <button type="button" class="btn btn-primary btn-xs" id="configure-dictionary-button">Add Configuration</button>
+                                <button type="button" class="btn btn-primary btn-xs" id="configure-dictionary-button" {% if not canManageSettings %}disabled{% endif %}>Add Configuration</button>
                             </div>
                             <div class="p-3 pt-0">
-                                <div class="table-responsive">
-                                    <table id="data-config-table" class="table table-striped table-bordered table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th class="col-4">Data Label</th>
-                                                <th class="col-auto">Data Name</th>
-                                                {# Community layer: the target engine is per
-                                                   dictionary, so it belongs next to the target. #}
-                                                <th class="col-auto">DB Type</th>
-                                                <th class="col-3">Target Schema</th>
-                                                <th class="col-auto">Total Cases</th>
-                                                <th class="col-auto">Processed Cases</th>
-                                                <th class="col-2">Last Processed Time</th>
-                                                <th class="col-auto">Edit</th>
-                                                <th class="col-auto">Delete</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for dataSetting in dataSettings %}
-                                                {%  if dataSetting.targetSchemaName != "" %}
-                                                    <tr data-id={{ dataSetting.id}} data-dictname={{ dataSetting.name}} data-dictlabel="{{ dataSetting.label}}">
-                                                        <td>
-                                                            {{ dataSetting.label}}
-                                                            {% if dataSetting.lastError is defined and dataSetting.lastError %}
-                                                                <span class="badge badge-danger ml-1" title="{{ dataSetting.lastError }}"><i class="fas fa-exclamation-triangle"></i> Failed</span>
-                                                                <br><small class="text-danger">{{ dataSetting.lastError }}</small>
-                                                            {% endif %}
-                                                        </td>
-                                                        <td>{{ dataSetting.name}}</td>
-                                                        {# Community layer: engine badge. dbType is null on
-                                                           rows created before the column existed, so fall
-                                                           back to the default DataSettings::resolveDriver() uses. #}
-                                                        {% set dbType = dataSetting.dbType|default('postgresql')|lower %}
-                                                        <td>
-                                                            {% if dbType == 'mysql' %}
-                                                                <span class="db-engine db-engine-mysql" title="MySQL / MariaDB"><i class="fas fa-database"></i>MySQL</span>
-                                                            {% elseif dbType == 'sqlserver' %}
-                                                                <span class="db-engine db-engine-sqlserver" title="Microsoft SQL Server"><i class="fas fa-server"></i>SQL Server</span>
-                                                            {% else %}
-                                                                <span class="db-engine db-engine-postgresql" title="PostgreSQL"><i class="fas fa-database"></i>PostgreSQL</span>
-                                                            {% endif %}
-                                                        </td>
-                                                        <td>{{ dataSetting.targetHostName}}{% if dataSetting.targetPort %}:{{ dataSetting.targetPort }}{% endif %} | {{ dataSetting.targetSchemaName}}</td>
-                                                        <td>{{ dataSetting.totalCases}}</td>
-                                                        <td>{{ dataSetting.processedCases}}</td>
-                                                        <td data-order="{{ dataSetting.lastProcessedTime }}" class="js-datetime" data-datetime="{{ dataSetting.lastProcessedTime }}">{{ dataSetting.lastProcessedTime}}</td>
-                                                        <td style="text-align: center"><button type="button" class="btn btn-sm btn-outline-secondary edit-button-class" title="Edit" aria-label="Edit"><i class="fas fa-pencil-alt"></i></button></td>
-                                                        <td style="text-align: center"><button type="button" class="btn btn-sm btn-outline-danger delete-button-class" title="Delete" aria-label="Delete"><i class="fas fa-trash-alt"></i></button></td>
-                                                    </tr>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
+                <div class="table-responsive">
+                    <table id="data-config-table"  class="table table-striped table-bordered table-hover">
+                        <thead>
+                            <tr>
+                                <th class="col-4">Data Label</th>
+                                <th class="col-auto">Data Name</th>
+                                {# Community layer: the target engine is per
+                                   dictionary, so it belongs next to the target. #}
+                                <th class="col-auto">DB Type</th>
+                                <th class="col-3">Target Schema</th>
+                                <th class="col-auto">Total Cases</th>
+                                <th class="col-auto">Processed Cases</th>
+                                <th class="col-2">Last Processed Time</th>
+                                <th class="col-auto">Edit</th>
+                                <th class="col-auto">Delete</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dataSetting in dataSettings %}
+                                {%  if dataSetting.targetSchemaName != "" %}
+                                    <tr data-id={{ dataSetting.id}} data-dictname={{ dataSetting.name}} data-dictlabel="{{ dataSetting.label}}">
+                                        <td>{{ dataSetting.label}}</td>
+                                        <td>{{ dataSetting.name}}</td>
+                                        {# Community layer: engine badge. dbType is
+                                           null on rows created before the column
+                                           existed, so fall back to the same default
+                                           DataSettings::resolveDriver() uses. #}
+                                        {% set dbType = dataSetting.dbType|default('postgresql')|lower %}
+                                        <td>
+                                            {% if dbType == 'mysql' %}
+                                                <span class="db-engine db-engine-mysql" title="MySQL / MariaDB"><i class="fas fa-database"></i>MySQL</span>
+                                            {% elseif dbType == 'sqlserver' %}
+                                                <span class="db-engine db-engine-sqlserver" title="Microsoft SQL Server"><i class="fas fa-server"></i>SQL Server</span>
+                                            {% else %}
+                                                <span class="db-engine db-engine-postgresql" title="PostgreSQL"><i class="fas fa-database"></i>PostgreSQL</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ dataSetting.targetHostName}}{% if dataSetting.targetPort %}:{{ dataSetting.targetPort }}{% endif %} | {{ dataSetting.targetSchemaName}}</td>
+                                        <td>{{ dataSetting.totalCases}}</td>
+                                        <td>{{ dataSetting.processedCases}}</td>
+                                        <td data-order="{{ dataSetting.lastProcessedTime }}" class="js-datetime" data-datetime="{{ dataSetting.lastProcessedTime }}">{{ dataSetting.lastProcessedTime}}</td>
+                                        <td style="text-align: center">
+                                            {% if canManageSettings %}
+                                                <button type="button" class="btn btn-sm btn-outline-secondary edit-button-class" title="Edit" aria-label="Edit"><i class="fas fa-pencil-alt"></i></button>
+                                            {% else %}
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Edit" aria-label="Edit"><i class="fas fa-pencil-alt"></i></button>
+                                            {% endif %}
+                                        </td>
+                                        <td style="text-align: center">
+                                            {% if canManageSettings %}
+                                                <button type="button" class="btn btn-sm btn-outline-danger delete-button-class" title="Delete" aria-label="Delete"><i class="fas fa-trash-alt"></i></button>
+                                            {% else %}
+                                                <button type="button" class="btn btn-sm btn-outline-danger" disabled title="Delete" aria-label="Delete"><i class="fas fa-trash-alt"></i></button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+
+                        </tbody>
+                    </table>
+                </div>
                             </div>
                         </div>
                         {# ── Tab 2 : Breakout Scheduler ── #}
@@ -1004,39 +965,14 @@
                                 </div>
                             </div>
                         </div>
-                        {# ── Tab 4 : Application Log ── #}
-                        <div class="tab-pane fade" id="tab-applog" role="tabpanel" aria-labelledby="tab-link-applog">
-                            <div class="cspro-tab-toolbar">
-                                <button type="button" class="btn btn-secondary btn-xs mr-2" id="refresh-applog-btn"><i class="fas fa-sync-alt"></i> Refresh</button>
-                                <button type="button" class="btn btn-danger btn-xs mr-2" id="delete-applog-btn" style="display:none"><i class="fas fa-trash-alt"></i> Delete</button>
-                                <button type="button" class="btn btn-primary btn-xs" id="load-applog-btn" style="display:none"><i class="fas fa-eye"></i> View Full Log</button>
-                            </div>
-                            <div class="p-3 pt-0">
-                                <div id="applog-info" class="text-center text-muted py-4">
-                                    <i class="fas fa-spinner fa-spin"></i> Checking log file…
-                                </div>
-                                <div id="applog-viewer" style="display:none">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <div>
-                                            <h6 class="m-0 d-inline"><i class="fas fa-scroll text-primary"></i> <span id="applog-filename"></span></h6>
-                                            <small class="text-muted ml-2" id="applog-meta"></small>
-                                        </div>
-                                        <div id="applog-tools" style="display:none">
-                                            <button type="button" class="btn btn-outline-secondary btn-xs mr-1" id="toggle-applog-wrap" title="Toggle word wrap"><i class="fas fa-align-left"></i> Wrap</button>
-                                            <button type="button" class="btn btn-outline-secondary btn-xs" id="copy-applog-btn" title="Copy to clipboard"><i class="fas fa-copy"></i> Copy</button>
-                                        </div>
-                                    </div>
-                                    <div class="cspro-log-wrapper" id="applog-wrapper" style="max-height:500px; display:none">
-                                        <table class="cspro-log-table"><tbody id="applog-body"></tbody></table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
+            <!-- /.panel -->
         </div>
+        <!-- /.col-12 -->
     </div>
+    <!-- /.row -->
 {% endblock %}
 {# content #}
 {% block scripts %}
@@ -1288,7 +1224,7 @@
             $(document).ready(function () {
                 // Spinner functionality
                 var $body = $("body");
-                
+
                 $(document).ajaxStart(function (event, request, settings) {
                     $body.addClass("loading");
                 });
@@ -1305,8 +1241,9 @@
                 $('#data-config-table').DataTable({
                 columnDefs: [{
                     orderable: false,
-                    // Community layer: Edit and Delete, counted from the end so the
-                    // indexes survive the DB Type column and the next column change.
+                    // Community layer: Edit and Delete moved from 6,7 to 7,8
+                    // when the DB Type column was inserted. Counted from the
+                    // end so the indexes survive the next column change.
                     targets: [-1, -2]
                     }]
                 });
@@ -1425,7 +1362,7 @@
                     buttonList.setAttribute('class', 'text-center');
                     var clearButton = document.createElement('button');
                     clearButton.setAttribute('type', 'button');
-                    clearButton.setAttribute('class', 'btn btn-default btn-xs clear close-dropdown');
+                    clearButton.setAttribute('class', 'btn btn-default btn-sm clear close-dropdown');
                     clearButton.setAttribute('value', 'Clear');
                     clearButton.appendChild(document.createTextNode('clear'));
                     buttonList.appendChild(clearButton);
@@ -1660,7 +1597,7 @@
                 else {
                     $('#basemap-key').removeAttr('required');
                 }
-                
+
             }
             else {
                 document.getElementById('map-options').classList.add('hidden');
@@ -1765,7 +1702,7 @@
                 clearFormGroupError($("#map-enable").closest('.form-group'));
                 $("#add-config-modal").modal("show");
             });
-                
+
             function styleDifferences(a, b) {
                 var as = getComputedStyle(a, null);
                 var bs = getComputedStyle(b, null);
@@ -1816,6 +1753,8 @@
                     var $modal = $("#add-config-modal");
                     var dataSetting = {};
                     // get the data from your modal
+                    // Community layer: "select" is included alongside "input" so
+                    // the Database type dropdown is collected like the rest.
                     $modal.find("input, select").each(function () {
                         if ($(this).attr("name"))
                             dataSetting[$(this).attr("name")] = $(this).val();
@@ -1953,7 +1892,7 @@
                     initBootstrapValidator: initBootstrapValidator
                 };
             })();
-            //Edit config functionality 
+            //Edit config functionality
             $('#data-config-table tbody').on('click', '.edit-button-class', function (event) {
                 var tr = $(event.target).closest("tr");
                 var dataSettings
@@ -1966,8 +1905,11 @@
                     if (dataSettings[i].id == dictionaryId) {
                         console.log(dataSettings[i]);
                         $("#edit-host-name").val(dataSettings[i].targetHostName);
-                        $("#edit-port").val(dataSettings[i].targetPort || "");
+                        // Community layer: prefill the per-dictionary target
+                        // engine and port. Falls back to postgresql / empty for
+                        // a row created before these columns existed.
                         $("#edit-db-type").val(dataSettings[i].dbType || "postgresql");
+                        $("#edit-target-port").val(dataSettings[i].targetPort || "");
                         $("#edit-target-db-name").val(dataSettings[i].targetSchemaName);
                         $("#edit-source-data").val(dataSettings[i].label);
                         $("#edit-configId").val(dictionaryId);
@@ -2049,6 +1991,8 @@
                     var $modal = $("#edit-config-modal");
                     var dataSetting = {};
                     // get the data from your modal
+                    // Community layer: "select" is included alongside "input" so
+                    // the Database type dropdown is collected like the rest.
                     $modal.find('input, select').each(function () {
                         if ($(this).attr("name")) {
                             var attribName = $(this).attr("name");
@@ -2163,6 +2107,57 @@
                 };
             })();
 
+            // Delete config functionality
+            (function () {
+                var tr;
+                $('#data-config-table tbody').on('click', '.delete-button-class', function (event) {
+                    tr = $(event.target).closest("tr");
+                    var dictionaryLabel = $(tr).data("dictlabel");
+                    var dictionaryName = $(tr).data("dictname");
+                    var modalText = 'Are you sure you want to delete the configuration for "' + dictionaryLabel + ' (' + dictionaryName + ')"? This will delete the associated processed cases.';
+                    $("#delete-config-modal").find('.modal-body').text(modalText);
+                    $("#delete-config-modal").modal("show");
+                });
+                $("#delete-button").on("click", function (event) {
+                    event.preventDefault();
+                    $("#delete-config-modal").modal("hide");
+                    // get the dictionary id  of the row
+                    var dictionaryId = $(tr).data("id");
+                    $.ajax({
+                        type: "DELETE",
+                        url: "{{ path('dataSettings') }}/" + dictionaryId,
+                        dataType: "json",
+                        success: function (response) {
+                            if (response.code === 200) {
+                                var dictionaryLabel = $(tr).data("dictlabel");
+                                var dictionaryName = $(tr).data("dictname");
+                                var alertMsg = 'Configuration "' + dictionaryLabel + ' (' + dictionaryName + ')" deleted.'
+                                    + (response.warning ? ' ' + response.warning : '');
+                                sessionStorage.setItem("add-config-success", alertMsg);
+                                location.reload();
+                            } else {
+                                showAlert(response.description, "alert alert-danger");
+                            }
+                        },
+                        error: function (response) {
+                            if (response.status === 401 || response.status === 405) {
+                                window.location.href = "{{ path('logout') }}";
+                                return;
+                            }
+                            // Never fail silently: say what the server answered.
+                            var msg = (response.responseJSON && response.responseJSON.description)
+                                ? response.responseJSON.description
+                                : "Failed deleting configuration (HTTP " + response.status + ").";
+                            showAlert(msg, "alert alert-danger");
+                        }
+                    });
+                });
+            })();
+
+
+
+    
+            // Community layer: restored from 8.0.x
             // Scheduler functionality
             (function () {
                 var deleteScheduleId = null;
@@ -2175,6 +2170,9 @@
                         success: function (data) {
                             var tbody = $("#scheduler-table-body");
                             tbody.empty();
+                            // Community layer: active-schedule count on the tab.
+                            var activeCount = (data.schedules || []).filter(function (s) { return s.enabled == 1; }).length;
+                            $("#scheduler-count-badge").text(activeCount).toggleClass("d-none", activeCount === 0);
                             if (data.schedules && data.schedules.length > 0) {
                                 data.schedules.forEach(function (s) {
                                     var statusBadge = s.enabled == 1
@@ -2426,53 +2424,6 @@
                         }
                     });
                     deleteScheduleId = null;
-                });
-            })();
-
-            // Delete config functionality
-            (function () {
-                var tr;
-                $('#data-config-table tbody').on('click', '.delete-button-class', function (event) {
-                    tr = $(event.target).closest("tr");
-                    var dictionaryLabel = $(tr).data("dictlabel");
-                    var dictionaryName = $(tr).data("dictname");
-                    var modalText = 'Are you sure you want to delete the configuration for "' + dictionaryLabel + ' (' + dictionaryName + ')"? This will delete the associated processed cases.';
-                    $("#delete-config-modal").find('.modal-body').text(modalText);
-                    $("#delete-config-modal").modal("show");
-                });
-                $("#delete-button").on("click", function (event) {
-                    event.preventDefault();
-                    $("#delete-config-modal").modal("hide");
-                    // get the dictionary id  of the row
-                    var dictionaryId = $(tr).data("id");
-                    $.ajax({
-                        type: "DELETE",
-                        url: "{{ path('dataSettings') }}/" + dictionaryId,
-                        dataType: "json",
-                        success: function (response) {
-                            if (response.code === 200) {
-                                var dictionaryLabel = $(tr).data("dictlabel");
-                                var dictionaryName = $(tr).data("dictname");
-                                var alertMsg = 'Configuration "' + dictionaryLabel + ' (' + dictionaryName + ')" deleted.'
-                                    + (response.warning ? ' ' + response.warning : '');
-                                sessionStorage.setItem("add-config-success", alertMsg);
-                                location.reload();
-                            } else {
-                                showAlert(response.description, "alert alert-danger");
-                            }
-                        },
-                        error: function (response) {
-                            if (response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                                return;
-                            }
-                            // Never fail silently: say what the server answered.
-                            var msg = (response.responseJSON && response.responseJSON.description)
-                                ? response.responseJSON.description
-                                : "Failed deleting configuration (HTTP " + response.status + ").";
-                            showAlert(msg, "alert alert-danger");
-                        }
-                    });
                 });
             })();
 
@@ -2929,214 +2880,27 @@
                     });
                 });
             })();
-
-            // =================================================================
-            // Application Log (ui.log)
-            // =================================================================
+    
+            // Community layer: keep the active Data Settings tab in the URL hash
+            // (#scheduler, #logs) and re-measure DataTables shown in a tab that
+            // was hidden when they were drawn.
             (function () {
-                var appLogFilename = "";
-                var appLogLines = 0;
-                var appLogSize = 0;
-                var appLogRawContent = "";
-
-                function formatSize(b) {
-                    if (b < 1024) return b + ' B';
-                    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
-                    return (b / 1048576).toFixed(1) + ' MB';
+                var $tabs = $('.cspro-tabs a[data-toggle="tab"]');
+                var fromHash = $tabs.filter('[data-hash="' + window.location.hash.replace('#', '') + '"]');
+                if (fromHash.length) {
+                    fromHash.tab('show');
                 }
-
-                function escapeHtml(str) {
-                    var div = document.createElement("div");
-                    div.appendChild(document.createTextNode(str));
-                    return div.innerHTML;
-                }
-
-                function loadAppLogInfo() {
-                    $("#applog-info").html('<i class="fas fa-spinner fa-spin"></i> Checking log file…').show();
-                    $("#applog-viewer").hide();
-                    $("#applog-wrapper").hide();
-                    $("#load-applog-btn").hide();
-                    $("#delete-applog-btn").hide();
-                    $.ajax({
-                        type: "GET",
-                        url: "{{ path('appLogInfo') }}",
-                        dataType: "json",
-                        global: false,
-                        success: function (data) {
-                            if (!data.exists) {
-                                $("#applog-info").html('<i class="fas fa-exclamation-circle text-warning"></i> No application log file found (ui.log).').show();
-                                return;
-                            }
-                            appLogFilename = data.filename;
-                            appLogLines = data.lines;
-                            appLogSize = data.size;
-                            $("#applog-info").hide();
-                            $("#applog-filename").text(data.filename);
-                            $("#applog-meta").text(data.lines + " lines — " + formatSize(data.size) + " — modified " + data.modified);
-                            $("#applog-viewer").show();
-                            $("#load-applog-btn").show();
-                            $("#delete-applog-btn").show();
-                        },
-                        error: function (response) {
-                            if (response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            } else {
-                                $("#applog-info").html('<i class="fas fa-exclamation-triangle text-danger"></i> Failed to check log file.').show();
-                            }
-                        }
-                    });
-                }
-
-                function loadAppLogContent() {
-                    var $btn = $("#load-applog-btn");
-                    $btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Loading…');
-                    $.ajax({
-                        type: "GET",
-                        url: "{{ path('appLogInfo') }}?full=1",
-                        dataType: "json",
-                        global: false,
-                        success: function (data) {
-                            if (!data.content) {
-                                $("#applog-wrapper").show();
-                                $("#applog-body").html('<tr><td class="text-center text-muted p-4">Log file is empty.</td></tr>');
-                                $btn.hide();
-                                return;
-                            }
-                            appLogRawContent = data.content;
-                            var lines = data.content.split("\n");
-                            var html = "";
-                            for (var i = 0; i < lines.length; i++) {
-                                html += '<tr><td class="cspro-log-line-num">' + (i + 1) +
-                                    '</td><td class="cspro-log-line-text"><pre>' +
-                                    escapeHtml(lines[i]) + '</pre></td></tr>';
-                            }
-                            $("#applog-body").html(html);
-                            $("#applog-wrapper").show();
-                            $("#applog-tools").show();
-                            $btn.hide();
-                            // Scroll to bottom
-                            var el = $("#applog-wrapper")[0];
-                            el.scrollTop = el.scrollHeight;
-                        },
-                        error: function (response) {
-                            if (response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            } else {
-                                $("#applog-wrapper").show();
-                                $("#applog-body").html('<tr><td class="text-center text-danger p-4">Failed to load log content.</td></tr>');
-                            }
-                        },
-                        complete: function () {
-                            $btn.prop("disabled", false).html('<i class="fas fa-eye"></i> View Full Log');
-                        }
-                    });
-                }
-
-                // Load info when tab is shown
-                $('a[data-toggle="tab"][href="#tab-applog"]').on("shown.bs.tab", function () {
-                    loadAppLogInfo();
-                });
-
-                $("#refresh-applog-btn").on("click", function () {
-                    $("#applog-wrapper").hide();
-                    $("#applog-tools").hide();
-                    $("#applog-body").empty();
-                    appLogRawContent = "";
-                    loadAppLogInfo();
-                });
-
-                $("#load-applog-btn").on("click", function () {
-                    loadAppLogContent();
-                });
-
-                // Toggle word wrap
-                $("#toggle-applog-wrap").on("click", function () {
-                    var $wrapper = $("#applog-wrapper");
-                    $wrapper.toggleClass("cspro-log-wrap");
-                    var isWrapped = $wrapper.hasClass("cspro-log-wrap");
-                    $(this).toggleClass("btn-outline-secondary", !isWrapped)
-                           .toggleClass("btn-secondary", isWrapped);
-                });
-
-                // Copy log content to clipboard
-                $("#copy-applog-btn").on("click", function () {
-                    var $btn = $(this);
-                    if (!appLogRawContent) return;
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(appLogRawContent).then(function () {
-                            $btn.html('<i class="fas fa-check"></i> Copied!');
-                            setTimeout(function () { $btn.html('<i class="fas fa-copy"></i> Copy'); }, 2000);
-                        });
-                    } else {
-                        var ta = document.createElement("textarea");
-                        ta.value = appLogRawContent;
-                        ta.style.position = "fixed";
-                        ta.style.opacity = "0";
-                        document.body.appendChild(ta);
-                        ta.select();
-                        document.execCommand("copy");
-                        document.body.removeChild(ta);
-                        $btn.html('<i class="fas fa-check"></i> Copied!');
-                        setTimeout(function () { $btn.html('<i class="fas fa-copy"></i> Copy'); }, 2000);
+                $tabs.on('shown.bs.tab', function (e) {
+                    var hash = $(e.target).data('hash');
+                    if (history.replaceState) {
+                        history.replaceState(null, '', hash === 'config' ? window.location.pathname : '#' + hash);
                     }
-                });
-
-                // Delete application log
-                $("#delete-applog-btn").on("click", function () {
-                    $("#delete-applog-filename").text(appLogFilename);
-                    $("#delete-applog-meta").text(appLogLines + " lines — " + formatSize(appLogSize));
-                    $("#delete-applog-modal").modal("show");
-                });
-
-                $("#confirm-delete-applog").on("click", function () {
-                    var $btn = $(this);
-                    $btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Deleting…');
-                    $.ajax({
-                        type: "DELETE",
-                        url: "{{ path('appLogDelete') }}",
-                        dataType: "json",
-                        global: false,
-                        success: function (data) {
-                            $("#delete-applog-modal").modal("hide");
-                            showAlert(data.description || "Application log deleted.", "alert alert-success");
-                            $("#applog-wrapper").hide();
-                            $("#applog-body").empty();
-                            loadAppLogInfo();
-                        },
-                        error: function (response) {
-                            $("#delete-applog-modal").modal("hide");
-                            if (response.status === 401 || response.status === 405) {
-                                window.location.href = "{{ path('logout') }}";
-                            } else {
-                                var msg = "Failed to delete application log.";
-                                try { msg = JSON.parse(response.responseText).description || msg; } catch (e) {}
-                                showAlert(msg, "alert alert-danger");
-                            }
-                        },
-                        complete: function () {
-                            $btn.prop("disabled", false).html('<i class="fas fa-trash-alt"></i> Delete');
-                        }
-                    });
+                    if ($.fn.dataTable) {
+                        $.fn.dataTable.tables({visible: true, api: true}).columns.adjust();
+                    }
                 });
             })();
     
-            // Community layer: the active tab follows the URL hash (#scheduler,
-            // #logs, #applog), so a reload or a shared link opens the same tab.
-            (function () {
-                var tabs = {config: "#tab-link-data-config", scheduler: "#tab-link-scheduler", logs: "#tab-link-logs", applog: "#tab-link-applog"};
-                var open = function () {
-                    var key = (window.location.hash || "").replace("#", "");
-                    if (tabs[key] && $(tabs[key]).length) { $(tabs[key]).tab("show"); }
-                };
-                open();
-                $(window).on("hashchange", open);
-                $.each(tabs, function (key, sel) {
-                    $(sel).on("shown.bs.tab", function () {
-                        if (history.replaceState) { history.replaceState(null, "", key === "config" ? window.location.pathname : "#" + key); }
-                    });
-                });
-            })();
-
             // Community layer: "Test connection" in Add / Edit Configuration.
             (function () {
                 function resultBox($btn) {
@@ -3152,7 +2916,7 @@
                     var $box = resultBox($btn);
                     var payload = {
                         targetHostName: $("#" + p + "host-name").val(),
-                        targetPort: $("#" + p + "port").val(),
+                        targetPort: $("#" + p + "target-port").val(),
                         dbType: $("#" + p + "db-type").val(),
                         targetSchemaName: $("#" + p + "target-db-name").val(),
                         dbUserName: $("#" + p + "db-user-name").val(),

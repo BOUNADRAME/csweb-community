@@ -3,13 +3,32 @@
 <div align="center">
 
 ![CSWeb Logo](https://img.shields.io/badge/CSWeb-Community-blue?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-8.0.12-green?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-8.1.18-green?style=for-the-badge)
+![CSWeb](https://img.shields.io/badge/CSWeb-8.1.2-blue?style=for-the-badge)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-Nextra-brightgreen?style=for-the-badge)](https://bounadrame.github.io/csweb-community/)
 [![GitHub Issues](https://img.shields.io/github/issues/BOUNADRAME/csweb-community?style=for-the-badge)](https://github.com/BOUNADRAME/csweb-community/issues)
 [![GitHub Stars](https://img.shields.io/github/stars/BOUNADRAME/csweb-community?style=for-the-badge)](https://github.com/BOUNADRAME/csweb-community/stargazers)
 
 **Democratiser CSWeb pour l'Afrique** - Setup en 5 minutes au lieu de 2-3 jours
+
+> ### Quelle version installer ?
+>
+> | Votre parc CSPro | Branche | Statut |
+> |---|---|---|
+> | CSPro 8.1 | `8.1.x` | **Current** — recommandee |
+> | CSPro 8.0 et anterieur | `8.0.x` | **LTS** — maintenue |
+>
+> **CSPro 8.0 et anterieur ne peuvent pas se synchroniser avec CSWeb 8.1** :
+> CSPro et CSWeb doivent etre montes de version ensemble. Verifiez la version
+> installee sur vos tablettes **avant** de choisir.
+>
+> La ligne 8.1 couvre CSPro 8.1 : portage complet, breakout valide sur MySQL et
+> PostgreSQL, installation et synchronisation validees sur hebergement mutualise
+> cPanel (PHP 8.3, MariaDB 10.6). Paquet pret a deposer et guide :
+> `tools/build-cpanel-package.sh` et `tools/cpanel/INSTALL-cPanel.pdf`.
+>
+> Details : [Choisir 8.0 ou 8.1](https://bounadrame.github.io/csweb-community/getting-started/choose-version)
 
 [Documentation](https://bounadrame.github.io/csweb-community/) | [Issues](https://github.com/BOUNADRAME/csweb-community/issues)
 
@@ -36,15 +55,16 @@
 ## Quick Start
 
 ```bash
-# 1. Cloner la ligne 8.0.x (CSPro 8.0)
-git clone -b 8.0.x https://github.com/BOUNADRAME/csweb-community.git
+# 1. Cloner le projet
+# Ligne 8.1 — pour CSPro 8.1
+git clone -b 8.1.x https://github.com/BOUNADRAME/csweb-community.git
+# Ligne 8.0 (LTS) — pour CSPro 8.0 et anterieur
+# git clone -b 8.0.x https://github.com/BOUNADRAME/csweb-community.git
 cd csweb-community
 
 # 2. Configurer l'environnement
 cp .env.example .env
-# Editer .env : renseigner les mots de passe (MYSQL_PASSWORD, MYSQL_ROOT_PASSWORD,
-# POSTGRES_PASSWORD, BREAKOUT_WEBHOOK_TOKEN) et choisir BREAKOUT_DB_TYPE.
-# Grande enquete ou recensement : voir la section PERFORMANCE TUNING du .env
+# Editer .env : renseigner les mots de passe et choisir BREAKOUT_DB_TYPE
 
 # 3. Lancer (voir section "Modes de deploiement" ci-dessous)
 docker compose --profile local-postgres up -d
@@ -236,7 +256,7 @@ docker exec csweb-app php bin/console csweb:check-config --test-connections
 
 ## Stack Technique
 
-- **Backend :** Symfony 5.4 LTS, PHP 8.1+
+- **Backend :** Symfony 6.4 LTS, PHP 8.1+
 - **Databases :** MySQL 8.0 (metadata) + PostgreSQL 16 / MySQL 8.0 / SQL Server 2022 (breakout)
 - **Frontend :** Twig, jQuery, Bootstrap 4, DataTables
 - **DevOps :** Docker + Docker Compose

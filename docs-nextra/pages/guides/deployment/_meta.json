@@ -3,6 +3,7 @@
   "docker-dev": "Docker Développement",
   "docker-prod": "Docker Production",
   "performance": "Performance Tuning",
+  "sizing": "Dimensionnement",
   "remote": "Déploiement Remote",
   "backup": "Backup & Restore",
   "vanilla-migration": "Migration depuis Vanilla"

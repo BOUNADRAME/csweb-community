@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\CSPro;
 
-use AppBundle\CSPro\VectorClock;
+use App\CSPro\VectorClock;
 use PHPUnit\Framework\TestCase;
 
 class VectorClockTest extends TestCase

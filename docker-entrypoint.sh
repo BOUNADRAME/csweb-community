@@ -24,7 +24,7 @@ chmod -R 775 /var/www/html/files
 # ============================================================================
 # Persist config.php across container recreations
 # ============================================================================
-CONFIG_SRC="/var/www/html/src/AppBundle/config.php"
+CONFIG_SRC="/var/www/html/src/config.php"
 CONFIG_PERSIST="/var/www/html/config-persist/config.php"
 
 mkdir -p /var/www/html/config-persist
@@ -45,7 +45,7 @@ fi
 chown -R www-data:www-data /var/www/html/config-persist
 
 # Clear Symfony cache if config.php exists (app is configured)
-if [ -f /var/www/html/src/AppBundle/config.php ]; then
+if [ -f /var/www/html/src/config.php ]; then
     # Wait for the metadata database: when both containers start together
     # (first boot, update, server reboot) MySQL needs a few seconds, and the
     # one-time checks below used to fail with "Connection refused".
@@ -53,7 +53,7 @@ if [ -f /var/www/html/src/AppBundle/config.php ]; then
     db_ready=0
     for i in $(seq 1 60); do
         if php -r "
-            require '/var/www/html/src/AppBundle/config.php';
+            require '/var/www/html/src/config.php';
             \$port = defined('DBPORT') ? DBPORT : 3306;
             try { new PDO('mysql:host=' . DBHOST . ';dbname=' . DBNAME . ';port=' . \$port, DBUSER, DBPASS, [PDO::ATTR_TIMEOUT => 2]); exit(0); }
             catch (Throwable \$e) { exit(1); }
@@ -76,40 +76,21 @@ if [ -f /var/www/html/src/AppBundle/config.php ]; then
     chmod -R 777 /var/www/html/var
     echo "[CSWeb] Cache cleared successfully."
 
-    # Remove UNIQUE constraint on schema_name (required for multi-dictionary breakout)
-    echo "[CSWeb] Checking schema_name constraint..."
-    php -r "
-        require '/var/www/html/src/AppBundle/config.php';
-        try {
-            \$port = defined('DBPORT') ? DBPORT : '3306';
-            \$pdo = new PDO('mysql:host=' . DBHOST . ';dbname=' . DBNAME . ';port=' . \$port, DBUSER, DBPASS);
-            \$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            \$result = \$pdo->query(\"SHOW INDEX FROM cspro_dictionaries_schema WHERE Key_name = 'schema_name'\");
-            if (\$result->rowCount() > 0) {
-                \$pdo->exec('ALTER TABLE cspro_dictionaries_schema DROP KEY schema_name');
-                echo '[CSWeb] Dropped UNIQUE constraint on schema_name' . PHP_EOL;
-            } else {
-                echo '[CSWeb] schema_name constraint already removed' . PHP_EOL;
-            }
-        } catch (Exception \$e) {
-            echo '[CSWeb] Could not check/drop schema_name constraint: ' . \$e->getMessage() . PHP_EOL;
-        }
-    " 2>/dev/null || true
+    # NOTE: the UNIQUE index on cspro_dictionaries_schema.schema_name used to be
+    # dropped here, but this block runs before /setup has created the table on a
+    # fresh stack, so it never had anything to drop. It now lives in
+    # CommunitySchemaInstaller (schema v6), which runs after setup.
 
-    # Register dashboard_all permission (id 11) — idempotent
-    echo "[CSWeb] Checking dashboard_all permission..."
-    php -r "
-        require '/var/www/html/src/AppBundle/config.php';
-        try {
-            \$port = defined('DBPORT') ? DBPORT : '3306';
-            \$pdo = new PDO('mysql:host=' . DBHOST . ';dbname=' . DBNAME . ';port=' . \$port, DBUSER, DBPASS);
-            \$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            \$pdo->exec(\"INSERT IGNORE INTO cspro_permissions (id, name, modified_time, created_time) VALUES (11, 'dashboard_all', NOW(), NOW())\");
-            echo '[CSWeb] dashboard_all permission registered' . PHP_EOL;
-        } catch (Exception \$e) {
-            echo '[CSWeb] Could not register dashboard_all permission: ' . \$e->getMessage() . PHP_EOL;
-        }
-    " 2>/dev/null || true
+    # Install the Community layer schema additions — idempotent.
+    #
+    # Upstream CSWeb 8.1 owns permission ids 1..100 in cspro_permissions and
+    # tracks its own schema under cspro_config.schema_version. The Community
+    # layer claims ids from 110 up and tracks itself under
+    # cspro_config.community_schema_version, so neither installer touches the
+    # other's rows. See src/CSPro/Community/CommunityPermissions.php.
+    echo "[CSWeb] Installing Community layer schema..."
+    su -s /bin/bash www-data -c "php /var/www/html/bin/console csweb:community:install-schema --env=prod --no-debug" || \
+        echo "[CSWeb] WARNING: Community schema install failed — dashboard, backup and logs may be unavailable."
 else
     echo "[CSWeb] config.php not found, skipping cache clear (run /setup first)."
 fi

@@ -39,3 +39,6 @@ vendor/
 bower_components/
 composer.phar
 node_modules/
+
+# Screenshots for documentation (local only, not versioned)
+screenshots/

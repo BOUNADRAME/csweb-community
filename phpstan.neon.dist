@@ -4,9 +4,9 @@ includes:
 parameters:
     level: 1
     paths:
-        - src/AppBundle
+        - src
     excludePaths:
-        - src/AppBundle/CSPro/swagger.json
+        - src/CSPro/swagger.json
     reportUnmatchedIgnoredErrors: false
     ignoreErrors:
         - '#Cannot make static method PDO::connect#'

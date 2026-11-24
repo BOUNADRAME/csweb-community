@@ -11,21 +11,52 @@ the local dev setup, see the [main README](README.md) and the docs at
 
 The project follows [Semantic Versioning 2.0.0](https://semver.org/).
 
-### Major versions are aligned with upstream CSWeb
+### Versions are aligned with upstream CSWeb
 
-Every time the U.S. Census Bureau ships a new major of CSWeb on
+Every time the U.S. Census Bureau ships a new version of CSWeb on
 [csprousers.org](https://csprousers.org), the Community fork follows
-with a matching major:
+with a matching version:
 
 | Upstream CSWeb | csweb-community |
 | -------------- | --------------- |
-| CSWeb 8.x      | v8.x.y          |
+| CSWeb 8.0.x    | v8.0.y          |
+| CSWeb 8.1.x    | v8.1.y          |
 | CSWeb 9.x      | v9.x.y          |
-| CSWeb 10.x     | v10.x.y         |
 
-Minor (`y`) and patch (`z`) versions follow the **Community fork's own
-pace**. Census 8.0.5 does not force csweb-community 8.0.5 — the fork
-can already be on 8.3.7 by then because of features it added on top.
+Patch (`y`) versions follow the **Community fork's own pace**. Census
+8.0.5 does not force csweb-community 8.0.5 — the fork can already be on
+8.0.7 by then because of features it added on top.
+
+### What triggers a new maintenance line
+
+A new long-lived maintenance branch is created when upstream ships a
+release that is **not upgradeable in place** — regardless of whether it
+is a major or a minor bump. The upstream upgrade script is the arbiter:
+if `csweb/upgrade` refuses the jump, the two releases must coexist as
+separate lines.
+
+CSWeb 8.1 is the canonical example. It is only a minor bump, yet:
+
+- The upstream upgrade script refuses to go from 8.0 to 8.1 — 8.1 must
+  be installed as a fresh installation.
+- CSPro 8.0 and earlier **cannot synchronize** with CSWeb 8.1, so
+  operators must upgrade every field device in tandem.
+
+Because field fleets cannot be re-flashed overnight, 8.0 and 8.1 are
+maintained **in parallel**, each with its own branch, for as long as a
+meaningful share of deployments still runs CSPro 8.0.
+
+### Currently maintained lines
+
+| Line     | Status  | Branch  | Upstream base |
+| -------- | ------- | ------- | ------------- |
+| v8.1.x   | Current | `8.1.x` | CSWeb 8.1.x   |
+| v8.0.x   | LTS     | `8.0.x` | CSWeb 8.0.x   |
+
+`8.1.x` is a **fresh clone of upstream CSWeb 8.1** onto which the
+Community feature set is re-applied — not a merge from `8.0.x`. Since the
+two upstream trees are not upgrade-compatible, they are not
+merge-compatible either.
 
 ### What constitutes a breaking change (and bumps the major)
 
@@ -47,32 +78,38 @@ refactors) is **minor** or **patch**.
 Inspired by the Next.js / Symfony model:
 
 ```
-master  ── next major in development (currently leading to v9)
-8.x     ── v8 maintenance branch (security + bugfixes backports)
-7.x     ── (would exist if a CSWeb 7 fork had been released)
+master  ── next version in development
+8.1.x   ── v8.1 line, based on upstream CSWeb 8.1 (Current)
+8.0.x   ── v8.0 line, based on upstream CSWeb 8.0 (LTS)
 ```
 
 ### Where do I push my work?
 
 | Type of change | Target branch |
 | -------------- | ------------- |
-| New feature, additive change | `master` (next major) |
-| Bugfix on the current stable | `8.x` |
-| Security fix on the current stable | `8.x` (then forward-port to `master`) |
+| New feature, additive change | `master` |
+| Bugfix on the 8.0 LTS line | `8.0.x` (then forward-port to `8.1.x`) |
+| Security fix on the 8.0 LTS line | `8.0.x` (then forward-port to `8.1.x` and `master`) |
+| Fix specific to the 8.1 port | `8.1.x` only |
 | Breaking change | `master` only |
+
+Because `8.0.x` and `8.1.x` sit on **different upstream trees**, a fix
+that lands on `8.0.x` must be re-applied to `8.1.x` by cherry-pick, and
+may need manual conflict resolution wherever upstream 8.1 changed the
+surrounding code — the roles UI in particular.
 
 If you are unsure, open a PR against `master` and we'll re-target during
 review.
 
 ### Backporting workflow
 
-When a fix lands on `master` and applies to `8.x`:
+When a fix lands on `master` and applies to `8.0.x`:
 
 ```bash
-git checkout 8.x
+git checkout 8.0.x
 git cherry-pick <commit-from-master>
 # Resolve conflicts if needed
-git push origin 8.x
+git push origin 8.0.x
 ```
 
 The maintainer then publishes a patch tag (e.g. `v8.0.1`) and a Docker

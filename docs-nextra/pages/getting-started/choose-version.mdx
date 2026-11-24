@@ -1,0 +1,161 @@
+---
+title: Choisir 8.0 ou 8.1
+description: Matrice de compatibilité CSPro / CSWeb et critères de choix entre CSWeb Community 8.0 (stable) et 8.1 (beta)
+---
+
+import { Callout } from 'nextra/components'
+
+# Choisir entre 8.0 et 8.1
+
+CSWeb Community Platform existe en **deux lignes maintenues en parallèle**. Cette page
+vous aide à choisir celle qui correspond à votre déploiement.
+
+<Callout type="warning">
+**8.0 et 8.1 ne sont pas interchangeables.** Il n'existe aucun chemin de mise à jour
+automatique entre les deux, et elles n'acceptent pas les mêmes versions de CSPro sur
+le terrain. Le choix se fait **avant** le déploiement.
+</Callout>
+
+---
+
+## En une phrase
+
+| Vous êtes… | Choisissez |
+|---|---|
+| En production, ou votre parc CSPro terrain est en 8.0 | **8.0 — Current** |
+| En nouveau projet, parc CSPro entièrement en 8.1 | **8.1 — Beta** |
+| Dans le doute | **8.0 — Current** |
+
+---
+
+## 1. La contrainte décisive : la version de CSPro sur le terrain
+
+C'est le critère qui prime sur tous les autres. **CSPro et CSWeb doivent être montés
+de version ensemble** — ce n'est pas une recommandation, c'est une incompatibilité de
+protocole de synchronisation.
+
+### Matrice de compatibilité
+
+| CSPro sur le terrain | CSWeb 8.0.x | CSWeb 8.1.x |
+|---|:---:|:---:|
+| CSPro 7.x | ❌ | ❌ |
+| CSPro 8.0 et antérieur | ✅ | ❌ |
+| CSPro 8.1 | ❌ | ✅ |
+
+<Callout type="error">
+**CSPro 8.0 et antérieur ne peuvent pas synchroniser avec CSWeb 8.1.** Si vous
+déployez CSWeb 8.1 alors que vos enquêteurs sont équipés en CSPro 8.0, **la
+synchronisation cesse de fonctionner** — les données du terrain ne remontent plus.
+</Callout>
+
+Autrement dit : passer à 8.1 côté serveur oblige à **mettre à jour tous les appareils
+de collecte**. Sur une enquête en cours avec des équipes dispersées, cette opération
+est rarement réalisable à court terme. C'est la raison principale pour laquelle 8.0
+reste la version recommandée.
+
+---
+
+## 2. Il n'y a pas de mise à jour 8.0 → 8.1
+
+La documentation officielle du U.S. Census Bureau est explicite :
+
+> *« The upgrade script will not upgrade from CSWeb 8.0 to 8.1. Instead, install
+> CSWeb 8.1 as a new installation. »*
+> — [CSWeb — Upgrading](https://www.csprousers.org/help/CSWeb/upgrading.html)
+
+Le script `csweb/upgrade` refuse le passage. Aller de 8.0 à 8.1 signifie donc :
+
+1. **Installer 8.1 comme une nouvelle installation** (nouveau serveur ou nouveau répertoire)
+2. **Exporter les données** de l'instance 8.0 au format CSPro DB (`.csdb`)
+3. **Réimporter** dans la nouvelle instance
+4. **Mettre à jour tous les appareils** CSPro du terrain vers 8.1
+5. Reconfigurer dictionnaires, utilisateurs, rôles et paramètres de breakout
+
+Ce n'est pas une migration, c'est un **redéploiement**. Prévoyez-le comme tel.
+
+---
+
+## 3. Ce que 8.1 apporte
+
+Les changements viennent de l'amont (CSWeb du Census Bureau), pas de la couche
+Community :
+
+| Nouveauté | Impact |
+|---|---|
+| **Refonte du système de rôles** | Contrôle plus granulaire des accès utilisateurs |
+| **Nouveau rôle Developer** | Sépare le déploiement d'applications de l'usage courant |
+| **Standard User restreint** | Ne peut **plus** créer de packages de déploiement (peut toujours télécharger et mettre à jour) |
+| **Source de données CSWeb** | Accès et mise à jour directs des données CSWeb sans passer par la synchronisation |
+| **Connection strings de synchronisation** | Toute la connexion définie en une seule chaîne |
+
+<Callout type="warning">
+**Attention si vous exploitez des rôles personnalisés.** La refonte des rôles en 8.1
+et le retrait du droit de déploiement au rôle Standard User peuvent **casser des
+habilitations existantes**. Auditez vos rôles avant de planifier un passage.
+</Callout>
+
+---
+
+## 4. Les fonctionnalités Community sont identiques des deux côtés
+
+C'est le point rassurant : **tout ce qui fait la valeur de la plateforme Community est
+disponible sur les deux lignes**, et cette documentation les couvre indifféremment :
+
+- Breakout sélectif par dictionnaire, planifié et supervisé
+- Support multi-base : PostgreSQL, MySQL, SQL Server
+- Déploiement Docker (développement et production)
+- Webhooks, ordonnanceur, sauvegarde, monitoring
+- API OAuth2 et CLI
+
+Cette documentation est **unique et couvre les deux versions**. Les rares points de
+divergence sont signalés en ligne par un encart :
+
+<Callout type="info">
+**8.1 uniquement** — un encart de cette forme signale un comportement propre à 8.1.
+</Callout>
+
+<Callout type="info">
+**8.0 uniquement** — et celui-ci un comportement propre à 8.0.
+</Callout>
+
+---
+
+## 5. Statut de support
+
+| Ligne | Statut | Branche Git | Ce que cela signifie |
+|---|---|---|---|
+| **8.0.x** | 🟢 **Current** | `8.x` | Version recommandée. Corrections de bugs et de sécurité. |
+| **8.1.x** | 🟠 **Beta** | `8.1.x` | Portage des fonctionnalités Community en cours. À réserver aux tests. |
+
+**8.0 reste maintenue tant qu'une part significative des parcs CSPro terrain n'est pas
+passée en 8.1.** Aucune date de fin de support n'est fixée à ce jour ; elle sera
+annoncée avec au moins six mois de préavis.
+
+<Callout type="warning">
+**8.1 est en beta côté Community.** Le socle CSWeb 8.1 est publié par le Census Bureau,
+mais le portage des fonctionnalités Community (breakout sélectif, multi-DB, webhooks)
+n'est pas encore éprouvé en production. Ne déployez pas 8.1 sur une enquête en cours.
+</Callout>
+
+---
+
+## Décider en trois questions
+
+**1. Vos appareils de collecte sont-ils déjà tous en CSPro 8.1 ?**
+Non, ou partiellement → **8.0**. C'est bloquant, inutile d'aller plus loin.
+
+**2. S'agit-il d'une enquête en cours ou d'un déploiement en production ?**
+Oui → **8.0**. Le portage Community de 8.1 n'est pas encore éprouvé.
+
+**3. Sinon** (parc entièrement en 8.1, contexte de test ou de préparation)
+→ **8.1** est un choix valable, et vos retours sont les bienvenus.
+
+---
+
+## Ressources
+
+- [Prérequis Serveur](/getting-started/prerequisites) — conditions techniques communes
+- [Installation](/getting-started/installation) — guide pas-à-pas
+- [Gestion des Utilisateurs](/guides/admin/users) — rôles et permissions, 8.0 et 8.1
+- [CSWeb — Upgrading (Census Bureau)](https://www.csprousers.org/help/CSWeb/upgrading.html)
+- [CSPro — Breaking Changes (Census Bureau)](https://www.csprousers.org/help/CSPro/breaking_changes.html)

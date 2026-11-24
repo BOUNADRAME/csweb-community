@@ -4,7 +4,7 @@
  * PHPUnit bootstrap file.
  *
  * Registers a custom autoloader BEFORE the Composer autoloader to intercept
- * AppBundle\Service\PdoHelper. On PHP 8.4+, the real PdoHelper (which extends
+ * App\Service\PdoHelper. On PHP 8.4+, the real PdoHelper (which extends
  * Aura\Sql\ExtendedPdo) cannot be loaded due to a PDO::connect() static method
  * conflict (present in both aura/sql 4.x and 5.x). This stub provides a
  * mockable replacement for unit tests. It only activates if the class is not
@@ -13,11 +13,11 @@
 
 // Register stub autoloader before Composer
 spl_autoload_register(function (string $class): void {
-    if ($class === 'AppBundle\\Service\\PdoHelper') {
+    if ($class === 'App\\Service\\PdoHelper') {
         // Define a stub PdoHelper that doesn't extend ExtendedPdo
         // This allows unit tests to mock it without triggering the aura/sql fatal error
         eval('
-            namespace AppBundle\Service;
+            namespace App\Service;
             class PdoHelper {
                 public function __construct(...$args) {}
                 public function fetchAll(string $stm, array $bind = []): array { return []; }

@@ -4,14 +4,20 @@ All notable changes to **CSWeb Community Platform** are documented here.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-Major versions are aligned with the upstream **CSWeb** distribution
+Versions are aligned with the upstream **CSWeb** distribution
 maintained by the U.S. Census Bureau ([csprousers.org](https://csprousers.org)).
-Minor and patch versions follow the Community fork's own pace.
+Patch versions follow the Community fork's own pace.
 
 ## Branching strategy
 
-- `master` — next major in development (currently future v9)
-- `8.x` — v8 maintenance branch, security and bugfix backports
+- `master` — next version in development
+- `8.1.x` — v8.1 line, based on upstream CSWeb 8.1 (Current)
+- `8.0.x` — v8.0 line, based on upstream CSWeb 8.0 (LTS)
+
+`8.0.x` and `8.1.x` sit on **different upstream trees** and are not
+upgrade-compatible: the upstream script refuses the 8.0 → 8.1 jump, and
+CSPro 8.0 and earlier cannot synchronize with CSWeb 8.1. Both lines are
+therefore maintained in parallel.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.
 
@@ -23,7 +29,7 @@ _Nothing yet._
 
 ---
 
-## [8.0.12] - 2026-11-24 (branch `8.0.x`)
+## [8.1.18] - 2026-11-24 (branch `8.1.x`)
 
 ### Fixed
 
@@ -35,7 +41,7 @@ _Nothing yet._
 
 ---
 
-## [8.0.11] - 2026-11-24 (branch `8.0.x`)
+## [8.1.17] - 2026-11-24 (branch `8.1.x`)
 
 Breakout Health opens instantly, whatever the number of dictionaries.
 
@@ -48,11 +54,11 @@ Breakout Health opens instantly, whatever the number of dictionaries.
   step). The dashboard only reads that table. Measured with 100 dictionaries
   and 2.9 million cases (MariaDB, 2 vCPU):
 
-  | | Before | 8.0.11 |
+  | | Before | 8.1.17 |
   |---|---|---|
-  | Opening the dashboard | 10.4 s | 0.01 s |
-  | Filtering (e.g. "Pending") | 11.4 s | 0.01 s |
-  | Background recount (every 2 min) | — | 11 s |
+  | Opening the dashboard | 10.9 s | 0.01 s |
+  | Filtering (e.g. "Pending") | 11.0 s | 0.01 s |
+  | Background recount (every 2 min) | — | 10 s |
 
 - Counters are refreshed: every 2 minutes (cron in the Docker image); after
   each scheduled breakout, for that dictionary; by `csweb:scheduler-run` when
@@ -66,14 +72,14 @@ Breakout Health opens instantly, whatever the number of dictionaries.
 
 ### Upgrade
 
-`git checkout v8.0.11 && docker compose up -d --build`. Nothing to change in
+`git checkout v8.1.17 && docker compose up -d --build`. Nothing to change in
 `.env`. Outside Docker, the existing `csweb:scheduler-run` cron is enough;
 `*/2 * * * * php bin/console csweb:breakout-metrics` can be added for fresher
 counts.
 
 ---
 
-## [8.0.10] - 2026-11-23 (branch `8.0.x`)
+## [8.1.16] - 2026-11-23 (branch `8.1.x`)
 
 Faster, smaller Docker image. Same application, same `.env`, same data.
 
@@ -84,21 +90,21 @@ Faster, smaller Docker image. Same application, same `.env`, same data.
   runtime libraries only (no compiler, no `-dev` packages, no Node.js).
   Measured in CI (GitHub runner):
 
-  | | Before | 8.0.10 |
+  | | Before | 8.1.16 |
   |---|---|---|
-  | Image size | 395 MB | 206 MB |
-  | Build from scratch | 125 s | 78 s |
-  | Rebuild after a code change | full rebuild | 2 s |
+  | Image size | 389 MB | 212 MB |
+  | Build from scratch | 110 s | 73 s |
+  | Rebuild after a code change | full rebuild | 3 s |
 
 - Build cache: apt cache mounts, Composer reinstalled only when
-  `composer.lock` changes, code copied last; front-end files from pinned npm tarballs (SHA-256 checked) instead of `bower install`: no Node.js, npm or bower at build or run time;
+  `composer.lock` changes, code copied last; front-end files from the CSWeb 8.1 release archive in a cached stage (downloaded once, not at every build);
   files copied with `--chown` (no second copy from `chown -R`).
 
 ### Added
 
 - **`WITH_SQLSERVER`** in `.env` (default `1`): `0` builds without the SQL
   Server driver and never contacts packages.microsoft.com, for filtered
-  networks (204 MB image). The driver itself is about 8 MB.
+  networks (210 MB image). The driver itself is about 8 MB.
 - CI workflow "Docker image": builds, starts the container, checks the PHP
   modules and files, and reports size and build times.
 
@@ -112,7 +118,7 @@ to free the space of the previous image layers.
 
 ---
 
-## [8.0.9] - 2026-11-20 (branch `8.0.x`)
+## [8.1.15] - 2026-11-20 (branch `8.1.x`)
 
 ### Added
 
@@ -128,7 +134,7 @@ No database or `.env` change.
 
 ---
 
-## [8.0.8] - 2026-11-20 (branch `8.0.x`)
+## [8.1.14] - 2026-11-20 (branch `8.1.x`)
 
 ### Added
 
@@ -151,7 +157,7 @@ endpoint once per dictionary.
 
 ---
 
-## [8.0.7] - 2026-11-20 (branch `8.0.x`)
+## [8.1.13] - 2026-11-20 (branch `8.1.x`)
 
 ### Fixed
 
@@ -165,7 +171,7 @@ No database or `.env` change.
 
 ---
 
-## [8.0.6] - 2026-11-14 (branch `8.0.x`)
+## [8.1.12] - 2026-11-14 (branch `8.1.x`)
 
 Docker: the container waits for its database and reports its real health.
 
@@ -185,7 +191,7 @@ so the new health check and start order are applied.
 
 ---
 
-## [8.0.5] - 2026-11-13 (branch `8.0.x`)
+## [8.1.11] - 2026-11-13 (branch `8.1.x`)
 
 Breakout Health always answers, whatever the state of the breakout targets.
 
@@ -215,7 +221,7 @@ No database or `.env` change.
 
 ---
 
-## [8.0.4] - 2026-11-07 (branch `8.0.x`)
+## [8.1.10] - 2026-11-07 (branch `8.1.x`)
 
 ### Security
 - **Database ports listen on 127.0.0.1 by default.** The MySQL metadata
@@ -225,7 +231,8 @@ No database or `.env` change.
   reachable from the Internet. CSWeb reaches them over the Docker network,
   so nothing changes for the application. Set `DB_BIND_ADDRESS` or
   `ADMIN_TOOLS_BIND_ADDRESS` to `0.0.0.0` to expose them on purpose;
-  an SSH tunnel is the safer way to reach them from another machine.
+  an SSH tunnel (DBeaver has one built in) is the safer way to reach them
+  from another machine.
 
 ### Changed
 - Docker build: skip pdo, mbstring and xml, which the PHP image already
@@ -233,98 +240,299 @@ No database or `.env` change.
 
 ---
 
-## [8.0.3] - 2026-11-07 (branch `8.0.x`)
-
-### Security
-- **CSRF protection on the admin screens.** The admin UI is
-  authenticated by a cookie, which a browser also sends on a request
-  forged by another site, and no CSRF token was checked: a page visited by
-  a logged-in administrator could change or delete configurations,
-  schedules, backups, users or roles. Every POST, PUT, DELETE and PATCH to
-  the admin controllers now needs the page's CSRF token (X-CSRF-TOKEN),
-  as on 8.1.x; requests without it get HTTP 403. API calls are not
-  affected (they use an Authorization header).
+## [8.1.9] - 2026-11-07 (branch `8.1.x`)
 
 ### Changed
 - Backup and Application Logs: confirmation dialogs translated from
   French to English, in line with the rest of the interface.
-- `.env.example`: performance guidance from 8.1.x (apply with
-  `docker compose up -d`, never `restart`; check with
-  `csweb:check-config`; reference values) and a link to the sizing guide,
-  replacing a reference to a file that does not exist.
+- `.env.example`: link to the sizing guide in the performance section.
 
 ---
 
-## [8.0.2] - 2026-11-07 (branch `8.0.x`)
-
-Admin screens brought to the 8.1.x level: simpler, consistent, readable.
-
-### Added
-- **Test connection** in Add and Edit Configuration: checks the engine,
-  host, port, database and credentials before saving, and says why it
-  fails (wrong password, unknown database, nothing listening on the port).
-- Settings > Data opens the tab named in the URL (`#scheduler`, `#logs`,
-  `#applog`), so a reload or a shared link keeps the same tab.
-- A selective breakout run now ends with a one-line summary per
-  dictionary (jobs processed and duration, or "already up to date").
+## [8.1.8] - 2026-11-07 (branch `8.1.x`)
 
 ### Changed
-- Settings > Data: a DB Type badge (PostgreSQL, MySQL, SQL Server), the
-  target port next to the host, and compact outline Edit / Delete buttons.
-- Dates on the admin screens (Data, Scheduler, Backup, Application Logs)
-  are shown in the browser's locale, e.g. "Nov 07, 2026, 10:38 AM", and
-  still sort correctly.
-- Row actions are single-line outline buttons with tooltips on the
-  Scheduler, Breakout Logs and Backup screens.
-- Breakout Health: search and status filters run on the server over every
-  page, and the KPI cards follow the filter, with a **Filtered** badge.
-- Backup: clickable cron shortcuts in English (same pattern as the
-  Breakout Scheduler) instead of French help text, and a Help link.
-- Shorter port placeholder in the configuration dialogs.
+- Backup: the cron help was French text inside an English screen. It is
+  now a set of clickable shortcuts in English (Daily 02:00, Every 6 hours,
+  Sundays 02:00, Weekdays 03:30, 1st of month 02:00), the same pattern as
+  the Breakout Scheduler.
+- Backup: a Help link to the backup guide, like the other admin screens.
 
 ---
 
-## [8.0.1] - 2026-11-07 (branch `8.0.x`)
-
-Large-survey and census readiness for the 8.0 line (CSPro 8.0). Brings
-over the 8.1.x fixes that do not depend on the CSWeb version.
+## [8.1.7] - 2026-11-07 (branch `8.1.x`)
 
 ### Fixed
-- **Rate limiting blocked field teams sharing one public IP.** Logins
-  were limited to 5 per minute per IP and API calls to 60 per minute per
-  IP and route, shared by every tablet behind a carrier NAT or a training
-  centre's Wi-Fi. Logins are now counted per account (5/min) under a
-  per-IP ceiling (60/min), API calls per session (600/min), and all four
-  limits are configurable from `.env` (`RATE_LIMIT_LOGIN_PER_USER`,
-  `RATE_LIMIT_LOGIN_PER_IP`, `RATE_LIMIT_API_PER_MIN`,
-  `RATE_LIMIT_UI_PER_MIN`). Load test, 40 enumerators with one account
-  each: 3 cases/s and 36 of 40 logins refused before, 172 cases/s and no
-  error after.
-- **Breakout job claim.** Several workers per dictionary could take the
-  same job or create two jobs over the same case range. The claim now
-  runs under an exclusive lock per target and dictionary.
-- **Breakout to MySQL and SQL Server targets**: identifiers are quoted
-  by the target platform instead of PostgreSQL-style double quotes
-  (SQLSTATE 1064 on MySQL).
-- **Wide questionnaires on MySQL**: breakout tables use the DYNAMIC row
-  format, avoiding InnoDB's 8126-byte row limit.
-- **Breakout failures are visible**: a failing job is marked FAILED with
-  a readable error message in the target `_cspro_jobs` table and the UI,
-  and is retried on the next run.
-- **Run now** records the exit code, file size and log of a schedule or
-  a backup instead of staying "in progress".
-- **Breakout Health** and the status webhook count breakouts started
-  from the CLI or a webhook.
-- **Sync and Map Report** read the prefixed breakout tables.
-- **Processed Cases 0** on case-sensitive MySQL in Data Configuration.
-- **https behind a reverse proxy** (trusted proxy headers).
-- **Backups survive `docker compose up -d`** (new `csweb_backups` volume).
-- `MYSQL_HOST_PORT` decoupled from the internal MySQL port.
+- Breakout job claim: the row lock protected an existing job, but when
+  none was pending each worker created one from the last job's
+  watermark, and two workers could create two jobs over the same case
+  range. The whole claim now runs under an exclusive lock per target and
+  dictionary. Verified with 4 threads: 18,691 cases, one job per range,
+  no duplicate row.
+
+### Changed
+- `tools/loadtest/csweb_sync_load.py` also drives CSWeb 8.0 servers
+  (`id`/`caseids` case format, token response without `credentials`) and
+  sends the `gzip` Content-Encoding header CSEntry uses.
+- Sizing guide: minimum versions for large operations (8.1.7, 8.0.1).
+- CI also runs on the `8.0.x` branch.
+
+---
+
+## [8.1.6] - 2026-11-06 (branch `8.1.x`)
 
 ### Added
+- Sizing guide for large surveys and censuses (`guides/deployment/sizing`):
+  where data lives, input parameters and formulas, reference measurements,
+  three costed scenarios, server profiles, every scale-up variable of `.env`
+  with values per scenario, field pitfalls and a load-test procedure.
 - Sync load-test tool `tools/loadtest/csweb_sync_load.py` (Python 3, no
-  dependency), compatible with the 8.0 and 8.1 case formats.
-- CI runs on the `8.0.x` maintenance branch.
+  dependency): simulates enumerators syncing in parallel through the CSPro
+  API (OAuth token, deflate case upload, optional download), one account per
+  enumerator, and reports throughput, p50/p95 latency and errors.
+
+### Changed
+- Rate limits are now configurable from `.env` without touching the code:
+  `RATE_LIMIT_LOGIN_PER_USER` (5), `RATE_LIMIT_LOGIN_PER_IP` (60),
+  `RATE_LIMIT_API_PER_MIN` (600), `RATE_LIMIT_UI_PER_MIN` (120). Defaults are
+  unchanged. Raising `RATE_LIMIT_LOGIN_PER_IP` lets hundreds of tablets behind
+  one public IP (census start, training centres) log in at once.
+
+---
+
+## [8.1.5] - 2026-11-06 (branch `8.1.x`)
+
+### Fixed
+- Breakout Health: the KPI cards kept showing the totals of all dictionaries
+  while the table was filtered. The search and status filters now run on the
+  server, over every page (they used to filter only the 25 rows loaded in
+  the browser), and the cards show the filtered set, with a **Filtered**
+  badge and "configured / matching".
+
+### Changed
+- Breakout Health and Settings > Data (Edit / Delete): row actions use the
+  same compact outline buttons as the scheduler, logs and backup screens.
+
+---
+
+## [8.1.4] - 2026-11-06 (branch `8.1.x`)
+
+### Changed
+- Dates and times on the Community screens (Settings > Data, Breakout
+  Scheduler, Breakout Logs, Settings > Backup, Settings > Logs) use one
+  readable format in the browser's language, e.g. "06 nov. 2026, 16:46",
+  instead of raw "2026-11-06 16:46:42". Tables still sort on the raw value.
+  Helper: `cswebFormatDateTime()` in `base.twig`.
+- Settings > Backup: file and log row actions use the same compact outline
+  buttons as Settings > Data; the shared styles moved to `cspro-styles.css`.
+
+---
+
+## [8.1.3] - 2026-11-06 (branch `8.1.x`)
+
+### Changed
+- Settings > Data: the target engine shows as a colour-coded chip with an
+  icon (PostgreSQL, MySQL, SQL Server) instead of a plain badge.
+- Breakout Scheduler and Breakout Logs: row actions are compact outline
+  buttons with tooltips, kept on one line (the delete button no longer wraps
+  under the others).
+- `csweb:process-cases-by-dict` output: one line per job started
+  ("Starting job 3 for dictionary X (up to 1000 cases)"), no more
+  "Creating process … jobID: 0" when no job is left, and an end-of-run
+  summary per dictionary ("1 job(s) processed in 4.1s" or "already up to
+  date, nothing to process"), so a breakout log says at a glance whether the
+  run did something.
+
+---
+
+## [8.1.2] - 2026-11-06 (branch `8.1.x`)
+
+Usability fixes for the breakout administration screens.
+
+### Added
+- Settings > Data: **Test connection** button in Add and Edit Configuration.
+  It connects with the exact settings the breakout will use (engine, port,
+  SSH tunnel), shows the server and version, and explains the usual
+  failures: wrong password, unknown database, unknown host (Docker service
+  name), nothing listening (published vs internal port), timeout, missing
+  driver, TLS required. Nothing is saved. Route: `POST /dataSettings/testConnection`.
+
+### Fixed
+- Breakout Health and `breakout-status-webhook.php` reported dictionaries
+  processed from the CLI or a webhook as "Configured but never run", with no
+  last run. The last run now falls back on the last completed job in the
+  target database.
+- Breakout Health **Run now** always failed with "Failed to start breakout":
+  the request was sent with `fetch()` without the CSRF header.
+- Sync Report showed an empty table when the report could not be built (for
+  example for a PostgreSQL target); it now shows the server's message.
+
+---
+
+## [8.1.1] - 2026-11-06 (branch `8.1.x`)
+
+Fixes found by running the full 8.1.0 workflow end to end (setup, sync,
+selective breakout to PostgreSQL and MySQL, scheduler, webhooks, reports,
+backup and restore).
+
+### Fixed
+- `csweb:process-cases-by-dict` failed with `Unknown column 'dictionary_name'`:
+  CSWeb 8.1 renamed the column to `name`. The scheduler, "Run now" and
+  `breakout-webhook.php` all go through this command, so the selective
+  breakout did not run at all on 8.1.0.
+- `breakout-status-webhook.php` and `dictionary-schema-webhook.php` used the
+  same 8.0 column name and answered `Failed to query dictionaries`.
+- Sync Report and Map Report queried `level-1` / `cases` without the
+  per-dictionary table prefix (`<dict>_level-1`) and failed with
+  `Table '…level-1' doesn't exist`. Map Report now also quotes identifiers for
+  PostgreSQL and SQL Server targets. Sync Report, which joins the metadata
+  database in one MySQL query, answers `report_requires_mysql` for other
+  engines instead of a SQL error.
+- "Run now" on a schedule and "Run Now" in Settings > Backup left the run at
+  exit code -1 ("running" / "In Progress") for ever, and the manual backup
+  file at 0 B. Both now go through `csweb:scheduler-run --id` and
+  `csweb:backup-run --now`, which record the exit code, size and log at the
+  end. The manual backup no longer puts the database password on the web
+  server's command line.
+
+### Restored
+- Settings > Data: **Breakout Scheduler** and **Breakout Logs** tabs, lost
+  when the Community layer was rebased onto CSWeb 8.1.2 (the `/scheduler/*`
+  and `/breakout/logs/*` routes were still there). The active tab is kept in
+  the URL hash (`#scheduler`, `#logs`) and the tab shows the number of
+  active schedules.
+
+### Added
+- `dictionary-schema-webhook.php` `register`: optional `db_type`
+  (`postgresql`, `mysql`, `sqlserver`) and `port`, as in the admin UI; `list`
+  and `status` return them.
+- `docker-compose.yml`: `csweb_backups` volume on `var/backups`, so backup
+  files survive `docker compose up -d` and rebuilds.
+
+---
+
+## [8.1.0] - 2026-10-25 (branch `8.1.x`)
+
+Port of the Community layer onto the upstream CSWeb 8.1.2 base.
+
+### Added — Shared hosting (cPanel)
+- `tools/build-cpanel-package.sh`: ready-to-upload zip (production `vendor/`,
+  pre-built front-end assets, no Docker/tests), with SHA-256 checksum.
+- `tools/cpanel/INSTALL-cPanel.md/.pdf`: installation guide in English.
+- The Community schema installs itself on the first request after setup: no
+  shell command is needed on hosts without SSH.
+- Validated on PHP 8.3, Apache, MariaDB 10.6 with `exec`/`proc_open` disabled.
+
+### Fixed — Shared hosting
+- Setup completion page returned a blank HTTP 500 on hosts that disable
+  `exec()`; the Community schema is then installed on the first request.
+- A failed API check in the setup wizard left `src/config.php` behind and
+  locked `/setup/`; the file is now removed so the form can be resubmitted.
+- `src/config.php` is written with escaped values: a database password
+  containing `'` or `\` no longer breaks the site.
+- API rate limit raised to 600 requests per minute per session, so large
+  paged downloads are not cut after ~60 pages (login limits unchanged).
+- One MySQL connection per request instead of two (OAuth storage reuses the
+  request connection), for hosts capping `max_user_connections`.
+- Rate limiter: logins counted per IP + username and API calls per session, so
+  devices behind one office Wi-Fi or carrier NAT no longer get HTTP 429; the
+  dashboard login form is now recognised.
+- Setup: the API URL gets its trailing slash (dashboard login failed with
+  HTTP 500 otherwise).
+- `/logs/app` returned HTTP 500 (missing `LogsVoter` import).
+- `.htaccess`: deployed application packages under `files_csweb/` were
+  downloadable without authentication; `vendor/`, `bin/`, Composer and Docker
+  files are no longer served.
+
+### Changed
+
+- Rebased on upstream CSWeb 8.1.2 (was CSWeb 8.0.x)
+- Namespace `AppBundle\` → `App\`, source tree `src/AppBundle/` → `src/`,
+  following the upstream 8.1 layout change
+- Upstream now targets Symfony 6.4 (was 5.4), Monolog 3, DBAL ^3.9
+
+### Fixed
+
+- `src/version.php`: missing semicolon on the `CSPRO_VERSION` define
+  (present in the upstream 8.1.2 release)
+
+### Added
+
+- `CSWEB_COMMUNITY_VERSION` constant, tracking the fork version
+  independently of `CSPRO_VERSION`
+
+### Added — Community permission layer
+
+The upstream 8.1 permission model is adopted as-is rather than replaced.
+The Community features plug into it through the standard pipeline, with
+no upstream file modified:
+
+- `CommunityPermissions`: permission catalogue claiming ids from 110 up,
+  following the upstream convention of tens. Upstream owns 1..100, so a
+  future upstream release can extend its range without colliding.
+  - 110/111/112 `dashboard`, `dashboard.read`, `dashboard.write`
+  - 120/121/122 `backup`, `backup.read`, `backup.write`
+  - 130/131/132 `logs`, `logs.read`, `logs.write`
+- `DashboardVoter`, `BackupVoter`, `LogsVoter`: same shape as the upstream
+  voters, so `ApiKeyUserProvider::getUserRoles()` turns each permission
+  row into `ROLE_<NAME>` unchanged
+- `CommunitySchemaInstaller` + `csweb:community:install-schema`: idempotent
+  installer tracked under `cspro_config.community_schema_version`,
+  separate from the upstream `schema_version` counter. Three steps, which
+  replace the 8.0 line's schema migrations 9 through 12:
+  - v1 permissions and default role grants
+  - v2 `cspro_dictionaries_schema`.`port` and `.db_type` (was schema 10/11)
+  - v3 `cspro_backup_config` table, trigger and default row (was schema 9)
+
+  Defers cleanly when the upstream tables do not exist yet, so it is safe
+  on the very first container boot, and re-running it never re-applies a
+  step or overwrites an operator's backup settings. `upgrade/upgrade.php`
+  and `setup/configure.php` stay exactly as upstream ships them.
+- Default grants: Administrator gets the full Community feature set;
+  Developer (new in 8.1) gets dashboard and logs read access
+
+### Changed
+
+- Community controllers and templates now check the granular permissions
+  (`BackupVoter::BACKUP_READ`, …) instead of the coarse `ROLE_*_ALL` names
+  used on the 8.0 line, mapped read/write by HTTP method
+- `base.twig`: Community nav entries appended in their own `navCommunity`
+  block, leaving the upstream nav exactly as shipped
+- `docker-entrypoint.sh`: replaced the hardcoded `dashboard_all` insert at
+  id 11 with the installer command. **Id 11 means `apps.read` in the 8.1
+  schema**, so the old statement would have silently corrupted permissions
+
+### Added — Community settings in the admin UI
+
+- Roles screen: `dashboard`, `backup` and `logs` rows, appended to the
+  upstream `permissions` array in `dist/js/roles.js` — the whole table is
+  generated from that array, so the rows, their checkboxes and the JSON
+  payload all follow. `Role::fromJSON()/toJSON()` and the three
+  `RolePermissions` maps gained the matching keys.
+- Data configuration screen: **Database type** (PostgreSQL / MySQL /
+  SQL Server) and **Port** fields on both the add and edit forms, with
+  server-side validation. The backend already read `dbType` and
+  `targetPort`; they were simply not reachable from the UI.
+
+### Fixed
+
+- `dist/js/roles.js`, `css/roles.css` and four other upstream assets were
+  missing from the branch: `templates/roles.twig` references roles.js, so
+  the roles screen would have been inert.
+- `Role::addPermissionsFromJson()` read `$data[$key]` with no null guard,
+  emitting a warning for a role saved before a key existed.
+- The data-configuration modals collected `find("input")` only, so a
+  `<select>` was never sent. Now `find("input, select")`.
+
+### Ported
+
+Community layer carried over from 8.0.x (17 PHP classes, 3 templates):
+breakout status service, multi-database driver detection, breakout
+database configuration and connection resolver, backup and scheduler
+commands, configuration and driver check commands, dashboard, backup and
+application-logs controllers with their templates, rate limiter and
+security-headers subscribers, backup/breakout schedulers and error
+formatter.
 
 ---
 

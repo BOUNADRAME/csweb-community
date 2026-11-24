@@ -18,7 +18,7 @@ docker compose --profile local-postgres --profile local-mysql --profile local-sq
 
 # Remove config.php (local + persisted in Docker volume)
 echo "[2/5] Removing config.php..."
-rm -f src/AppBundle/config.php
+rm -f src/config.php
 docker volume rm csweb_config 2>/dev/null || true
 
 # Clear cache and logs
