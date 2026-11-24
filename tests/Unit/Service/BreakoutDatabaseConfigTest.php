@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\Service;
 
-use App\Service\BreakoutDatabaseConfig;
+use AppBundle\Service\BreakoutDatabaseConfig;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;

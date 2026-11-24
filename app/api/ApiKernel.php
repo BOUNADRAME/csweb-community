@@ -6,13 +6,14 @@ use Symfony\Component\Config\Loader\LoaderInterface;
 
 class ApiKernel extends Kernel
 {
-    public function registerBundles(): array
+    public function registerBundles()
     {
         $bundles = [
             new Symfony\Bundle\FrameworkBundle\FrameworkBundle(),
             new Symfony\Bundle\SecurityBundle\SecurityBundle(),
             new Symfony\Bundle\TwigBundle\TwigBundle(),
             new Symfony\Bundle\MonologBundle\MonologBundle(),
+            new AppBundle\AppBundle(),
         ];
 
         if (in_array($this->getEnvironment(), ['dev', 'test'], true)) {
@@ -32,12 +33,12 @@ class ApiKernel extends Kernel
         return __DIR__;
     }
 
-    public function getCacheDir(): string
+    public function getCacheDir()
     {
         return dirname(__DIR__).'/../var/cache/api/'.$this->getEnvironment();
     }
 
-    public function getLogDir(): string
+    public function getLogDir()
     {
         return dirname(__DIR__).'/../var/logs';
     }

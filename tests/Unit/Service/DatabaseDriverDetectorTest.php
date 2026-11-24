@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\Service;
 
-use App\Service\DatabaseDriverDetector;
+use AppBundle\Service\DatabaseDriverDetector;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 

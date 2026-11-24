@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\CSPro;
 
-use App\CSPro\CSProResponse;
+use AppBundle\CSPro\CSProResponse;
 use PHPUnit\Framework\TestCase;
 
 class CSProResponseTest extends TestCase
@@ -66,10 +66,7 @@ class CSProResponseTest extends TestCase
         // Bypass Symfony's strict validation to set a code not in $statusCodes
         $ref = new \ReflectionProperty($response, 'statusCode');
         $ref->setAccessible(true);
-        // 418 is a known status text in Symfony 6.4 ("I'm a teapot"), so it is
-        // not invalid. Use a code outside the 100-599 range instead, which is
-        // what isInvalid() actually tests.
-        $ref->setValue($response, 42);
+        $ref->setValue($response, 418);
         $this->assertTrue($response->isInvalid());
     }
 

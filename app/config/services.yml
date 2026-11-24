@@ -19,23 +19,23 @@ services:
         # if you need to do this, you can override this setting on individual services
         public: false
 
-    # makes classes in src/App available to be used as services
+    # makes classes in src/AppBundle available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
-    App\:
-        resource: '../../src/*'
+    AppBundle\:
+        resource: '../../src/AppBundle/*'
         # you can exclude directories or files
         # but if a service is unused, it's removed anyway
-        exclude: '../../src/{Entity,Repository,Tests,config.php,version.php}'
+        exclude: '../../src/AppBundle/{Entity,Repository,Tests,config.php,version.php}'
 
     # controllers are imported separately to make sure they're public
     # and have a tag that allows actions to type-hint services
-    App\Controller\:
-        resource: '../../src/Controller'
+    AppBundle\Controller\:
+        resource: '../../src/AppBundle/Controller'
         public: true
         tags: ['controller.service_arguments']
 
     # add more services, or override services that need manual wiring
-    # App\Service\ExampleService:
+    # AppBundle\Service\ExampleService:
     #     arguments:
     #         $someArgument: 'some_value'
     #UI - guzzle client service for invoking api endpoints
@@ -44,30 +44,21 @@ services:
             -
               http_errors: false
     
-    #FileSecurityValidator
-    App\CSPro\FileManager\FileSecurityValidator:
-        arguments:
-            $mimeTypes: null
-    
-    #ExceptionListener
-    App\EventListener\ExceptionListener:
-        tags: 
-            - { name: 'kernel.event_listener', event: 'kernel.exception' }
-        public: true
-    
     #HttpHelperService
-    App\Service\HttpHelper:
+    AppBundle\Service\HttpHelper:
         public: true
         arguments:
-            # Community layer: CSWeb calling its own API — must use the
-            # container-side address, not the public one advertised to CSPro
-            # clients. Falls back to the public URL when they are the same.
             $baseUri: '%cspro_internal_api_url%'
     
-    App\Service\OAuthHelper:
+    AppBundle\Service\OAuthHelper:
         public: true
+        arguments:
+            $database_host: "%database_host%"
+            $database_name: "%database_name%"
+            $database_user: "%database_user%"
+            $database_password: "%database_password%"
     #PdoService
-    App\Service\PdoHelper:
+    AppBundle\Service\PdoHelper:
         public: true
         arguments:
             $database_host: "%database_host%"
@@ -76,27 +67,18 @@ services:
             $database_password: "%database_password%"
     #Monolog DB Handler
     cspro_monolog_handler:
-        class: App\Service\CSProMySQLHandler
+        class: AppBundle\Service\CSProMySQLHandler
         autowire: true
         public: true
         arguments:
             $level: "%csweb_db_log_level%"
-    # Community layer: the rate limiter stores its counters under the cache
-    # directory. $cacheDir is a plain string, which autowiring cannot resolve on
-    # its own, so it has to be passed explicitly — without this the container
-    # fails to compile and every page returns HTTP 500.
-    App\EventSubscriber\RateLimiterSubscriber:
-        arguments:
-            $cacheDir: '%kernel.cache_dir%'
-
-    # Community layer: installs the Community schema on the first request after
-    # setup (no shell needed on shared hosting). $cacheDir holds its marker file.
-    App\EventSubscriber\CommunitySchemaSubscriber:
+    #RateLimiter Subscriber
+    AppBundle\EventSubscriber\RateLimiterSubscriber:
         arguments:
             $cacheDir: '%kernel.cache_dir%'
 
     #ApiKeyUserProvider
     api_key_user_provider:
-        class: App\Security\ApiKeyUserProvider
+        class: AppBundle\Security\ApiKeyUserProvider
         public: true
    

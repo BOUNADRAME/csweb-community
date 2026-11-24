@@ -24,4 +24,4 @@ python3 csweb_sync_load.py --url https://csweb-preprod.exemple.org \
   p50/p95 et erreurs. Code de sortie 0 si erreurs < 1 % et p95 d'envoi < 10 s.
 
 Méthode complète, formules et scénarios : guide
-[Dimensionnement](https://bounadrame.github.io/csweb-community/guides/deployment/sizing).
+[Dimensionnement](https://bounadrame.github.io/csweb-community/guides/deployment/sizing) (valable pour les lignes 8.0.x à partir de 8.0.1 et 8.1.x).

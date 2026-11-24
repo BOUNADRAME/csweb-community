@@ -118,14 +118,6 @@ services:
       - BREAKOUT_WEBHOOK_TOKEN=${BREAKOUT_WEBHOOK_TOKEN}
       # Filesystem root used by webhooks to locate var/logs etc.
       - CSWEB_ROOT=${CSWEB_ROOT:-/var/www/html}
-      # PUBLIC API address, written into the .pff sync spec and the cspro:///
-      # links — this is what tablets and workstations connect to, so it needs
-      # the reachable host and the published port. Empty by default: setup
-      # derives it from the browser's request, which already carries both.
-      - API_URL=${API_URL:-}
-      # Address CSWeb uses to call its own API from inside the container, where
-      # the published port does not exist. Keep the internal port (80).
-      - CSWEB_INTERNAL_API_URL=${CSWEB_INTERNAL_API_URL:-http://localhost/api/}
 
       # Breakout target connection mode (direct | tunnel)
       - BREAKOUT_CONNECTION_MODE=${BREAKOUT_CONNECTION_MODE:-direct}
@@ -153,7 +145,7 @@ services:
       # when the server requires a token: either way Apache, PHP and the
       # application are up. Before the setup wizard has run, the setup page
       # is enough. (The former test on /api/ always got a 404.)
-      test: ["CMD-SHELL", "c=$$(curl -s -o /dev/null -w '%{http_code}' http://localhost/api/server); [ \"$$c\" = 200 ] || [ \"$$c\" = 401 ] || { [ ! -f /var/www/html/src/config.php ] && curl -fsS -o /dev/null http://localhost/setup/; }"]
+      test: ["CMD-SHELL", "c=$$(curl -s -o /dev/null -w '%{http_code}' http://localhost/api/server); [ \"$$c\" = 200 ] || [ \"$$c\" = 401 ] || { [ ! -f /var/www/html/src/AppBundle/config.php ] && curl -fsS -o /dev/null http://localhost/setup/; }"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -449,16 +441,16 @@ volumes:
     labels:
       - "com.csweb.volume=logs"
 
-  csweb_backups:
-    driver: local
-    labels:
-      - "com.csweb.volume=backups"
-
   csweb_config:
     driver: local
     labels:
       - "com.csweb.volume=config"
       - "com.csweb.role=configuration"
+
+  csweb_backups:
+    driver: local
+    labels:
+      - "com.csweb.volume=backups"
 
   mysql_metadata:
     driver: local

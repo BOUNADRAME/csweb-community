@@ -2,8 +2,8 @@
 
 namespace Tests\Unit\CSPro\Data;
 
-use App\CSPro\Data\BreakoutScheduler;
-use App\Service\PdoHelper;
+use AppBundle\CSPro\Data\BreakoutScheduler;
+use AppBundle\Service\PdoHelper;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 

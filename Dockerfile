@@ -6,7 +6,7 @@
 # Four stages, ordered so that a code change rebuilds in seconds:
 #   php-ext  PHP extensions, compiled once and reused from the build cache
 #   vendor   Composer dependencies (reinstalled only when composer.lock changes)
-#   assets   front-end files from the CSWeb 8.1 release archive (cached)
+#   assets   front-end files from npm tarballs (no Node.js, no bower)
 #   runtime  the image that runs: runtime libraries only, no compiler,
 #            no Node.js, no -dev packages
 #
@@ -56,27 +56,29 @@ COPY . .
 RUN composer dump-autoload --no-dev --optimize --no-scripts --ignore-platform-reqs
 
 # ---------------------------------------------------------------------------
-# 3. Front-end files
-#
-# CSWeb 8.1 ships its bower_components pre-built inside the release archive,
-# in a flat layout the templates address directly
-# (bower_components/bootstrap/css/..., bower_components/fontawesome-free/...).
-# `bower install` would resolve bower.json instead (Bootstrap 3, font-awesome
-# 4) and every stylesheet would 404, which CSWeb turns into a redirect loop to
-# /setup/. Taking them from the upstream archive also pins them to the exact
-# CSWeb release. This stage is cached: the archive is downloaded once.
+# 3. Front-end files used by the pages, from npm tarballs (checksums pinned).
+#    Same paths as the former bower_components/ layout.
 # ---------------------------------------------------------------------------
 FROM ${PHP_IMAGE} AS assets
-ARG CSWEB_RELEASE_URL=https://csprousers.org/releases/8.1/csweb-8.1.2.zip
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    rm -f /etc/apt/apt.conf.d/docker-clean \
-    && apt-get update && apt-get install -y --no-install-recommends unzip \
-    && curl -fsSL --retry 3 -o /tmp/csweb-release.zip "$CSWEB_RELEASE_URL" \
-    && unzip -q /tmp/csweb-release.zip 'bower_components/*' -d /out \
-    && rm -f /tmp/csweb-release.zip \
-    && test -f /out/bower_components/bootstrap/css/bootstrap.min.css \
-    && test -f /out/bower_components/fontawesome-free/css/all.min.css
+RUN set -eu; \
+    out=/out/bower_components; mkdir -p "$out"; cd /tmp; \
+    fetch() { \
+        curl -fsSL --retry 3 "https://registry.npmjs.org/$1/-/$2-$3.tgz" -o "$2.tgz"; \
+        echo "$4  $2.tgz" | sha256sum -c - >/dev/null; \
+        rm -rf "$2" && mkdir "$2" && tar xzf "$2.tgz" -C "$2" --strip-components=1; \
+    }; \
+    fetch jquery             jquery             3.7.1   68a9f787516da47c680e09c187bcbac4536b6f85d90eb882844e12919e583f53; \
+    fetch datatables.net     datatables.net     1.10.21 e679104d5884cf2a2a60be2cc61c77d8f45db28d6070a47440d5a50aa6fee765; \
+    fetch datatables.net-dt  datatables.net-dt  1.10.21 df96bdd3ae701ffc3e56c1277b4a6822d072d9c651abe383cfaa8e43b0e22a58; \
+    fetch datatables.net-bs4 datatables.net-bs4 1.10.21 a804689048645e77eda1cca508244ba078b80ff442be1ac93eea005b6142df63; \
+    fetch bootstrap          bootstrap          3.3.7   a9de9f9d74b46743821bda60e5f81233c7a2dc83ad4db60d0c0e396dc255fc2a; \
+    mkdir -p "$out/jquery/dist" "$out/datatables/media/js" "$out/datatables/media/css" "$out/bootstrap/dist"; \
+    cp jquery/dist/jquery.min.js                  "$out/jquery/dist/"; \
+    cp datatables.net/js/jquery.dataTables.min.js "$out/datatables/media/js/"; \
+    cp datatables.net-bs4/js/*.min.js             "$out/datatables/media/js/"; \
+    cp datatables.net-dt/css/*.min.css datatables.net-bs4/css/*.min.css "$out/datatables/media/css/"; \
+    cp -r datatables.net-dt/images                "$out/datatables/media/"; \
+    cp -r bootstrap/dist/css bootstrap/dist/fonts "$out/bootstrap/dist/"
 
 # ---------------------------------------------------------------------------
 # 4. Runtime image
@@ -128,17 +130,15 @@ WORKDIR /var/www/html
 COPY --chown=www-data:www-data --from=assets /out/bower_components ./bower_components
 COPY --chown=www-data:www-data --from=vendor /app/vendor ./vendor
 COPY --chown=www-data:www-data . .
-# files_csweb ships as an empty directory upstream, so git does not carry it;
-# /setup checks that it is writable.
-RUN mkdir -p files files_csweb var/cache var/logs \
-    && chown www-data:www-data files files_csweb var var/cache var/logs \
-    && chmod 775 files files_csweb \
+RUN mkdir -p files var/cache var/logs \
+    && chown www-data:www-data files var var/cache var/logs \
+    && chmod 775 files \
     && chmod 777 var var/cache var/logs
 
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD c=$(curl -s -o /dev/null -w '%{http_code}' http://localhost/api/server); [ "$c" = 200 ] || [ "$c" = 401 ] || { [ ! -f /var/www/html/src/config.php ] && curl -fsS -o /dev/null http://localhost/setup/; } || exit 1
+    CMD c=$(curl -s -o /dev/null -w '%{http_code}' http://localhost/api/server); [ "$c" = 200 ] || [ "$c" = 401 ] || { [ ! -f /var/www/html/src/AppBundle/config.php ] && curl -fsS -o /dev/null http://localhost/setup/; } || exit 1
 
 # Entrypoint handles permissions + cache, then starts Apache
 ENTRYPOINT ["docker-entrypoint.sh"]

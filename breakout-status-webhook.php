@@ -34,7 +34,7 @@ requireMethod(['GET']);
 requireBearerToken();
 
 // Load CSWeb DB config
-$configFile = __DIR__ . '/src/config.php';
+$configFile = __DIR__ . '/src/AppBundle/config.php';
 if (!file_exists($configFile)) {
     respondError('server_misconfigured', 'CSWeb config.php not found at: ' . $configFile, 500);
 }
@@ -124,11 +124,11 @@ $where  = [];
 $params = [];
 
 if ($filterDictionary !== '') {
-    $where[] = 'd.name = :dict_single';
+    $where[] = 'd.dictionary_name = :dict_single';
     $params[':dict_single'] = strtoupper($filterDictionary);
 } elseif (!empty($filterDictionaries)) {
     $placeholders = implode(',', array_map(fn($i) => ':dict_' . $i, array_keys($filterDictionaries)));
-    $where[] = 'd.name IN (' . $placeholders . ')';
+    $where[] = 'd.dictionary_name IN (' . $placeholders . ')';
     foreach (array_values($filterDictionaries) as $i => $name) {
         $params[':dict_' . $i] = strtoupper($name);
     }
@@ -165,7 +165,7 @@ try {
     $dataSql = "
         SELECT
             d.id,
-            d.name AS dictionary_name,
+            d.dictionary_name,
             d.dictionary_label,
             (s.dictionary_id IS NOT NULL)     AS breakout_configured,
             s.host_name,
@@ -183,7 +183,7 @@ try {
         LEFT JOIN cspro_dictionaries_schema s ON s.dictionary_id = d.id
         LEFT JOIN cspro_breakout_scheduler sch ON sch.dictionary_id = d.id
         $whereClause
-        ORDER BY d.name
+        ORDER BY d.dictionary_name
         LIMIT :limit OFFSET :offset
     ";
 
