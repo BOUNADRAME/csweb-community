@@ -1,0 +1,78 @@
+---
+title: "CLI : csweb:breakout-metrics"
+description: "Référence de la commande csweb:breakout-metrics - Recalculer en arrière-plan les compteurs de Breakout Health."
+---
+
+# csweb:breakout-metrics
+
+Disponible depuis **8.0.11 / 8.1.17**.
+
+```bash
+php bin/console csweb:breakout-metrics [--dictionary=NOM]... [--if-older-than=SECONDES] [-v]
+```
+
+## Rôle
+
+Compte, pour chaque dictionnaire, les cas présents dans CSWeb et les cas écrits
+dans la base de breakout, puis enregistre le résultat dans la table
+`cspro_breakout_metrics`. Le tableau de bord [Breakout Health](/guides/breakout/monitoring)
+lit uniquement cette table : il s'ouvre instantanément, quel que soit le nombre
+de dictionnaires.
+
+La table est créée automatiquement au premier lancement : aucune migration.
+
+## Quand elle s'exécute
+
+| Déclencheur | Portée |
+|---|---|
+| Tâche planifiée de l'image Docker, toutes les 2 minutes | Tous les dictionnaires |
+| Fin d'un breakout planifié (`csweb:scheduler-run`) | Le dictionnaire traité |
+| `csweb:scheduler-run`, quand les compteurs ont plus de 3 minutes | Tous les dictionnaires |
+| Bouton **Refresh** du tableau de bord | Tous les dictionnaires |
+
+Deux lancements simultanés ne se gênent pas : le second s'arrête aussitôt.
+
+## Options
+
+| Option | Effet |
+|---|---|
+| `--dictionary=NOM` (`-d`) | Ne recompte que ce dictionnaire. Répétable : `-d MENAGE -d INDIVIDU` |
+| `--if-older-than=SECONDES` | Ne fait rien si les compteurs ont moins de SECONDES secondes |
+| `-v` | Affiche le nombre de dictionnaires comptés et la durée |
+
+## Exemples
+
+```bash
+docker compose exec csweb php bin/console csweb:breakout-metrics -v
+```
+
+Résultat :
+
+```text
+2026-11-24 08:57:20 Counted 10 dictionaries in 0.1 s.
+```
+
+Recompter un seul dictionnaire :
+
+```bash
+docker compose exec csweb php bin/console csweb:breakout-metrics -d MENAGE_DICT -v
+```
+
+## Hors Docker
+
+La tâche `csweb:scheduler-run` déjà planifiée suffit : elle recalcule les
+compteurs quand ils ont plus de 3 minutes. Pour des chiffres plus frais :
+
+```bash
+*/2 * * * * php /chemin/vers/csweb/bin/console csweb:breakout-metrics >> /dev/null 2>&1
+```
+
+## Journal
+
+Dans l'image Docker, les erreurs éventuelles sont écrites dans
+`var/logs/breakout-metrics-cron.log`.
+
+## Temps de calcul
+
+Mesuré avec 100 dictionnaires et 2,9 millions de cas : 11 s par recalcul, en
+arrière-plan. L'ouverture du tableau de bord passe de 10 s à 0,01 s.

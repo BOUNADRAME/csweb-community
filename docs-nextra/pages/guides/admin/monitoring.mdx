@@ -143,6 +143,9 @@ ls -la /var/www/html/var/logs/breakout/
 
 # Logs scheduler cron
 tail -f /var/www/html/var/logs/scheduler-cron.log
+
+# Logs du recalcul des compteurs Breakout Health (8.0.11 / 8.1.17)
+tail -f /var/www/html/var/logs/breakout-metrics-cron.log
 ```
 
 ### Rotation Logs

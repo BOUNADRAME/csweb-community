@@ -2,6 +2,7 @@
   "overview": "Vue d'Ensemble",
   "process-cases": "process-cases-by-dict",
   "scheduler-run": "scheduler-run",
+  "breakout-metrics": "breakout-metrics",
   "check-drivers": "check-database-drivers",
   "check-config": "check-config",
   "commands": "Toutes les Commandes"

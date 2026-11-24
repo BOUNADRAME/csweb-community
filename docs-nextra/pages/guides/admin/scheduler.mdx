@@ -98,7 +98,16 @@ crontab -e
 
 Le Dockerfile CSWeb inclut déjà un cron intégré qui est démarré automatiquement par le `docker-entrypoint.sh`. **Aucune configuration supplémentaire n'est nécessaire** si vous utilisez l'image Docker officielle.
 
-Le cron intégré exécute `csweb:scheduler-run` chaque minute via `/etc/cron.d/csweb-scheduler`.
+Le cron intégré (`/etc/cron.d/csweb-scheduler`) exécute :
+
+| Fréquence | Commande | Rôle |
+|---|---|---|
+| Chaque minute | `csweb:scheduler-run` | Breakouts planifiés |
+| Chaque minute | `csweb:backup-run` | Sauvegardes planifiées |
+| Toutes les 2 min | [`csweb:breakout-metrics`](/reference/cli/breakout-metrics) | Compteurs de Breakout Health (8.0.11 / 8.1.17) |
+
+Après chaque breakout, `csweb:scheduler-run` met aussi à jour les compteurs du
+dictionnaire traité.
 
 Si vous préférez configurer le cron depuis l'hôte :
 

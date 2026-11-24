@@ -41,6 +41,25 @@ docker compose exec csweb php bin/console csweb:scheduler-run --env=prod -vvv
 
 ---
 
+### csweb:breakout-metrics Recalculer les compteurs de Breakout Health (8.0.11 / 8.1.17).
+
+**Syntax :**
+```bash
+php bin/console csweb:breakout-metrics [--dictionary=NOM]... [--if-older-than=SECONDES]
+```
+
+**Documentation :** [ breakout-metrics](/reference/cli/breakout-metrics)
+
+**Exemple :**
+```bash
+docker compose exec csweb php bin/console csweb:breakout-metrics -v
+```
+
+> **Note :** Lancée automatiquement toutes les 2 minutes dans le conteneur Docker,
+> et après chaque breakout planifié.
+
+---
+
 ### csweb:check-database-drivers Vérifier drivers de base de données disponibles.
 
 **Syntax :**
