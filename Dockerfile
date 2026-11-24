@@ -115,6 +115,8 @@ RUN echo "* * * * * www-data /usr/local/bin/php /var/www/html/bin/console csweb:
         > /etc/cron.d/csweb-scheduler \
     && echo "* * * * * www-data /usr/local/bin/php /var/www/html/bin/console csweb:backup-run >> /var/www/html/var/logs/backup-cron.log 2>&1" \
         >> /etc/cron.d/csweb-scheduler \
+    && echo "*/2 * * * * www-data /usr/local/bin/php /var/www/html/bin/console csweb:breakout-metrics >> /var/www/html/var/logs/breakout-metrics-cron.log 2>&1" \
+        >> /etc/cron.d/csweb-scheduler \
     && chmod 0644 /etc/cron.d/csweb-scheduler
 
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

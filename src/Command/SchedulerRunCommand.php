@@ -13,6 +13,7 @@ use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
 use App\Service\PdoHelper;
 use App\CSPro\Data\BreakoutScheduler;
+use App\Service\BreakoutStatusService;
 use Psr\Log\LoggerInterface;
 
 class SchedulerRunCommand extends Command {
@@ -20,7 +21,7 @@ class SchedulerRunCommand extends Command {
     protected static $defaultName = 'csweb:scheduler-run';
     use LockableTrait;
 
-    public function __construct(private PdoHelper $pdo, private KernelInterface $kernel, private LoggerInterface $logger) {
+    public function __construct(private PdoHelper $pdo, private KernelInterface $kernel, private LoggerInterface $logger, private BreakoutStatusService $breakoutStatus) {
         parent::__construct();
     }
 
@@ -61,6 +62,7 @@ class SchedulerRunCommand extends Command {
         if (empty($dueSchedules)) {
             $io->text('No schedules due.');
             $this->release();
+            $this->refreshStaleCounters($onlyId);
             return Command::SUCCESS;
         }
 
@@ -107,6 +109,14 @@ class SchedulerRunCommand extends Command {
                 $logFileName
             );
 
+            // Breakout Health shows the new counts right away instead of
+            // waiting for the next background refresh.
+            try {
+                $this->breakoutStatus->refreshMetrics([$dictName]);
+            } catch (\Throwable $e) {
+                $this->logger->warning("Scheduler: counters not refreshed for $dictName: " . $e->getMessage());
+            }
+
             if ($process->getExitCode() === 0) {
                 $io->success("Breakout completed for $dictName");
             } else {
@@ -115,6 +125,25 @@ class SchedulerRunCommand extends Command {
         }
 
         $this->release();
+        $this->refreshStaleCounters($onlyId);
         return Command::SUCCESS;
+    }
+
+    /**
+     * Keep the Breakout Health counters fresh on installs whose cron only
+     * calls this command (shared hosting): recount when they are old. The
+     * Docker image also runs csweb:breakout-metrics, so this is usually a no-op.
+     */
+    private function refreshStaleCounters(?int $onlyId): void {
+        if ($onlyId !== null) {
+            return;
+        }
+        try {
+            if ($this->breakoutStatus->metricsInfo()['stale']) {
+                $this->breakoutStatus->refreshMetrics();
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warning('Scheduler: breakout counters not refreshed: ' . $e->getMessage());
+        }
     }
 }

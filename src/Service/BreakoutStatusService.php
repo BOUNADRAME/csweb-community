@@ -26,6 +26,11 @@ use Symfony\Contracts\Cache\ItemInterface;
  *    remembered for TARGET_DOWN_TTL seconds across requests, and every entry
  *    reports it (target_status = "unreachable" + target_error) instead of
  *    silently showing 0 processed cases.
+ *  - Case counts (the only expensive part) are pre-computed in the background
+ *    into cspro_breakout_metrics by `csweb:breakout-metrics` (cron) and after
+ *    each scheduled breakout. Requests read that table, so the dashboard
+ *    answers in milliseconds for 10 or 500 dictionaries. A dictionary with no
+ *    stored counts yet, or whose breakout target changed, is counted live once.
  */
 class BreakoutStatusService {
 
@@ -42,8 +47,18 @@ class BreakoutStatusService {
     private array $memoSourceCount    = [];
     private array $memoProcessedCount = [];
 
-    private const TTL_SUMMARY      = 60;
-    private const TTL_DICTIONARIES = 30;
+    private BreakoutMetricsStore $metricsStore;
+    /** @var array<string, array<string,mixed>>|null stored counters, null when the store is unavailable */
+    private ?array $snapshot = null;
+    private bool $snapshotLoaded = false;
+    /** Set by refreshMetrics(): ignore stored counters and count live. */
+    private bool $liveMetrics = false;
+
+    // Requests only read pre-computed counters now: a short cache is enough.
+    private const TTL_SUMMARY      = 15;
+    private const TTL_DICTIONARIES = 15;
+    /** Stored counters older than this trigger a background refresh. */
+    public const METRICS_STALE_AFTER = 180;
     /** Above this threshold, source COUNT(*) is replaced by INFORMATION_SCHEMA estimate. */
     private const SOURCE_COUNT_EXACT_LIMIT = 5_000_000;
     /** Seconds to wait for a breakout target before reporting it unreachable. */
@@ -63,6 +78,163 @@ class BreakoutStatusService {
         private LoggerInterface $logger,
         private ?CacheInterface $cache = null
     ) {
+        $this->metricsStore = new BreakoutMetricsStore($pdo, $logger);
+    }
+
+    // ------------------------------------------------------------------
+    // Pre-computed counters
+    // ------------------------------------------------------------------
+
+    /**
+     * Recount dictionaries and store the result. Called by the
+     * csweb:breakout-metrics command and after each scheduled breakout.
+     *
+     * @param string[]|null $only dictionary names, or null for all (and prune removed ones)
+     * @return array{dictionaries:int, unreachable:int, ms:int}
+     */
+    public function refreshMetrics(?array $only = null): array {
+        $start = microtime(true);
+        $this->liveMetrics = true;
+        $this->retryDownTargets = true;
+        $sql = "
+            SELECT d.name AS dictionary_name,
+                   (s.dictionary_id IS NOT NULL) AS breakout_configured,
+                   s.host_name, s.port, s.db_type, s.schema_name, s.schema_user_name,
+                   AES_DECRYPT(s.schema_password, 'cspro') AS schema_password_plain
+            FROM cspro_dictionaries d
+            LEFT JOIN cspro_dictionaries_schema s ON s.dictionary_id = d.id
+            ORDER BY d.name
+        ";
+        $rows = $this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+        $wanted = $only !== null ? array_map('strtoupper', $only) : null;
+        $count = 0;
+        $unreachable = 0;
+        foreach ($rows as $row) {
+            if ($wanted !== null && !in_array($row['dictionary_name'], $wanted, true)) {
+                continue;
+            }
+            $m = $this->metricsFor($row);
+            $count++;
+            if ($m['target_error'] !== null) {
+                $unreachable++;
+            }
+        }
+        if ($only === null) {
+            $this->metricsStore->prune(array_column($rows, 'dictionary_name'));
+        }
+        $this->liveMetrics = false;
+        return ['dictionaries' => $count, 'unreachable' => $unreachable, 'ms' => (int) round((microtime(true) - $start) * 1000)];
+    }
+
+    /**
+     * Age of the stored counters, for the "counts updated X ago" hint.
+     *
+     * @return array{available:bool, dictionaries:int, oldest:?string, newest:?string, age_seconds:?int, stale:bool}
+     */
+    public function metricsInfo(): array {
+        $snap = $this->snapshot();
+        if ($snap === null || !$snap) {
+            return ['available' => $snap !== null, 'dictionaries' => 0, 'oldest' => null, 'newest' => null, 'age_seconds' => null, 'stale' => true];
+        }
+        $times = array_column($snap, 'computed_at');
+        $oldest = min($times);
+        $age = max(0, time() - $oldest);
+        return [
+            'available'    => true,
+            'dictionaries' => count($snap),
+            'oldest'       => date('c', $oldest),
+            'newest'       => date('c', max($times)),
+            'age_seconds'  => $age,
+            'stale'        => $age > self::METRICS_STALE_AFTER,
+        ];
+    }
+
+    /**
+     * True at most once per $seconds across requests: lets the controller
+     * start a background refresh without spawning one per page load.
+     */
+    public function claimRefreshSlot(int $seconds): bool {
+        if (!$this->cache instanceof CacheItemPoolInterface) {
+            return true;
+        }
+        try {
+            $item = $this->cache->getItem('breakout_metrics_refresh_kick');
+            if ($item->isHit()) {
+                return false;
+            }
+            $item->set(time());
+            $item->expiresAfter($seconds);
+            $this->cache->save($item);
+        } catch (\Throwable $e) {
+        }
+        return true;
+    }
+
+    /** @return array<string, array<string,mixed>>|null */
+    private function snapshot(): ?array {
+        if (!$this->snapshotLoaded) {
+            $this->snapshot = $this->metricsStore->loadAll();
+            $this->snapshotLoaded = true;
+        }
+        return $this->snapshot;
+    }
+
+    /**
+     * What the counters depend on: when the breakout target is edited, the
+     * stored counts are no longer valid and the dictionary is recounted.
+     *
+     * @param array<string,mixed> $row
+     */
+    private static function configHash(array $row): string {
+        return md5(implode('|', [
+            (int) (bool) ($row['breakout_configured'] ?? false),
+            $row['host_name'] ?? '', $row['port'] ?? '', $row['db_type'] ?? '',
+            $row['schema_name'] ?? '', $row['schema_user_name'] ?? '',
+            !empty($row['schema_password_plain']) ? 1 : 0,
+        ]));
+    }
+
+    /**
+     * Counters of one dictionary: stored ones when valid, otherwise counted
+     * live and stored for the next requests.
+     *
+     * @param array<string,mixed> $row needs dictionary_name, breakout_configured and the target columns
+     * @return array{total_cases:int, processed_cases:?int, last_processed_time:?string, last_error:?string, target_error:?string, computed_at:int}
+     */
+    private function metricsFor(array $row): array {
+        $name = (string) $row['dictionary_name'];
+        $hash = self::configHash($row);
+        if (!$this->liveMetrics) {
+            $snap = $this->snapshot();
+            if ($snap !== null && isset($snap[$name]) && $snap[$name]['config_hash'] === $hash) {
+                return $snap[$name];
+            }
+        }
+
+        $t0 = microtime(true);
+        $configured = (bool) ($row['breakout_configured'] ?? false);
+        $m = [
+            'config_hash'         => $hash,
+            'total_cases'         => $this->countSourceCases($name),
+            'processed_cases'     => null,
+            'last_processed_time' => null,
+            'last_error'          => null,
+            'target_error'        => null,
+        ];
+        if ($configured && !empty($row['schema_password_plain'])) {
+            $m['processed_cases']     = $this->countProcessedCases($row);
+            $m['last_processed_time'] = $this->lastJobTime($row);
+            $m['last_error']          = $this->lastJobError($row);
+            $m['target_error']        = $this->targetError($row);
+        }
+        $m['compute_ms']  = (int) round((microtime(true) - $t0) * 1000);
+        $m['computed_at'] = time();
+
+        $this->metricsStore->save($name, $m);
+        if ($this->snapshot !== null) {
+            $this->snapshot[$name] = $m;
+        }
+        return $m;
     }
 
     /**
@@ -226,6 +398,7 @@ class BreakoutStatusService {
             SELECT
                 d.name AS dictionary_name,
                 (s.dictionary_id IS NOT NULL) AS configured,
+                (s.dictionary_id IS NOT NULL) AS breakout_configured,
                 s.host_name, s.port, s.db_type, s.schema_name, s.schema_user_name,
                 AES_DECRYPT(s.schema_password, 'cspro') AS schema_password_plain,
                 sch.last_run
@@ -239,17 +412,18 @@ class BreakoutStatusService {
         $lastActivity = $row['last_activity'];
 
         foreach ($allRows as $r) {
-            $tot = $this->countSourceCases($r['dictionary_name']);
+            $m = $this->metricsFor($r);
+            $tot = $m['total_cases'];
             $totalCases += $tot;
             if ($r['configured']) {
-                $jobTime = $r['schema_password_plain'] ? $this->lastJobTime($r) : null;
+                $jobTime = $m['last_processed_time'];
                 if ($r['last_run'] === null && $jobTime === null) {
                     $neverRunCount++;
                 }
                 $lastActivity = self::latest($lastActivity, $jobTime);
             }
             if ($r['configured'] && $r['schema_password_plain']) {
-                $proc = $this->countProcessedCases($r);
+                $proc = $m['processed_cases'];
                 if ($proc !== null) {
                     $processedCases += $proc;
                     $measuredCases  += $tot;
@@ -258,7 +432,7 @@ class BreakoutStatusService {
                     if ($pending > 0) {
                         $dictsWithPending++;
                     }
-                } elseif ($this->targetError($r) !== null) {
+                } elseif ($m['target_error'] !== null) {
                     $dictsUnreachable++;
                 }
             }
@@ -324,7 +498,7 @@ class BreakoutStatusService {
         $errors = $st->fetchAll(PDO::FETCH_ASSOC);
 
         $neverRunSql = "
-            SELECT d.name AS dictionary_name, d.dictionary_label,
+            SELECT d.name AS dictionary_name, d.dictionary_label, 1 AS breakout_configured,
                    s.host_name, s.port, s.db_type, s.schema_name, s.schema_user_name,
                    AES_DECRYPT(s.schema_password, 'cspro') AS schema_password_plain
             FROM cspro_dictionaries d
@@ -337,7 +511,7 @@ class BreakoutStatusService {
         foreach ($this->pdo->query($neverRunSql)->fetchAll(PDO::FETCH_ASSOC) as $nr) {
             // Community layer: skip dictionaries already processed from the CLI
             // or a webhook (they have completed jobs in the target).
-            if ($nr['schema_password_plain'] && $this->lastJobTime($nr) !== null) {
+            if ($nr['schema_password_plain'] && $this->metricsFor($nr)['last_processed_time'] !== null) {
                 continue;
             }
             $neverRun[] = ['dictionary_name' => $nr['dictionary_name'], 'dictionary_label' => $nr['dictionary_label']];
@@ -346,12 +520,11 @@ class BreakoutStatusService {
             }
         }
 
-        // Pending requires per-target counts — reuse buildStatusEntry for top N candidates only.
-        // Strategy: pull all configured dicts (typically small number compared to cases), score them,
-        // keep top N. For huge dict catalogs (>500), upgrade to a persisted snapshot table later.
+        // Pending: score every configured dictionary from its stored counters
+        // and keep the top N.
         $candidatesSql = "
             SELECT
-                d.name AS dictionary_name, d.dictionary_label,
+                d.name AS dictionary_name, d.dictionary_label, 1 AS breakout_configured,
                 s.host_name, s.port, s.db_type, s.schema_name, s.schema_user_name,
                 AES_DECRYPT(s.schema_password, 'cspro') AS schema_password_plain
             FROM cspro_dictionaries d
@@ -362,10 +535,11 @@ class BreakoutStatusService {
         $scored = [];
         $unreachable = [];
         foreach ($candidates as $c) {
-            $tot = $this->countSourceCases($c['dictionary_name']);
-            $proc = $c['schema_password_plain'] ? $this->countProcessedCases($c) : null;
+            $m = $this->metricsFor($c);
+            $tot = $m['total_cases'];
+            $proc = $m['processed_cases'];
             if ($proc === null) {
-                $err = $this->targetError($c);
+                $err = $m['target_error'];
                 if ($err !== null && count($unreachable) < $limit) {
                     $unreachable[] = [
                         'dictionary_name'  => $c['dictionary_name'],
@@ -550,16 +724,11 @@ class BreakoutStatusService {
         $dictName   = $row['dictionary_name'];
         $configured = (bool) $row['breakout_configured'];
 
-        $totalCases        = $this->countSourceCases($dictName);
-        $processedCases    = null;
-        $lastProcessedTime = null;
-        $lastError         = null;
-
-        if ($configured && $row['schema_password_plain']) {
-            $processedCases    = $this->countProcessedCases($row);
-            $lastProcessedTime = $this->lastJobTime($row);
-            $lastError         = $this->lastJobError($row);
-        }
+        $metrics           = $this->metricsFor($row);
+        $totalCases        = $metrics['total_cases'];
+        $processedCases    = $metrics['processed_cases'];
+        $lastProcessedTime = $metrics['last_processed_time'];
+        $lastError         = $metrics['last_error'];
 
         $casesPending   = ($processedCases !== null) ? max(0, $totalCases - $processedCases) : null;
         $completionRate = ($processedCases !== null && $totalCases > 0)
@@ -585,7 +754,7 @@ class BreakoutStatusService {
         } elseif (!$row['schema_password_plain']) {
             $targetStatus = self::TARGET_INCOMPLETE;
             $targetError  = 'Breakout target has no stored password: edit it in Settings > Data.';
-        } elseif (($targetError = $this->targetError($row)) !== null) {
+        } elseif (($targetError = $metrics['target_error']) !== null) {
             $targetStatus = self::TARGET_UNREACHABLE;
         } else {
             $targetStatus = self::TARGET_OK;
@@ -621,6 +790,7 @@ class BreakoutStatusService {
             'overdue_seconds'      => $overdueSeconds,
             'target_status'        => $targetStatus,
             'target_error'         => $targetError,
+            'metrics_at'           => date('c', $metrics['computed_at']),
         ];
     }
 

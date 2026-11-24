@@ -29,6 +29,44 @@ _Nothing yet._
 
 ---
 
+## [8.1.17] - 2026-11-24 (branch `8.1.x`)
+
+Breakout Health opens instantly, whatever the number of dictionaries.
+
+### Changed
+
+- **Case counts are pre-computed in the background.** Counting cases in every
+  source table and breakout target was done each time the dashboard opened;
+  it is now done by a new command, `csweb:breakout-metrics`, and stored in a
+  small table (`cspro_breakout_metrics`, created automatically, no upgrade
+  step). The dashboard only reads that table. Measured with 100 dictionaries
+  and 2.9 million cases (MariaDB, 2 vCPU):
+
+  | | Before | 8.1.17 |
+  |---|---|---|
+  | Opening the dashboard | 10.9 s | 0.01 s |
+  | Filtering (e.g. "Pending") | 11.0 s | 0.01 s |
+  | Background recount (every 2 min) | — | 10 s |
+
+- Counters are refreshed: every 2 minutes (cron in the Docker image); after
+  each scheduled breakout, for that dictionary; by `csweb:scheduler-run` when
+  they are older than 3 minutes (installs whose cron only runs the scheduler);
+  and when **Refresh** is clicked.
+- The toolbar shows how old the counts are ("Counts updated 1m ago") and
+  "Updating counts…" while a recount runs; the page reloads its figures by
+  itself when the recount ends.
+- A dictionary whose breakout target was edited, or that was just added, is
+  counted at once instead of waiting for the next recount.
+
+### Upgrade
+
+`git checkout v8.1.17 && docker compose up -d --build`. Nothing to change in
+`.env`. Outside Docker, the existing `csweb:scheduler-run` cron is enough;
+`*/2 * * * * php bin/console csweb:breakout-metrics` can be added for fresher
+counts.
+
+---
+
 ## [8.1.16] - 2026-11-23 (branch `8.1.x`)
 
 Faster, smaller Docker image. Same application, same `.env`, same data.
