@@ -10,7 +10,8 @@ Menu **Breakout Health** : l'état de chaque dictionnaire en un écran, pensé p
 suivre une enquête avec beaucoup de dictionnaires. Les colonnes Total cases et
 Processed arrivent en 8.0.8 / 8.1.14 ; le statut « Schedule overdue » et le filtre
 « Hide empty » en 8.0.9 / 8.1.15 ; les compteurs calculés en arrière-plan en
-8.0.11 / 8.1.17 ; les chiffres exacts dans les cartes en 8.0.12 / 8.1.18.
+8.0.11 / 8.1.17 ; les chiffres exacts dans les cartes en 8.0.12 / 8.1.18 ; les
+pourcentages arrondis vers le bas en 8.0.13 / 8.1.19.
 
 **Cartes du haut** : dictionnaires configurés, cas collectés (CSWeb), cas traités
 (base de breakout), taux global, cas en attente, erreurs. Avec un filtre actif,
@@ -21,6 +22,10 @@ visible dans Pending) ; au-delà, ils s'affichent en millions avec deux décimal
 (`2.91M`) et le chiffre exact apparaît au survol. Avant 8.0.12 / 8.1.18, les
 cartes arrondissaient à une décimale : 3 798 et 3 772 s'affichaient tous deux
 « 3.8K ».
+
+Les pourcentages (Global completion, colonne Completion) sont arrondis vers le
+bas : 3 881 cas traités sur 3 883 donnent 99.9 %, pas 100.0 %. Un « 100.0% »
+signifie donc toujours qu'il ne reste aucun cas à traiter.
 
 **Colonnes du tableau**
 
