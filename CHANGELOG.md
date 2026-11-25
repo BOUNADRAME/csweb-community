@@ -29,6 +29,25 @@ _Nothing yet._
 
 ---
 
+## [8.1.21] - 2026-11-25 (branch `8.1.x`)
+
+### Fixed
+
+- **Clear message when the breakout cannot rebuild a dictionary's tables.**
+  The breakout log ended with a driver stack trace only. It now ends with one
+  readable line, for example: "Breakout of PRAPS2_ENTRETIEN stopped.
+  Dictionary PRAPS2_ENTRETIEN changed since its last breakout, so its tables in
+  database "fraps2" must be recreated, but dropping table "…" failed: …".
+
+### Upgrade
+
+`git checkout v8.1.21 && docker compose up -d --build`. Nothing to change in
+`.env`. A dictionary whose breakout failed this way is rebuilt at its next
+run: its tables in the target database are recreated and all its cases are
+written again.
+
+---
+
 ## [8.1.20] - 2026-11-25 (branch `8.1.x`)
 
 Webhooks for a server-side platform that must not hold a CSWeb account:

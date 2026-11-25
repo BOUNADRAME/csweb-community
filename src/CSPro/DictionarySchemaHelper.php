@@ -245,6 +245,8 @@ class DictionarySchemaHelper {
     }
 
     private function cleanDictionarySchema() {
+        $isMySql = false;
+        $name = null;
         try {
             $tables = $this->conn->getSchemaManager()->listTables();
             if ((is_countable($tables) ? count($tables) : 0) > 0) {
@@ -278,16 +280,39 @@ class DictionarySchemaHelper {
                     }
                     $this->conn->executeStatement($sql);
                 }
+                $name = null;
 
                 if ($isMySql) {
                     $this->conn->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
                 }
             }
         } catch (\Exception $e) {
+            if (!empty($isMySql)) {
+                try {
+                    $this->conn->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
+                } catch (\Exception $ignored) {
+                }
+            }
             $strMsg = "Failed deleting tables from database: " . $this->connectionParams['dbname'] . " while processsing Dictionary: " . $this->dictionaryName;
             $this->logger->error($strMsg, ["context" => (string) $e]);
-            throw $e;
+            throw new \RuntimeException(sprintf(
+                'Dictionary %s changed since its last breakout, so its tables in database "%s" must be recreated, but %s failed: %s',
+                $this->dictionaryName,
+                $this->connectionParams['dbname'] ?? '?',
+                $name !== null ? 'dropping table "' . $name . '"' : 'listing its tables',
+                self::shortError($e)
+            ), 0, $e);
         }
+    }
+
+    /** First line of the database error, without the driver prefixes. */
+    private static function shortError(\Throwable $e): string {
+        $root = $e;
+        while ($root->getPrevious() !== null) {
+            $root = $root->getPrevious();
+        }
+        $msg = trim(strtok($root->getMessage(), "\n"));
+        return mb_strlen($msg) > 300 ? mb_substr($msg, 0, 300) . '…' : $msg;
     }
 
     private function createDictionarySchema($processCasesOptions) {
