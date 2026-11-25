@@ -9,13 +9,18 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 WORK="$(mktemp -d)"
 PORT_A=18471   # fully configured
 PORT_B=18472   # media token missing
+PORT_D=18474   # media configured, delete left disabled
 PASS=0; FAIL=0
 KEY=1234567890
 
-cleanup() { kill "${PID_A:-}" "${PID_B:-}" 2>/dev/null; rm -rf "$WORK"; }
+cleanup() { kill "${PID_A:-}" "${PID_B:-}" "${PID_D:-}" 2>/dev/null; rm -rf "$WORK"; }
 trap cleanup EXIT
 
-mkdir -p "$WORK/files/praps2/media/1" "$WORK/files/other" "$WORK/var/logs" "$WORK/var/cache"
+mkdir -p "$WORK/files/praps2/media/1" "$WORK/files/praps2/media/2/sub" "$WORK/files/sondage_audio" \
+         "$WORK/files/apps" "$WORK/files/other" "$WORK/var/logs" "$WORK/var/cache"
+head -c 2000 /dev/urandom > "$WORK/files/praps2/media/2/sub/9999999999_ENTRETIEN.m4a"
+head -c 2000 /dev/urandom > "$WORK/files/sondage_audio/SONDAGE_0001.m4a"
+echo app > "$WORK/files/apps/app.pen"
 head -c 300000 /dev/urandom > "$WORK/files/praps2/media/1/${KEY}_ENTRETIEN.m4a"
 head -c 5000   /dev/urandom > "$WORK/files/praps2/media/1/${KEY}_AMENAGEMENT.jpg"
 head -c 1000   /dev/urandom > "$WORK/files/praps2/media/1/${KEY}_RESUME.m4a"
@@ -31,14 +36,15 @@ start() { # port, extra env...
   local port=$1; shift
   env -i PATH="$PATH" CSWEB_ROOT="$WORK" FILES_FOLDER="$WORK/files" \
       BREAKOUT_WEBHOOK_TOKEN="$SHARED_TOKEN" WEBHOOK_TOKEN_STATUS="$STATUS_TOKEN" \
-      MEDIA_WEBHOOK_PREFIXES="praps2/media/" MEDIA_WEBHOOK_MAX_BYTES=100000 \
+      MEDIA_WEBHOOK_PREFIXES="praps2/media/,sondage_audio/" MEDIA_WEBHOOK_MAX_BYTES=100000 \
       WEBHOOK_RATE_LIMIT_PER_MIN=1000 "$@" \
       php -S 127.0.0.1:"$port" -t "$ROOT" >"$WORK/server-$port.log" 2>&1 &
   echo $!
 }
-PID_A=$(start $PORT_A WEBHOOK_TOKEN_MEDIA="$MEDIA_TOKEN")
+PID_A=$(start $PORT_A WEBHOOK_TOKEN_MEDIA="$MEDIA_TOKEN" MEDIA_WEBHOOK_ALLOW_DELETE=1)
 PID_B=$(start $PORT_B)
-for p in $PORT_A $PORT_B; do
+PID_D=$(start $PORT_D WEBHOOK_TOKEN_MEDIA="$MEDIA_TOKEN")
+for p in $PORT_A $PORT_B $PORT_D; do
   for _ in $(seq 1 50); do curl -s -o /dev/null "http://127.0.0.1:$p/" && break; sleep 0.1; done
 done
 
@@ -49,7 +55,7 @@ call() {
         ${2:+-H "Authorization: Bearer $2"} -H 'Content-Type: application/json' ${4:+--data "$4"})
   CODE=${out##*$'\n'}; BODY=${out%$'\n'*}
 }
-json() { php -r '$d=json_decode(stream_get_contents(STDIN),true); $v=$d; foreach(explode(".",$argv[1]) as $k){ $v=is_array($v)&&array_key_exists($k,$v)?$v[$k]:null; } echo is_bool($v)?($v?"true":"false"):(is_array($v)?json_encode($v):$v);' "$1" <<<"$BODY"; }
+json() { php -r '$d=json_decode(stream_get_contents(STDIN),true); $v=$d; foreach(explode(".",$argv[1]) as $k){ $v=is_array($v)&&array_key_exists($k,$v)?$v[$k]:null; } echo is_bool($v)?($v?"true":"false"):(is_array($v)?json_encode($v,JSON_UNESCAPED_SLASHES):$v);' "$1" <<<"$BODY"; }
 check() { # name expected actual
   if [ "$2" = "$3" ]; then PASS=$((PASS+1)); echo "  ok   $1"; else FAIL=$((FAIL+1)); echo "  FAIL $1 (expected '$2', got '$3')"; echo "       $BODY" | head -c 400; echo; fi
 }
@@ -65,6 +71,17 @@ check "read sha256 matches the file" "$(sha256sum "$WORK/files/praps2/media/1/${
 check "decoded content matches the file" "$(json data.sha256)" "$(json data.contenu | base64 -d | sha256sum | cut -d' ' -f1)"
 check "type audio/mp4" "audio/mp4" "$(json data.type)"
 
+echo "1a. Several media folders"
+call $PORT_A $MEDIA_TOKEN media-webhook.php '{"action":"list"}'
+check "list without folder -> allowed folders only" '["praps2/media","sondage_audio"]' "$(json data.dossiers)"
+call $PORT_A $MEDIA_TOKEN media-webhook.php '{"action":"list","dossier":"sondage_audio"}'
+check "second folder listed" "sondage_audio/SONDAGE_0001.m4a" "$(json data.fichiers | php -r 'echo json_decode(stream_get_contents(STDIN),true)[0]["chemin"];')"
+call $PORT_A $MEDIA_TOKEN media-webhook.php '{"action":"list","dossier":"praps2/media","recursif":true}'
+check "recursive list finds media in every sub-folder" 4 "$(json data.fichiers | php -r 'echo count(json_decode(stream_get_contents(STDIN),true));')"
+check "recursive list does not follow the link out of the folder" 0 "$(json data.fichiers | grep -c secret)"
+call $PORT_A $MEDIA_TOKEN media-webhook.php '{"action":"list","dossier":"apps"}'
+check "apps folder not allowed -> 403" 403 "$CODE"
+
 echo "1b. Large file: 413 in one piece, readable in pieces"
 F="praps2/media/1/${KEY}_ENTRETIEN.m4a"
 call $PORT_A $MEDIA_TOKEN media-webhook.php "{\"action\":\"read\",\"chemin\":\"$F\"}"
@@ -76,7 +93,11 @@ for off in 0 100000 200000; do
 done
 check "pieces reassemble to the file" "$(sha256sum "$WORK/files/$F" | cut -d' ' -f1)" "$(sha256sum "$WORK/pieces" | cut -d' ' -f1)"
 
-echo "2. Delete inside the prefix, refused outside"
+echo "2. Delete: off by default; when enabled, inside the prefix only"
+call $PORT_D $MEDIA_TOKEN media-webhook.php "{\"action\":\"delete\",\"chemin\":\"praps2/media/1/${KEY}_AMENAGEMENT.jpg\"}"
+check "delete disabled by default -> 403" 403 "$CODE"
+check "delete disabled error code" "delete_disabled" "$(json error.code)"
+check "file still there" 1 "$(ls "$WORK/files/praps2/media/1" | grep -c AMENAGEMENT)"
 call $PORT_A $MEDIA_TOKEN media-webhook.php "{\"action\":\"delete\",\"chemin\":\"praps2/media/1/${KEY}_AMENAGEMENT.jpg\"}"
 check "delete -> 200" 200 "$CODE"
 check "moved to trash" "corbeille" "$(json data.mode)"
