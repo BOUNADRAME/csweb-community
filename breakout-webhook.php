@@ -6,7 +6,8 @@
  * Secured by Bearer token authentication.
  *
  * Environment:
- *   - BREAKOUT_WEBHOOK_TOKEN: shared secret token (required)
+ *   - WEBHOOK_TOKEN_BREAKOUT: token of this webhook (recommended), or the shared
+ *     BREAKOUT_WEBHOOK_TOKEN when WEBHOOK_TOKEN_BREAKOUT is not set
  *   - CSWEB_ROOT: path to CSWeb installation (default: /var/www/html)
  *   - BREAKOUT_WEBHOOK_VERBOSE=1: return full stdout/stderr (default: truncated to 4 KB)
  *
@@ -22,7 +23,7 @@
 require_once __DIR__ . '/webhook_helper.php';
 
 requireMethod(['POST']);
-requireBearerToken();
+requireBearerToken('breakout');
 
 // ---- Configuration ----
 $cswebRoot   = getenv('CSWEB_ROOT') ?: '/var/www/html';

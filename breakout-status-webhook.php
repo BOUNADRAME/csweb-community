@@ -13,7 +13,8 @@
  *   - last_processed_time, last_run, next_run
  *
  * Environment:
- *   - BREAKOUT_WEBHOOK_TOKEN: shared secret token (required)
+ *   - WEBHOOK_TOKEN_STATUS: token of this webhook (recommended), or the shared
+ *     BREAKOUT_WEBHOOK_TOKEN when WEBHOOK_TOKEN_STATUS is not set
  *
  * Usage:
  *   GET /breakout-status-webhook.php
@@ -31,7 +32,7 @@
 require_once __DIR__ . '/webhook_helper.php';
 
 requireMethod(['GET']);
-requireBearerToken();
+requireBearerToken('status');
 
 // Load CSWeb DB config
 $configFile = __DIR__ . '/src/AppBundle/config.php';

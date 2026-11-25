@@ -4,7 +4,7 @@
  *
  * Centralises:
  *  - JSON response shape: { success, data?, error?, meta? }
- *  - Bearer token authentication
+ *  - Bearer token authentication, one token per webhook (see requireBearerToken)
  *  - Capped JSON body parsing
  *  - Method allowlist enforcement
  *  - Stable error codes (machine-readable)
@@ -14,11 +14,15 @@
  *  - breakout-status-webhook.php
  *  - dictionary-schema-webhook.php
  *  - log-reader-webhook.php
+ *  - media-webhook.php
  */
 
 const WEBHOOK_BODY_MAX_BYTES = 65_536;
-const WEBHOOK_RATE_LIMIT_MAX    = 60;   // requests
-const WEBHOOK_RATE_LIMIT_WINDOW = 60;   // seconds
+const WEBHOOK_RATE_LIMIT_DEFAULT = 60;  // requests per window, override with WEBHOOK_RATE_LIMIT_PER_MIN
+const WEBHOOK_RATE_LIMIT_WINDOW  = 60;  // seconds
+
+// Never print PHP warnings into a response: they can contain file paths.
+ini_set('display_errors', '0');
 
 /**
  * Send a JSON response with the unified shape and exit.
@@ -31,6 +35,7 @@ function respondJson(int $httpCode, bool $success, array|null $data = null, ?arr
     http_response_code($httpCode);
     header('Content-Type: application/json; charset=utf-8');
     header('X-Robots-Tag: noindex, nofollow');
+    header('Cache-Control: no-store');
 
     $payload = ['success' => $success];
     $payload['data']  = $data;
@@ -72,20 +77,32 @@ function requireMethod(array $allowed): void {
 }
 
 /**
- * Validate that the Authorization header carries the configured Bearer token.
- * Aborts the request with 401 / 500 on failure.
+ * Validate the Bearer token of a webhook. Aborts with 401 / 503 on failure.
+ *
+ * Each webhook has its own token, WEBHOOK_TOKEN_<SCOPE> (WEBHOOK_TOKEN_BREAKOUT,
+ * WEBHOOK_TOKEN_STATUS, WEBHOOK_TOKEN_SCHEMA, WEBHOOK_TOKEN_LOGS,
+ * WEBHOOK_TOKEN_MEDIA). When it is set, only that token opens the webhook.
+ * When it is not set, the shared BREAKOUT_WEBHOOK_TOKEN is accepted, so
+ * existing installations keep working, unless $scopedOnly is true (media):
+ * then the webhook stays closed (503) until its own token is configured.
  */
-function requireBearerToken(): void {
-    $expected = getenv('BREAKOUT_WEBHOOK_TOKEN');
-    if (!$expected) {
+function requireBearerToken(string $scope, bool $scopedOnly = false): void {
+    $scopedVar = 'WEBHOOK_TOKEN_' . strtoupper($scope);
+    $expected  = getenv($scopedVar) ?: null;
+    if ($expected === null && !$scopedOnly) {
+        $expected = getenv('BREAKOUT_WEBHOOK_TOKEN') ?: null;
+    }
+    if ($expected === null) {
         respondError(
             'server_misconfigured',
-            'Server misconfiguration: BREAKOUT_WEBHOOK_TOKEN environment variable is not set.',
-            500
+            $scopedOnly
+                ? "Webhook disabled: set the $scopedVar environment variable."
+                : "Webhook disabled: set $scopedVar (or the shared BREAKOUT_WEBHOOK_TOKEN).",
+            503
         );
     }
 
-    $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
     if (!preg_match('/^Bearer\s+(.+)$/i', $authHeader, $matches)) {
         respondError(
             'missing_token',
@@ -94,22 +111,26 @@ function requireBearerToken(): void {
         );
     }
 
-    if (!hash_equals($expected, $matches[1])) {
+    if (!hash_equals($expected, trim($matches[1]))) {
         respondError('invalid_token', 'Invalid token.', 401);
     }
 
-    // Sliding-window rate limit, keyed on (token-fingerprint, client IP).
+    // Sliding-window rate limit, keyed on (webhook, token fingerprint, client IP).
     // Fingerprint avoids exposing raw token in filenames.
     $tokenFp = substr(hash('sha256', $matches[1]), 0, 16);
     $ip      = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-    enforceRateLimit($tokenFp . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $ip));
+    enforceRateLimit(strtolower($scope) . '_' . $tokenFp . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $ip));
 }
 
 /**
- * Sliding-window rate limiter (max WEBHOOK_RATE_LIMIT_MAX requests per
- * WEBHOOK_RATE_LIMIT_WINDOW seconds per key). Aborts with 429 on excess.
+ * Sliding-window rate limiter (WEBHOOK_RATE_LIMIT_PER_MIN requests, default 60,
+ * per WEBHOOK_RATE_LIMIT_WINDOW seconds per key). Aborts with 429 on excess.
  */
 function enforceRateLimit(string $key): void {
+    $max = (int) (getenv('WEBHOOK_RATE_LIMIT_PER_MIN') ?: WEBHOOK_RATE_LIMIT_DEFAULT);
+    if ($max < 1) {
+        $max = WEBHOOK_RATE_LIMIT_DEFAULT;
+    }
     $cacheRoot = (getenv('CSWEB_ROOT') ?: '/var/www/html') . '/var/cache/ratelimit';
     if (!is_dir($cacheRoot)) {
         // Best-effort: if mkdir fails, do not lock the user out — log and bypass.
@@ -143,7 +164,7 @@ function enforceRateLimit(string $key): void {
     // Keep only timestamps within the window.
     $hits = array_values(array_filter($hits, fn($t) => is_int($t) && $t >= $cutoff));
 
-    if (count($hits) >= WEBHOOK_RATE_LIMIT_MAX) {
+    if (count($hits) >= $max) {
         // Compute Retry-After: seconds until the oldest hit exits the window.
         $retryAfter = max(1, ($hits[0] + WEBHOOK_RATE_LIMIT_WINDOW) - $now);
         flock($fh, LOCK_UN);

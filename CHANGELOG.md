@@ -23,6 +23,62 @@ _Nothing yet._
 
 ---
 
+## [8.0.14] - 2026-11-25 (branch `8.0.x`)
+
+Webhooks for a server-side platform that must not hold a CSWeb account:
+one token per webhook, and a new media webhook.
+
+### Added
+
+- **`media-webhook.php`**: list, read and delete the media files uploaded by
+  CSPro applications (audio, photos), with a token and no CSWeb user account.
+  - `POST` with a JSON body: `{"action": "list" | "info" | "read" | "delete", ...}`.
+    The path travels in the body, never in the URL, so it never reaches an
+    access log.
+  - Limited to the folders in `MEDIA_WEBHOOK_PREFIXES` and the extensions in
+    `MEDIA_WEBHOOK_EXTENSIONS`; `..`, absolute paths and symbolic links that
+    leave those folders are refused (400 / 403).
+  - `read` returns the content in base64 with the SHA-256 and MD5 of the whole
+    file; files above `MEDIA_WEBHOOK_MAX_BYTES` (20 MiB by default) are read in
+    pieces with `offset` and `longueur`.
+  - `delete` moves the file to the CSWeb trash (restorable from the File
+    Manager), or erases it with `"definitif": true`.
+  - Every call is written to `var/logs/media-webhook.log` with a fingerprint
+    of the path, never the path itself.
+- **Acceptance tests** for the webhooks (`tests/webhooks/run-webhook-tests.sh`,
+  35 checks, run by the new `Webhooks` workflow).
+
+### Changed
+
+- **One token per webhook**: `WEBHOOK_TOKEN_BREAKOUT`, `WEBHOOK_TOKEN_STATUS`,
+  `WEBHOOK_TOKEN_SCHEMA`, `WEBHOOK_TOKEN_LOGS`, `WEBHOOK_TOKEN_MEDIA`. When a
+  webhook's token is set, only that token opens it. When it is empty, the
+  shared `BREAKOUT_WEBHOOK_TOKEN` still works, so nothing breaks on upgrade;
+  the media webhook has no fallback and stays closed until
+  `WEBHOOK_TOKEN_MEDIA` is set.
+- A webhook with no token configured now answers **503** (was 500).
+- Every webhook response carries `Cache-Control: no-store`.
+- `WEBHOOK_RATE_LIMIT_PER_MIN` sets the webhook rate limit (default 60
+  requests per minute per caller, as before).
+- **Access logs no longer contain file paths.** CSPro apps upload media with
+  the file name in the URL (`/api/files/.../{key}_AUDIO.m4a/content`), and file
+  names often contain the respondent's case key. The Apache configuration of
+  the image and the Apache / Nginx reverse-proxy templates now write
+  `[path masked]` for `/api/files/` and `/file-manager/`, and no longer log
+  the Referer.
+
+### Upgrade
+
+New variables in `.env` (see `.env.example`), all optional except for the
+media webhook: `WEBHOOK_TOKEN_BREAKOUT`, `WEBHOOK_TOKEN_STATUS`,
+`WEBHOOK_TOKEN_SCHEMA`, `WEBHOOK_TOKEN_LOGS`, `WEBHOOK_TOKEN_MEDIA`,
+`WEBHOOK_RATE_LIMIT_PER_MIN`, `MEDIA_WEBHOOK_PREFIXES`,
+`MEDIA_WEBHOOK_EXTENSIONS`, `MEDIA_WEBHOOK_MAX_BYTES`. Then
+`git checkout v8.0.14 && docker compose up -d --build`. A reverse proxy
+configured from the templates needs its access-log lines updated by hand.
+
+---
+
 ## [8.0.13] - 2026-11-24 (branch `8.0.x`)
 
 ### Fixed

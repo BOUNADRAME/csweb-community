@@ -5,7 +5,8 @@
  * Manages the `cspro_dictionaries_schema` table (breakout output destinations).
  *
  * Environment:
- *   - BREAKOUT_WEBHOOK_TOKEN: shared secret token (required)
+ *   - WEBHOOK_TOKEN_SCHEMA: token of this webhook (recommended), or the shared
+ *     BREAKOUT_WEBHOOK_TOKEN when WEBHOOK_TOKEN_SCHEMA is not set
  *
  * GET:
  *   ?action=list
@@ -22,7 +23,7 @@
 require_once __DIR__ . '/webhook_helper.php';
 
 requireMethod(['GET', 'POST']);
-requireBearerToken();
+requireBearerToken('schema');
 
 // Load CSWeb DB config
 $configFile = __DIR__ . '/src/AppBundle/config.php';
