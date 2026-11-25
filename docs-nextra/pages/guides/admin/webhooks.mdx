@@ -58,7 +58,7 @@ CSWeb. Tous partagent :
 | `/breakout-status-webhook.php`    | GET        | Statut breakout par dictionnaire (paginé)             | [→ détails](/reference/api/breakout-status)     |
 | `/dictionary-schema-webhook.php`  | GET / POST | CRUD sur la configuration des cibles breakout         | Voir ci-dessous                                 |
 | `/log-reader-webhook.php`         | GET        | Lire les fichiers de log CSWeb                        | Voir ci-dessous                                 |
-| `/media-webhook.php`              | POST       | Lister, lire, supprimer les médias (audio, photos)    | [Voir ci-dessous](#médias-audio-photos)         |
+| `/media-webhook.php`              | POST       | Lister et lire les médias (audio, photos)             | [Voir ci-dessous](#médias-audio-photos)         |
 
 ### Déclencher un breakout
 
@@ -142,27 +142,44 @@ Le `schema_password` est stocké chiffré (`AES_ENCRYPT(?, 'cspro')`) en base.
 
 ### Médias (audio, photos)
 
-Disponible depuis **8.0.14 / 8.1.20**. Pour une plateforme qui doit lire ou
-effacer les médias déposés par l'application CSPro **sans compte CSWeb**.
+Disponible depuis **8.0.14 / 8.1.20**. Pour une plateforme qui doit lire les
+médias déposés par l'application CSPro **sans compte CSWeb**.
 
 - Toujours en `POST`, le chemin dans le **corps JSON** : il n'apparaît jamais
   dans une URL ni dans un journal d'accès.
 - Limité aux dossiers de `MEDIA_WEBHOOK_PREFIXES` et aux extensions de
-  `MEDIA_WEBHOOK_EXTENSIONS`. Un chemin avec `..`, un chemin absolu ou une
+  `MEDIA_WEBHOOK_EXTENSIONS`. Les médias peuvent être répartis dans plusieurs
+  dossiers (par exemple `praps2/media/` et `sondage_audio/`) : listez-les tous,
+  séparés par des virgules. N'y mettez jamais `apps/`, qui contient les
+  applications CSPro. Un chemin avec `..`, un chemin absolu ou une
   extension non autorisée est refusé (400) ; un chemin hors des dossiers
   autorisés, y compris par un lien symbolique, est refusé (403).
 - Jeton propre obligatoire (`WEBHOOK_TOKEN_MEDIA`) : le jeton commun n'ouvre
   jamais ce webhook.
+- **Pas de suppression par défaut** : l'action `delete` répond
+  `403 delete_disabled` tant que `MEDIA_WEBHOOK_ALLOW_DELETE` ne vaut pas `1`.
 
 ```bash
+# Dossiers autorisés (ceux de MEDIA_WEBHOOK_PREFIXES qui existent)
+curl -X POST "https://csweb.example.org/media-webhook.php" \
+  -H "Authorization: Bearer $WEBHOOK_TOKEN_MEDIA" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "list"}'
+# → data: {"dossiers": ["praps2/media", "sondage_audio"]}
+
+# Tous les médias d'un dossier et de ses sous-dossiers (pays…)
+#   {"action": "list", "dossier": "praps2/media", "recursif": true}
+# → chaque fichier porte son "chemin", à passer tel quel à "read".
+#   Au plus 5 000 fichiers par appel ("tronque": true au-delà : lister par sous-dossier).
+
 # Lister un dossier
 curl -X POST "https://csweb.example.org/media-webhook.php" \
   -H "Authorization: Bearer $WEBHOOK_TOKEN_MEDIA" \
   -H "Content-Type: application/json" \
   -d '{"action": "list", "dossier": "praps2/media/1"}'
 # → {"success":true,"data":{"dossier":"praps2/media/1",
-#     "fichiers":[{"nom":"…_ENTRETIEN.m4a","octets":482113,"md5":"…","modifie":"2026-11-25T09:56:38+00:00"}],
-#     "dossiers":[]}, "error":null}
+#     "fichiers":[{"nom":"…_ENTRETIEN.m4a","chemin":"praps2/media/1/…_ENTRETIEN.m4a","octets":482113,"md5":"…","modifie":"2026-11-25T09:56:38+00:00"}],
+#     "dossiers":[],"tronque":false}, "error":null}
 
 # Lire un fichier (contenu en base64 + empreintes du fichier entier)
 curl -X POST "https://csweb.example.org/media-webhook.php" \
@@ -180,7 +197,8 @@ curl -X POST "https://csweb.example.org/media-webhook.php" \
 # Métadonnées seules
 #   {"action": "info", "chemin": "…"}
 
-# Supprimer : corbeille CSWeb (restaurable dans le File Manager)…
+# Supprimer : désactivé par défaut (403 delete_disabled).
+# Avec MEDIA_WEBHOOK_ALLOW_DELETE=1 : corbeille CSWeb (restaurable dans le File Manager)…
 #   {"action": "delete", "chemin": "…"}
 # …ou effacement définitif (droit à l'effacement)
 #   {"action": "delete", "chemin": "…", "definitif": true}
@@ -207,9 +225,10 @@ variables sont déjà dans `.env.example` :
 | `WEBHOOK_TOKEN_MEDIA` | `media-webhook.php` | **aucun** : webhook fermé (503) |
 | `BREAKOUT_WEBHOOK_TOKEN` | jeton commun des versions précédentes | — |
 | `WEBHOOK_RATE_LIMIT_PER_MIN` | tous | `60` |
-| `MEDIA_WEBHOOK_PREFIXES` | médias : dossiers autorisés, séparés par des virgules (ex. `praps2/media/`) | **aucun** : webhook fermé (503) |
+| `MEDIA_WEBHOOK_PREFIXES` | médias : dossiers autorisés, séparés par des virgules (ex. `praps2/media/,sondage_audio/`) | **aucun** : webhook fermé (503) |
 | `MEDIA_WEBHOOK_EXTENSIONS` | médias : extensions autorisées | `m4a,jpg,jpeg,png` |
 | `MEDIA_WEBHOOK_MAX_BYTES` | médias : taille maximale d'une lecture | `20971520` (20 Mio) |
+| `MEDIA_WEBHOOK_ALLOW_DELETE` | médias : autoriser l'action `delete` | `0` (désactivée) |
 
 Quand le jeton d'un webhook est défini, **seul ce jeton** l'ouvre. Laissé vide,
 le jeton commun `BREAKOUT_WEBHOOK_TOKEN` reste accepté : une mise à jour ne
@@ -222,7 +241,7 @@ Exemple pour une plateforme qui lit les médias et suit le breakout :
 WEBHOOK_TOKEN_STATUS=<openssl rand -hex 32>
 WEBHOOK_TOKEN_BREAKOUT=<openssl rand -hex 32>
 WEBHOOK_TOKEN_MEDIA=<openssl rand -hex 32>
-MEDIA_WEBHOOK_PREFIXES=praps2/media/
+MEDIA_WEBHOOK_PREFIXES=praps2/media/,sondage_audio/
 WEBHOOK_RATE_LIMIT_PER_MIN=300
 ```
 
@@ -250,6 +269,7 @@ Tous les webhooks utilisent le même catalogue de codes (`error.code`) :
 | 400  | `invalid_action`        | Action inconnue                                    |
 | 400  | `invalid_path`          | Média : chemin avec `..`, absolu, ou extension non autorisée |
 | 403  | `forbidden_path`        | Média : chemin hors de `MEDIA_WEBHOOK_PREFIXES`    |
+| 403  | `delete_disabled`       | Média : suppression désactivée (`MEDIA_WEBHOOK_ALLOW_DELETE`) |
 | 404  | `not_found`             | Média : fichier ou dossier inexistant              |
 | 413  | `content_too_large`     | Média : lecture > `MEDIA_WEBHOOK_MAX_BYTES` (lire par morceaux) |
 | 401  | `missing_token`         | Header `Authorization` absent ou mal formé         |
