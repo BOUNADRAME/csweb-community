@@ -5,7 +5,8 @@
  * Reads the last N lines from any log file in the CSWeb var/logs/ directory.
  *
  * Environment:
- *   - BREAKOUT_WEBHOOK_TOKEN: shared secret token (required)
+ *   - WEBHOOK_TOKEN_LOGS: token of this webhook (recommended), or the shared
+ *     BREAKOUT_WEBHOOK_TOKEN when WEBHOOK_TOKEN_LOGS is not set
  *   - CSWEB_ROOT: path to CSWeb installation (default: /var/www/html)
  *
  * Usage:
@@ -19,7 +20,7 @@
 require_once __DIR__ . '/webhook_helper.php';
 
 requireMethod(['GET']);
-requireBearerToken();
+requireBearerToken('logs');
 
 // ---- Configuration ----
 $cswebRoot = getenv('CSWEB_ROOT') ?: '/var/www/html';

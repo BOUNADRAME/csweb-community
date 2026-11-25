@@ -114,8 +114,19 @@ services:
       - RATE_LIMIT_API_PER_MIN=${RATE_LIMIT_API_PER_MIN:-600}
       - RATE_LIMIT_UI_PER_MIN=${RATE_LIMIT_UI_PER_MIN:-120}
 
-      # Webhooks shared secret (used by breakout-*-webhook.php at repo root)
+      # Webhooks: one token per webhook; an empty one falls back to the shared
+      # BREAKOUT_WEBHOOK_TOKEN (except media, which needs its own).
       - BREAKOUT_WEBHOOK_TOKEN=${BREAKOUT_WEBHOOK_TOKEN}
+      - WEBHOOK_TOKEN_BREAKOUT=${WEBHOOK_TOKEN_BREAKOUT:-}
+      - WEBHOOK_TOKEN_STATUS=${WEBHOOK_TOKEN_STATUS:-}
+      - WEBHOOK_TOKEN_SCHEMA=${WEBHOOK_TOKEN_SCHEMA:-}
+      - WEBHOOK_TOKEN_LOGS=${WEBHOOK_TOKEN_LOGS:-}
+      - WEBHOOK_TOKEN_MEDIA=${WEBHOOK_TOKEN_MEDIA:-}
+      - WEBHOOK_RATE_LIMIT_PER_MIN=${WEBHOOK_RATE_LIMIT_PER_MIN:-60}
+      # Media webhook (media-webhook.php)
+      - MEDIA_WEBHOOK_PREFIXES=${MEDIA_WEBHOOK_PREFIXES:-}
+      - MEDIA_WEBHOOK_EXTENSIONS=${MEDIA_WEBHOOK_EXTENSIONS:-m4a,jpg,jpeg,png}
+      - MEDIA_WEBHOOK_MAX_BYTES=${MEDIA_WEBHOOK_MAX_BYTES:-20971520}
       # Filesystem root used by webhooks to locate var/logs etc.
       - CSWEB_ROOT=${CSWEB_ROOT:-/var/www/html}
       # PUBLIC API address, written into the .pff sync spec and the cspro:///

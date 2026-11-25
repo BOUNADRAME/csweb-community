@@ -1,0 +1,31 @@
+name: Webhooks
+
+on:
+  push:
+    branches: [ 8.0.x, 8.1.x, 'perf/**' ]
+    paths:
+      - '*webhook*.php'
+      - 'tests/webhooks/**'
+      - '.github/workflows/webhooks.yml'
+  pull_request:
+    paths:
+      - '*webhook*.php'
+      - 'tests/webhooks/**'
+  workflow_dispatch:
+
+jobs:
+  acceptance:
+    name: Webhook acceptance tests (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        php: ['8.1', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Run tests
+        run: bash tests/webhooks/run-webhook-tests.sh
