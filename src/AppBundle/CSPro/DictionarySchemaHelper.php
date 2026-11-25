@@ -215,29 +215,72 @@ class DictionarySchemaHelper {
     }
 
     private function cleanDictionarySchema() {
+        $failedTable = null;
+        $isMySql = false;
         try {
             $tables = $this->conn->getSchemaManager()->listTables();
-            // var_dump(count($tables)); die;
             if (count($tables) > 0) {
+                // The DROP used to be hardcoded in PostgreSQL syntax
+                // (DROP TABLE "x" CASCADE), so rebuilding the tables after a
+                // dictionary change failed on MySQL and SQL Server. Quote for
+                // the target platform; MySQL drops with key checks off,
+                // PostgreSQL with CASCADE, SQL Server relies on drop order.
+                $platform = $this->conn->getDatabasePlatform();
+                $isMySql = $platform instanceof \Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
+                $supportsCascade = $platform instanceof \Doctrine\DBAL\Platforms\PostgreSQLPlatform;
+                if ($isMySql) {
+                    $this->conn->executeStatement('SET FOREIGN_KEY_CHECKS = 0');
+                }
 
+                // Only this dictionary's own tables: several dictionaries can
+                // share a target database.
                 $dictionaryLabel = str_replace(" ", "_", str_replace("_DICT", "", $this->dictionary->getName()));
-                $mystring = strtolower($dictionaryLabel)."_";
+                $prefix = strtolower($dictionaryLabel) . "_";
                 foreach ($tables as $table) {
-                    if(substr($table->getName(), 0, strlen($mystring)) === $mystring){
-                        
-                        $sql = 'DROP TABLE "' . $table->getName() .'" CASCADE';
-                        // $this->conn->prepare('ALTER TABLE "' . $table->getName().'" DISABLE TRIGGER ALL;')->execute();
-                        $this->conn->prepare($sql)->execute();
-                        // $this->conn->prepare('ALTER TABLE "' . $table->getName().'" ENABLE TRIGGER ALL;')->execute();
-
+                    $name = $table->getName();
+                    if (substr(strtolower($name), 0, strlen($prefix)) !== $prefix) {
+                        continue;
                     }
+                    $failedTable = $name;
+                    $sql = 'DROP TABLE IF EXISTS ' . $platform->quoteIdentifier($name);
+                    if ($supportsCascade) {
+                        $sql .= ' CASCADE';
+                    }
+                    $this->conn->executeStatement($sql);
+                }
+                $failedTable = null;
+
+                if ($isMySql) {
+                    $this->conn->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
                 }
             }
         } catch (\Exception $e) {
+            if ($isMySql) {
+                try {
+                    $this->conn->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
+                } catch (\Exception $ignored) {
+                }
+            }
             $strMsg = "Failed deleting tables from database: " . $this->connectionParams['dbname'] . " while processsing Dictionary: " . $this->dictionaryName;
             $this->logger->error($strMsg, array("context" => (string) $e));
-            throw $e;
+            throw new \RuntimeException(sprintf(
+                'Dictionary %s changed since its last breakout, so its tables in database "%s" must be recreated, but %s failed: %s',
+                $this->dictionaryName,
+                $this->connectionParams['dbname'] ?? '?',
+                $failedTable !== null ? 'dropping table "' . $failedTable . '"' : 'listing its tables',
+                self::shortError($e)
+            ), 0, $e);
         }
+    }
+
+    /** First line of the database error, without the driver prefixes. */
+    private static function shortError(\Throwable $e): string {
+        $root = $e;
+        while ($root->getPrevious() !== null) {
+            $root = $root->getPrevious();
+        }
+        $msg = trim(strtok($root->getMessage(), "\n"));
+        return mb_strlen($msg) > 300 ? mb_substr($msg, 0, 300) . '…' : $msg;
     }
 
 

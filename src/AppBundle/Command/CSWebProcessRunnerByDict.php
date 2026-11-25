@@ -222,7 +222,13 @@ class CSWebProcessRunnerByDict extends Command {
             foreach ($result as $row) {
                 $this->logger->info('Updating schema tables for Dictionary: ' . $row['dictName']);
                 $dictionarySchemaHelper = new DictionarySchemaHelper($row['dictName'], $this->pdo, $this->logger);
-                $dictionarySchemaHelper->initialize(true);
+                try {
+                    $dictionarySchemaHelper->initialize(true);
+                } catch (\Throwable $e) {
+                    // One readable line at the end of the breakout log, instead
+                    // of only the driver's stack trace.
+                    throw new RuntimeException('Breakout of ' . $row['dictName'] . ' stopped. ' . $e->getMessage(), 1, $e);
+                }
                 $dictionarySchemaHelper->resetInProcesssJobs();
 
                 //set the dictionary information
