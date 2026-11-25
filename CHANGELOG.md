@@ -30,23 +30,27 @@ one token per webhook, and a new media webhook.
 
 ### Added
 
-- **`media-webhook.php`**: list, read and delete the media files uploaded by
-  CSPro applications (audio, photos), with a token and no CSWeb user account.
-  - `POST` with a JSON body: `{"action": "list" | "info" | "read" | "delete", ...}`.
+- **`media-webhook.php`**: list and read the media files uploaded by CSPro
+  applications (audio, photos), with a token and no CSWeb user account.
+  - `POST` with a JSON body: `{"action": "list" | "info" | "read", ...}`.
     The path travels in the body, never in the URL, so it never reaches an
     access log.
-  - Limited to the folders in `MEDIA_WEBHOOK_PREFIXES` and the extensions in
-    `MEDIA_WEBHOOK_EXTENSIONS`; `..`, absolute paths and symbolic links that
+  - Limited to the folders in `MEDIA_WEBHOOK_PREFIXES` (media can live in
+    several folders, e.g. `praps2/media/,sondage_audio/`) and the extensions
+    in `MEDIA_WEBHOOK_EXTENSIONS`; `..`, absolute paths and symbolic links that
     leave those folders are refused (400 / 403).
+  - `list` without a folder returns the allowed folders; `"recursif": true`
+    lists the media of every sub-folder, each with its path ready for `read`.
   - `read` returns the content in base64 with the SHA-256 and MD5 of the whole
     file; files above `MEDIA_WEBHOOK_MAX_BYTES` (20 MiB by default) are read in
     pieces with `offset` and `longueur`.
-  - `delete` moves the file to the CSWeb trash (restorable from the File
-    Manager), or erases it with `"definitif": true`.
+  - **No deletion by default.** `delete` (to the CSWeb trash, restorable from
+    the File Manager, or erased with `"definitif": true`) answers
+    `403 delete_disabled` unless `MEDIA_WEBHOOK_ALLOW_DELETE=1`.
   - Every call is written to `var/logs/media-webhook.log` with a fingerprint
     of the path, never the path itself.
 - **Acceptance tests** for the webhooks (`tests/webhooks/run-webhook-tests.sh`,
-  35 checks, run by the new `Webhooks` workflow).
+  43 checks, run by the new `Webhooks` workflow).
 
 ### Changed
 
@@ -73,7 +77,8 @@ New variables in `.env` (see `.env.example`), all optional except for the
 media webhook: `WEBHOOK_TOKEN_BREAKOUT`, `WEBHOOK_TOKEN_STATUS`,
 `WEBHOOK_TOKEN_SCHEMA`, `WEBHOOK_TOKEN_LOGS`, `WEBHOOK_TOKEN_MEDIA`,
 `WEBHOOK_RATE_LIMIT_PER_MIN`, `MEDIA_WEBHOOK_PREFIXES`,
-`MEDIA_WEBHOOK_EXTENSIONS`, `MEDIA_WEBHOOK_MAX_BYTES`. Then
+`MEDIA_WEBHOOK_EXTENSIONS`, `MEDIA_WEBHOOK_MAX_BYTES`,
+`MEDIA_WEBHOOK_ALLOW_DELETE`. Then
 `git checkout v8.0.14 && docker compose up -d --build`. A reverse proxy
 configured from the templates needs its access-log lines updated by hand.
 

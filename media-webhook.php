@@ -2,38 +2,48 @@
 /**
  * CSWeb Media Webhook
  *
- * List, read and delete the media files that CSPro applications upload to
- * CSWeb (audio, photos), for a server-side platform that must not hold a
- * CSWeb user account. The path always travels in the JSON body, never in the
+ * List and read the media files that CSPro applications upload to CSWeb
+ * (audio, photos), for a server-side platform that must not hold a CSWeb
+ * user account. Deleting is possible but off by default. The path always travels in the JSON body, never in the
  * URL, so web-server access logs never contain it.
  *
  * Environment:
  *   - WEBHOOK_TOKEN_MEDIA      token of this webhook (required: no fallback
  *                              to the shared token, the webhook answers 503
  *                              until it is set)
- *   - MEDIA_WEBHOOK_PREFIXES   folders the webhook may touch, relative to the
- *                              CSWeb files folder, comma-separated
- *                              (required, e.g. "praps2/media/")
+ *   - MEDIA_WEBHOOK_PREFIXES   folders the webhook may read, relative to the
+ *                              CSWeb files folder, comma-separated; media can
+ *                              live in several folders
+ *                              (required, e.g. "praps2/media/,sondage_audio/").
+ *                              Never list "apps/": it holds the CSPro apps.
  *   - MEDIA_WEBHOOK_EXTENSIONS file extensions allowed (default "m4a,jpg,jpeg,png")
  *   - MEDIA_WEBHOOK_MAX_BYTES  largest content returned by one "read" call
  *                              (default 20971520 = 20 MiB); read bigger files
  *                              in pieces with "offset" and "longueur"
+ *   - MEDIA_WEBHOOK_ALLOW_DELETE  "1" to enable the "delete" action
+ *                              (default off: 403 delete_disabled)
  *   - WEBHOOK_RATE_LIMIT_PER_MIN  requests per minute (default 60)
  *
  * Request: POST, Authorization: Bearer <token>, JSON body:
+ *   {"action": "list"}                                   allowed folders
  *   {"action": "list",   "dossier": "praps2/media/1"}
+ *   {"action": "list",   "dossier": "praps2/media", "recursif": true}
  *   {"action": "info",   "chemin": "praps2/media/1/abc_ENTRETIEN.m4a"}
  *   {"action": "read",   "chemin": "...", "offset": 0, "longueur": 1048576}
- *   {"action": "delete", "chemin": "...", "definitif": false}
+ *   {"action": "delete", "chemin": "...", "definitif": false}  (if enabled)
  *
  * Responses (envelope { success, data, error }):
- *   200 list   data: { dossier, fichiers: [{nom, octets, md5, modifie}], dossiers: [nom] }
+ *   200 list   without "dossier": { dossiers: ["praps2/media", "sondage_audio"] }
+ *              with "dossier":    { dossier, fichiers: [{nom, chemin, octets, md5, modifie}],
+ *                                   dossiers: [nom], tronque }
+ *              "recursif": true lists the files of every sub-folder too (at most
+ *              MEDIA_LIST_MAX_FILES files; "tronque": true when cut)
  *   200 info   data: { octets, sha256, md5, type, modifie }
  *   200 read   data: { octets, sha256, md5, type, offset, longueur, contenu (base64), contenu_sha256 }
  *              octets / sha256 / md5 describe the whole file, contenu the piece returned
  *   200 delete data: { supprime: true, mode: "corbeille" | "definitif" }
  *   400 invalid path ("..", absolute path, extension not allowed) or body
- *   401 missing or wrong token, 403 outside the allowed folders,
+ *   401 missing or wrong token, 403 outside the allowed folders or delete disabled,
  *   404 not found, 413 piece larger than MEDIA_WEBHOOK_MAX_BYTES,
  *   503 webhook not configured
  *
@@ -51,6 +61,7 @@ requireBearerToken('media', true);
 const MEDIA_DEFAULT_EXTENSIONS = 'm4a,jpg,jpeg,png';
 const MEDIA_DEFAULT_MAX_BYTES  = 20971520;
 const MEDIA_PATH_MAX_LENGTH    = 1024;
+const MEDIA_LIST_MAX_FILES     = 5000;
 
 $mediaTypes = [
     'm4a' => 'audio/mp4', 'mp4' => 'video/mp4', 'mp3' => 'audio/mpeg', 'wav' => 'audio/wav',
@@ -102,28 +113,26 @@ $action = $body['action'];
 
 switch ($action) {
     case 'list':
+        if (!isset($body['dossier'])) {
+            // Allowed folders that exist, so the caller can discover them.
+            $roots = [];
+            foreach ($prefixes as $prefix) {
+                if (is_dir($filesRoot . '/' . rtrim($prefix, '/'))) {
+                    $roots[] = rtrim($prefix, '/');
+                }
+            }
+            mediaAudit('list-roots', '', 200);
+            respondSuccess(['dossiers' => $roots]);
+        }
         $rel = mediaRequirePath($body, 'dossier', false);
         $abs = mediaResolve($rel, false);
+        $recursive = ($body['recursif'] ?? false) === true;
         $files = [];
         $dirs  = [];
-        foreach (scandir($abs) ?: [] as $name) {
-            if ($name === '.' || $name === '..' || $name[0] === '.') {
-                continue;
-            }
-            $full = $abs . '/' . $name;
-            if (is_dir($full)) {
-                $dirs[] = $name;
-            } elseif (is_file($full) && in_array(mediaExtension($name), $extensions, true)) {
-                $files[] = [
-                    'nom'     => $name,
-                    'octets'  => filesize($full),
-                    'md5'     => md5_file($full),
-                    'modifie' => date(DATE_ATOM, filemtime($full)),
-                ];
-            }
-        }
-        mediaAudit('list', $rel, 200);
-        respondSuccess(['dossier' => $rel, 'fichiers' => $files, 'dossiers' => $dirs]);
+        $truncated = false;
+        mediaListFolder($abs, $rel, $recursive, $files, $dirs, $truncated);
+        mediaAudit($recursive ? 'list-recursive' : 'list', $rel, 200);
+        respondSuccess(['dossier' => $rel, 'fichiers' => $files, 'dossiers' => $dirs, 'tronque' => $truncated]);
 
     case 'info':
         $rel = mediaRequirePath($body, 'chemin', true);
@@ -165,6 +174,10 @@ switch ($action) {
         respondSuccess($data);
 
     case 'delete':
+        if (getenv('MEDIA_WEBHOOK_ALLOW_DELETE') !== '1') {
+            mediaAudit('delete-disabled', '', 403);
+            respondError('delete_disabled', 'Deleting media is disabled on this server (MEDIA_WEBHOOK_ALLOW_DELETE).', 403);
+        }
         $rel = mediaRequirePath($body, 'chemin', true);
         $abs = mediaResolve($rel, true);
         $definitive = ($body['definitif'] ?? false) === true;
@@ -191,6 +204,48 @@ switch ($action) {
 }
 
 // ---- Helpers ----
+
+/**
+ * Files of a folder (and of its sub-folders when $recursive), hidden entries
+ * and other extensions left out. Each file carries its path relative to the
+ * files folder, ready for "read".
+ *
+ * @param list<array<string,mixed>> $files
+ * @param list<string> $dirs
+ */
+function mediaListFolder(string $abs, string $rel, bool $recursive, array &$files, array &$dirs, bool &$truncated, int $depth = 0): void {
+    global $extensions;
+    $entries = scandir($abs) ?: [];
+    foreach ($entries as $name) {
+        if ($name === '.' || $name === '..' || $name[0] === '.') {
+            continue;
+        }
+        $full = $abs . '/' . $name;
+        if (is_link($full)) {
+            continue; // never follow links while walking
+        }
+        if (is_dir($full)) {
+            if ($depth === 0) {
+                $dirs[] = $name;
+            }
+            if ($recursive && $depth < 10 && !$truncated) {
+                mediaListFolder($full, $rel . '/' . $name, true, $files, $dirs, $truncated, $depth + 1);
+            }
+        } elseif (is_file($full) && in_array(mediaExtension($name), $extensions, true)) {
+            if (count($files) >= MEDIA_LIST_MAX_FILES) {
+                $truncated = true;
+                return;
+            }
+            $files[] = [
+                'nom'     => $name,
+                'chemin'  => $rel . '/' . $name,
+                'octets'  => filesize($full),
+                'md5'     => md5_file($full),
+                'modifie' => date(DATE_ATOM, filemtime($full)),
+            ];
+        }
+    }
+}
 
 /** No absolute path, no "." / ".." segment, no empty segment, no control character. */
 function mediaPathIsClean(string $path): bool {

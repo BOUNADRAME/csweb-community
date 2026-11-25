@@ -127,6 +127,7 @@ services:
       - MEDIA_WEBHOOK_PREFIXES=${MEDIA_WEBHOOK_PREFIXES:-}
       - MEDIA_WEBHOOK_EXTENSIONS=${MEDIA_WEBHOOK_EXTENSIONS:-m4a,jpg,jpeg,png}
       - MEDIA_WEBHOOK_MAX_BYTES=${MEDIA_WEBHOOK_MAX_BYTES:-20971520}
+      - MEDIA_WEBHOOK_ALLOW_DELETE=${MEDIA_WEBHOOK_ALLOW_DELETE:-0}
       # Filesystem root used by webhooks to locate var/logs etc.
       - CSWEB_ROOT=${CSWEB_ROOT:-/var/www/html}
 
