@@ -66,6 +66,11 @@ one token per webhook, and a new media webhook.
   shared `BREAKOUT_WEBHOOK_TOKEN` still works, so nothing breaks on upgrade;
   the media webhook has no fallback and stays closed until
   `WEBHOOK_TOKEN_MEDIA` is set.
+- **`.env.example` regrouped by feature**: the breakout target connection
+  (direct / SSH tunnel) and the SQL Server image option now sit next to the
+  breakout databases, `FILES_FOLDER` / `API_URL` / `MAX_EXECUTION_TIME` under
+  Application, and the database network exposure under Security. No variable
+  was added, renamed or removed by this move.
 - A webhook with no token configured now answers **503** (was 500).
 - Every webhook response carries `Cache-Control: no-store`.
 - `WEBHOOK_RATE_LIMIT_PER_MIN` sets the webhook rate limit (default 60
