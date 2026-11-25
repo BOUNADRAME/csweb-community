@@ -8,7 +8,7 @@ Endpoint standalone permettant à des systèmes externes d'interroger l'état du
 
 ## Authentification
 
-Cet endpoint utilise un **Bearer token statique** (indépendant d'OAuth2), configuré via la variable d'environnement `BREAKOUT_WEBHOOK_TOKEN`.
+Cet endpoint utilise un **Bearer token statique** (indépendant d'OAuth2), configuré via la variable d'environnement `WEBHOOK_TOKEN_STATUS` (depuis 8.0.14 / 8.1.20), ou à défaut le jeton commun `BREAKOUT_WEBHOOK_TOKEN`.
 
 ```http
 Authorization: Bearer <token>
@@ -18,10 +18,10 @@ Authorization: Bearer <token>
 
 ```env
 # .env (à la racine du projet)
-BREAKOUT_WEBHOOK_TOKEN=<32+ octets aléatoires>
+WEBHOOK_TOKEN_STATUS=<32+ octets aléatoires>
 ```
 
-> **Important :** la variable `BREAKOUT_WEBHOOK_TOKEN` est **obligatoire**. Si elle n'est pas définie, l'endpoint répond `500 server_misconfigured`. Aucune valeur par défaut n'est codée dans les webhooks.
+> **Important :** un jeton est **obligatoire** (`WEBHOOK_TOKEN_STATUS` ou `BREAKOUT_WEBHOOK_TOKEN`). Sans jeton, l'endpoint répond `503 server_misconfigured` (500 avant 8.0.14 / 8.1.20). Quand `WEBHOOK_TOKEN_STATUS` est défini, le jeton commun n'est plus accepté. Aucune valeur par défaut n'est codée dans les webhooks.
 
 Pour générer un token solide :
 
@@ -58,35 +58,35 @@ GET /breakout-status-webhook.php
 
 ```bash
 curl -X GET "http://localhost:8080/breakout-status-webhook.php" \
-  -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN"
+  -H "Authorization: Bearer $WEBHOOK_TOKEN_STATUS"
 ```
 
 ### Un seul dictionnaire
 
 ```bash
 curl -X GET "http://localhost:8080/breakout-status-webhook.php?dictionary=KATS_DICT" \
-  -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN"
+  -H "Authorization: Bearer $WEBHOOK_TOKEN_STATUS"
 ```
 
 ### Plusieurs dictionnaires
 
 ```bash
 curl -X GET "http://localhost:8080/breakout-status-webhook.php?dictionaries=KATS_DICT,EVAL_DICT" \
-  -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN"
+  -H "Authorization: Bearer $WEBHOOK_TOKEN_STATUS"
 ```
 
 ### Uniquement ceux avec breakout configuré et cron actif
 
 ```bash
 curl -X GET "http://localhost:8080/breakout-status-webhook.php?breakout_configured=true&cron_enabled=true" \
-  -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN"
+  -H "Authorization: Bearer $WEBHOOK_TOKEN_STATUS"
 ```
 
 ### Pagination : page 2, 50 résultats
 
 ```bash
 curl -X GET "http://localhost:8080/breakout-status-webhook.php?page=2&limit=50" \
-  -H "Authorization: Bearer $BREAKOUT_WEBHOOK_TOKEN"
+  -H "Authorization: Bearer $WEBHOOK_TOKEN_STATUS"
 ```
 
 ---
@@ -209,10 +209,11 @@ Toutes les erreurs renvoient `success: false`, `data: null` et un objet `error` 
 | HTTP | `error.code`            | Cause                                                       |
 |------|-------------------------|-------------------------------------------------------------|
 | 401  | `missing_token`         | Header `Authorization: Bearer <token>` absent ou mal formé  |
-| 401  | `invalid_token`         | Token reçu ne correspond pas à `BREAKOUT_WEBHOOK_TOKEN`     |
+| 401  | `invalid_token`         | Token reçu ne correspond pas à `WEBHOOK_TOKEN_STATUS` (ou au jeton commun) |
 | 405  | `method_not_allowed`    | Verbe HTTP autre que `GET`                                  |
 | 429  | `rate_limited`          | 60 requêtes / 60 s dépassées (header `Retry-After` fourni)  |
-| 500  | `server_misconfigured`  | `BREAKOUT_WEBHOOK_TOKEN` non défini ou `config.php` absent  |
+| 503  | `server_misconfigured`  | Aucun jeton défini                                          |
+| 500  | `server_misconfigured`  | `config.php` absent                                         |
 | 500  | `internal_error`        | Erreur DB ou exception non spécifique                       |
 
 **Exemple 401 (`missing_token`) :**

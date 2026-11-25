@@ -18,9 +18,9 @@ API pour configurer et gérer les webhooks CSWeb.
 >    { "success": true,  "data": ... | null, "error": null,             "meta": {...}? }
 >    { "success": false, "data": null,        "error": { "code": "...", "message": "..." } }
 >    ```
->    et le même catalogue de codes d'erreur (`missing_token`, `invalid_token`, `server_misconfigured`, `method_not_allowed`, `body_too_large`, `rate_limited`, `invalid_body`, `invalid_dictionary`, `invalid_filename`, `invalid_action`, `dictionary_not_found`, `file_not_found`, `file_not_readable`, `process_failed`, `breakout_failed`, `internal_error`).
+>    et le même catalogue de codes d'erreur (`missing_token`, `invalid_token`, `server_misconfigured`, `method_not_allowed`, `body_too_large`, `rate_limited`, `invalid_body`, `invalid_dictionary`, `invalid_filename`, `invalid_action`, `invalid_path`, `forbidden_path`, `not_found`, `content_too_large`, `dictionary_not_found`, `file_not_found`, `file_not_readable`, `process_failed`, `breakout_failed`, `internal_error`).
 >
->    Sécurité commune : variable `BREAKOUT_WEBHOOK_TOKEN` **obligatoire**, rate-limit 60 req/min/IP, body POST max 64 KB, header `X-Robots-Tag: noindex, nofollow`.
+>    Sécurité commune : un jeton par webhook (`WEBHOOK_TOKEN_BREAKOUT`, `_STATUS`, `_SCHEMA`, `_LOGS`, `_MEDIA`) avec repli sur `BREAKOUT_WEBHOOK_TOKEN` sauf pour les médias, 503 si aucun jeton, rate-limit 60 req/min réglable (`WEBHOOK_RATE_LIMIT_PER_MIN`), body POST max 64 KB, `Cache-Control: no-store`. Médias : [`/media-webhook.php`](/guides/admin/webhooks#médias-audio-photos) (8.0.14 / 8.1.20).
 
 ---
 
