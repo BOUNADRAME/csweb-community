@@ -5,9 +5,9 @@ Intégrez CSWeb avec vos applications tierces pour piloter le breakout, gérer l
 import { Callout } from 'nextra/components'
 
 <Callout type="info">
-**CSWeb Community Platform** permet deux types d'intégration :
-1. **Webhooks entrants** : CSPro → CSWeb (événements en temps réel)
-2. **API sortante** : Application tierce → CSWeb (pilotage du breakout sélectif, logs, monitoring)
+Vos applications appellent CSWeb avec un jeton, **sans compte CSWeb** : pour
+piloter et suivre le breakout, lire les journaux et lire les médias. CSWeb
+n'envoie pas d'événements vers vos systèmes.
 </Callout>
 
 ---
@@ -335,33 +335,14 @@ respondSuccess(['notified' => true]);
 
 ## Monitoring
 
-### Webhook Deliveries
+Ce que CSWeb garde comme traces des appels de webhooks :
 
-Tracker succès/échecs :
-
-```sql
-CREATE TABLE webhook_deliveries (
-    id SERIAL PRIMARY KEY,
-    webhook_name VARCHAR(50),
-    event VARCHAR(50),
-    status VARCHAR(20),
-    response_time INT,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-### Metrics
-
-```sql
--- Taux de succès
-SELECT
-    webhook_name,
-    COUNT(*) as total,
-    SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success,
-    AVG(response_time) as avg_response_ms
-FROM webhook_deliveries
-GROUP BY webhook_name;
-```
+| Trace | Où | Contenu |
+|---|---|---|
+| Passages de breakout déclenchés par webhook | `var/logs/<DICTIONNAIRE>_<date>-api.log`, lisible par `log-reader-webhook.php` | Sortie complète du passage |
+| Appels du webhook médias | `var/logs/media-webhook.log` | Date, action, code HTTP, empreinte du chemin, IP (jamais le chemin) |
+| Accès HTTP | Journal d'accès Apache ou Nginx | Méthode, URL (chemins de fichiers masqués), code, taille |
+| État du breakout | `breakout-status-webhook.php` et la page **Breakout Health** | Cas collectés, traités, en attente, derniers passages |
 
 ## Troubleshooting
 

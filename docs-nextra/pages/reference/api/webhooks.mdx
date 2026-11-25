@@ -1,443 +1,55 @@
 # Webhooks API
 
-API pour configurer et gérer les webhooks CSWeb.
-
-> **Deux familles de webhooks distinctes**
->
-> CSWeb expose deux mécanismes différents :
->
-> 1. **API REST `/api/webhooks`** (cette page) — webhooks **sortants** authentifiés par OAuth2. CSWeb appelle vos systèmes externes lorsqu'un événement métier se produit (case uploaded, case modified, etc.).
-> 2. **Webhooks PHP racine** — endpoints **entrants** authentifiés par un Bearer token statique. Vos systèmes externes (Kairos, scripts cron, monitoring) appellent CSWeb pour piloter le breakout, lire les logs, ou consulter le statut. Voir leur documentation dédiée :
->    - [Breakout Status Webhook](/reference/api/breakout-status) — `GET /breakout-status-webhook.php`
->    - `POST /breakout-webhook.php` — déclenche un breakout
->    - `GET|POST /dictionary-schema-webhook.php` — gère la configuration des cibles breakout
->    - `GET /log-reader-webhook.php` — lit les logs CSWeb
->
->    Tous les webhooks racine partagent le même contrat de réponse :
->    ```json
->    { "success": true,  "data": ... | null, "error": null,             "meta": {...}? }
->    { "success": false, "data": null,        "error": { "code": "...", "message": "..." } }
->    ```
->    et le même catalogue de codes d'erreur (`missing_token`, `invalid_token`, `server_misconfigured`, `method_not_allowed`, `body_too_large`, `rate_limited`, `invalid_body`, `invalid_dictionary`, `invalid_filename`, `invalid_action`, `invalid_path`, `forbidden_path`, `not_found`, `content_too_large`, `delete_disabled`, `dictionary_not_found`, `file_not_found`, `file_not_readable`, `process_failed`, `breakout_failed`, `internal_error`).
->
->    Sécurité commune : un jeton par webhook (`WEBHOOK_TOKEN_BREAKOUT`, `_STATUS`, `_SCHEMA`, `_LOGS`, `_MEDIA`) avec repli sur `BREAKOUT_WEBHOOK_TOKEN` sauf pour les médias, 503 si aucun jeton, rate-limit 60 req/min réglable (`WEBHOOK_RATE_LIMIT_PER_MIN`), body POST max 64 KB, `Cache-Control: no-store`. Médias : [`/media-webhook.php`](/guides/admin/webhooks#médias-audio-photos) (8.0.14 / 8.1.20).
-
----
-
-## Authentification Requise
-
-Toutes les requêtes nécessitent un **Bearer token OAuth2**.
-
-```http
-Authorization: Bearer YOUR_ACCESS_TOKEN
-```
-
----
-
-## Concept des Webhooks
-
-Les **webhooks** permettent à CSWeb de notifier des applications externes lors d'événements spécifiques :
-
-- **Case uploaded** : Nouveau questionnaire uploadé
-- **Case modified** : Questionnaire modifié
-- **Case verified** : Questionnaire vérifié
-- **Case deleted** : Questionnaire supprimé
-- **Dictionary uploaded** : Nouveau dictionnaire uploadé
-
-**Use Case :** Synchronisation temps réel avec applications externes (BI, analytics, dashboards).
-
----
-
-## Endpoints
-
-### GET /api/webhooks Liste tous les webhooks configurés.
-
-**Request:**
-```bash
-curl -X GET http://localhost:8080/api/webhooks \
- -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-```
-
-**Response (200 OK):**
-```json
-[
- {
- "id": 1,
- "name": "Analytics Sync",
- "url": "https://analytics.example.com/api/csweb/webhook",
- "events": ["case_uploaded", "case_modified"],
- "active": true,
- "secret": "whsec_abc123...",
- "created_at": "2026-01-15T10:00:00Z"
- },
- {
- "id": 2,
- "name": "Dashboard Notification",
- "url": "https://dashboard.example.com/webhooks/csweb",
- "events": ["case_verified"],
- "active": true,
- "secret": "whsec_xyz789...",
- "created_at": "2026-02-10T14:30:00Z"
- }
-]
-```
-
----
-
-### POST /api/webhooks Créer un nouveau webhook.
-
-**Request Body:**
-```json
-{
- "name": "My Webhook",
- "url": "https://myapp.example.com/webhook",
- "events": ["case_uploaded", "case_verified"],
- "secret": "my_secret_key_123",
- "active": true
-}
-```
-
-**Parameters:**
-- `name` (string, required): Nom du webhook
-- `url` (string, required): URL de destination (HTTPS recommandé)
-- `events` (array, required): Liste des événements à écouter
-- `secret` (string, optional): Clé secrète pour vérifier signature
-- `active` (boolean, optional): Activer immédiatement (défaut: true)
-
-**Request:**
-```bash
-curl -X POST http://localhost:8080/api/webhooks \
- -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
- -H "Content-Type: application/json" \
- -d '{
- "name": "Analytics Sync",
- "url": "https://analytics.example.com/api/webhook",
- "events": ["case_uploaded"],
- "secret": "secure_secret_123"
- }'
-```
-
-**Response (201 Created):**
-```json
-{
- "id": 3,
- "name": "Analytics Sync",
- "url": "https://analytics.example.com/api/webhook",
- "events": ["case_uploaded"],
- "active": true,
- "secret": "secure_secret_123",
- "created_at": "2026-03-15T12:00:00Z"
-}
-```
-
----
-
-### PUT /api/webhooks/\{id\}
-
-Mettre à jour un webhook existant.
-
-**Request:**
-```bash
-curl -X PUT http://localhost:8080/api/webhooks/1 \
- -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
- -H "Content-Type: application/json" \
- -d '{
- "active": false
- }'
-```
-
-**Response (200 OK):**
-```json
-{
- "id": 1,
- "name": "Analytics Sync",
- "url": "https://analytics.example.com/api/webhook",
- "events": ["case_uploaded", "case_modified"],
- "active": false,
- "updated_at": "2026-03-15T12:30:00Z"
-}
-```
-
----
-
-### DELETE /api/webhooks/\{id\}
-
-Supprimer un webhook.
-
-**Request:**
-```bash
-curl -X DELETE http://localhost:8080/api/webhooks/1 \
- -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-```
-
-**Response (200 OK):**
-```json
-{
- "message": "Webhook deleted successfully",
- "id": 1
-}
-```
-
----
-
-### POST /api/webhooks/\{id\}/test Tester un webhook en envoyant un événement de test.
-
-**Request:**
-```bash
-curl -X POST http://localhost:8080/api/webhooks/1/test \
- -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-```
-
-**Response (200 OK):**
-```json
-{
- "status": "success",
- "webhook_id": 1,
- "test_payload_sent": {
- "event": "webhook_test",
- "timestamp": "2026-03-15T12:00:00Z",
- "data": {
- "message": "This is a test webhook"
- }
- },
- "response_status": 200,
- "response_time": "245ms"
-}
-```
-
-**Response (502 Bad Gateway):**
-```json
-{
- "status": "failed",
- "webhook_id": 1,
- "error": "Connection timeout",
- "details": "Failed to connect to https://analytics.example.com/api/webhook after 30s"
-}
-```
-
----
-
-## Événements Disponibles
-
-| Événement | Description | Payload |
-|-----------|-------------|---------|
-| `case_uploaded` | Nouveau questionnaire uploadé | `case_data` |
-| `case_modified` | Questionnaire modifié | `case_data`, `changes` |
-| `case_verified` | Questionnaire vérifié | `case_data` |
-| `case_deleted` | Questionnaire supprimé (soft delete) | `case_id`, `dictionary` |
-| `dictionary_uploaded` | Nouveau dictionnaire uploadé | `dictionary_data` |
-
----
-
-## Format du Payload
-
-### case_uploaded
-
-```json
-{
- "event": "case_uploaded",
- "timestamp": "2026-03-15T12:00:00Z",
- "webhook_id": 1,
- "data": {
- "dictionary": "EVAL_DICT",
- "case": {
- "guid": "abc123-def456-ghi789",
- "case_label": "001-2025-001",
- "modified_date": "2026-03-15T12:00:00Z",
- "verified": false,
- "deleted": false
- }
- }
-}
-```
-
-### case_modified
-
-```json
-{
- "event": "case_modified",
- "timestamp": "2026-03-15T13:00:00Z",
- "webhook_id": 1,
- "data": {
- "dictionary": "EVAL_DICT",
- "case": {
- "guid": "abc123-def456-ghi789",
- "case_label": "001-2025-001",
- "modified_date": "2026-03-15T13:00:00Z",
- "verified": true
- },
- "changes": {
- "verified": {
- "old": false,
- "new": true
- }
- }
- }
-}
-```
-
----
-
-## Vérification de Signature Pour sécuriser les webhooks, CSWeb signe chaque requête avec HMAC-SHA256.
-
-### Header de Signature
-
-```http
-X-CSWeb-Signature: sha256=abc123def456...
-```
-
-### Vérification (Node.js)
-
-```javascript
-const crypto = require('crypto');
-
-function verifyWebhookSignature(payload, signature, secret) {
- const expectedSignature = crypto
- .createHmac('sha256', secret)
- .update(JSON.stringify(payload))
- .digest('hex');
-
- return `sha256=${expectedSignature}` === signature;
-}
-
-// Utilisation dans Express
-app.post('/webhook', (req, res) => {
- const signature = req.headers['x-csweb-signature'];
- const secret = 'secure_secret_123';
-
- if (!verifyWebhookSignature(req.body, signature, secret)) {
- return res.status(401).json({ error: 'Invalid signature' });
- }
-
- // Traiter webhook console.log('Event:', req.body.event);
- console.log('Data:', req.body.data);
-
- res.status(200).json({ received: true });
-});
-```
-
-### Vérification (PHP)
-
-```php
-function verifyWebhookSignature($payload, $signature, $secret) {
- $expectedSignature = 'sha256=' . hash_hmac('sha256', json_encode($payload), $secret);
- return hash_equals($expectedSignature, $signature);
-}
-
-// Utilisation dans Laravel
-Route::post('/webhook', function (Request $request) {
- $signature = $request->header('X-CSWeb-Signature');
- $secret = 'secure_secret_123';
-
- if (!verifyWebhookSignature($request->all(), $signature, $secret)) {
- return response()->json(['error' => 'Invalid signature'], 401);
- }
-
- // Traiter webhook
- $event = $request->input('event');
- $data = $request->input('data');
-
- return response()->json(['received' => true]);
-});
-```
-
----
-
-## Best Practices
-
-### 1. Toujours Utiliser HTTPS
-
-```json
-{
- "url": "https://myapp.example.com/webhook" // Sécurisé
-}
-```
-
- Éviter HTTP non chiffré en production.
-
-### 2. Vérifier la Signature Toujours vérifier `X-CSWeb-Signature` pour éviter les requêtes malveillantes.
-
-### 3. Répondre Rapidement (< 5s)
-
-```javascript
-// Bon : Réponse immédiate + traitement async
-app.post('/webhook', async (req, res) => {
- res.status(200).json({ received: true });
-
- // Traitement en arrière-plan await processWebhook(req.body);
-});
-
-// Mauvais : Traitement synchrone long
-app.post('/webhook', async (req, res) => {
- await longProcessing(req.body); // Timeout possible res.status(200).json({ received: true });
-});
-```
-
-### 4. Gérer les Retry CSWeb réessaie automatiquement **3 fois** (1min, 5min, 15min) si webhook échoue.
-
-**Implémenter idempotence :**
-```javascript
-// Utiliser webhook_id + timestamp comme clé unique
-const eventKey = `${req.body.webhook_id}_${req.body.timestamp}`;
-
-if (await isAlreadyProcessed(eventKey)) {
- return res.status(200).json({ received: true, duplicate: true });
-}
-
-await markAsProcessed(eventKey);
-await processWebhook(req.body);
-```
-
----
-
-## Logs & Monitoring
-
-### GET /api/webhooks/\{id\}/deliveries Voir l'historique des envois d'un webhook.
-
-**Request:**
-```bash
-curl -X GET http://localhost:8080/api/webhooks/1/deliveries?limit=10 \
- -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-```
-
-**Response (200 OK):**
-```json
-{
- "webhook_id": 1,
- "total_deliveries": 1250,
- "successful": 1230,
- "failed": 20,
- "deliveries": [
- {
- "id": 5001,
- "event": "case_uploaded",
- "status": "success",
- "response_status": 200,
- "response_time": "245ms",
- "attempted_at": "2026-03-15T12:00:00Z"
- },
- {
- "id": 5000,
- "event": "case_uploaded",
- "status": "failed",
- "response_status": 500,
- "error": "Internal Server Error",
- "attempted_at": "2026-03-15T11:58:00Z",
- "retry_count": 3
- }
- ]
-}
-```
-
----
-
-## Ressources
-
-- **OAuth Authentication** : [API - OAuth2](/reference/api/oauth)
-- **Dictionaries API** : [API - Dictionaries](/reference/api/dictionaries)
-- **Breakout API** : [API - Breakout](/reference/api/breakout)
-
----
-
-**CSWeb Community Platform v2.0 - Webhooks API**
-Architecte : Bouna DRAME | [Portfolio](https://bounadrame.github.io)
+Les webhooks sont des points d'entrée PHP à la racine de CSWeb, appelés par vos
+applications (plateforme, scripts, supervision, BI) **sans compte CSWeb** : un
+jeton suffit. Ils servent à piloter et suivre le breakout, lire les journaux et
+lire les médias.
+
+<div className="nx-mt-4" />
+
+> CSWeb **n'envoie pas** d'événements vers vos systèmes : ce sont vos
+> applications qui appellent ces webhooks. Pour réagir à de nouvelles données,
+> interrogez `breakout-status-webhook.php` à intervalle régulier ou planifiez le
+> breakout dans CSWeb.
+
+## Points d'entrée
+
+| Webhook | Méthode | Rôle | Jeton | Référence |
+|---|---|---|---|---|
+| `/breakout-webhook.php` | POST | Déclencher le breakout d'un dictionnaire | `WEBHOOK_TOKEN_BREAKOUT` | [Breakout API](/reference/api/breakout#3-déclencher-à-la-demande) |
+| `/breakout-status-webhook.php` | GET | État du breakout par dictionnaire | `WEBHOOK_TOKEN_STATUS` | [Breakout Status](/reference/api/breakout-status) |
+| `/dictionary-schema-webhook.php` | GET, POST | Lire ou enregistrer la base cible d'un dictionnaire | `WEBHOOK_TOKEN_SCHEMA` | [Guide](/guides/admin/webhooks#configurer-la-cible-breakout-dun-dictionnaire) |
+| `/log-reader-webhook.php` | GET | Lire les journaux de CSWeb | `WEBHOOK_TOKEN_LOGS` | [Guide](/guides/admin/webhooks#lister--lire-les-logs) |
+| `/media-webhook.php` | POST | Lister et lire les médias (audio, photos) | `WEBHOOK_TOKEN_MEDIA` | [Guide](/guides/admin/webhooks#médias-audio-photos) |
+
+## Règles communes
+
+- **Authentification** : `Authorization: Bearer <jeton>`. Un jeton par webhook
+  depuis 8.0.14 / 8.1.20 ; un jeton laissé vide reprend le jeton commun
+  `BREAKOUT_WEBHOOK_TOKEN`, sauf pour les médias. Sans jeton configuré : `503`.
+- **Réponse** :
+  ```json
+  { "success": true,  "data": { … }, "error": null, "meta": { … } }
+  { "success": false, "data": null,  "error": { "code": "…", "message": "…" } }
+  ```
+- **Limite de débit** : 60 requêtes par minute et par appelant, réglable avec
+  `WEBHOOK_RATE_LIMIT_PER_MIN` ; au-delà, `429` avec l'en-tête `Retry-After`.
+- **Corps** : JSON, 64 Ko au plus. Toute action qui modifie quelque chose est en
+  `POST`.
+- **En-têtes** : `Cache-Control: no-store`, `X-Robots-Tag: noindex, nofollow`.
+- **HTTPS obligatoire en production** : sinon le jeton circule en clair.
+
+## Codes d'erreur
+
+`missing_token`, `invalid_token`, `server_misconfigured`, `method_not_allowed`,
+`body_too_large`, `rate_limited`, `invalid_body`, `invalid_dictionary`,
+`invalid_filename`, `invalid_action`, `invalid_path`, `forbidden_path`,
+`not_found`, `content_too_large`, `delete_disabled`, `dictionary_not_found`,
+`file_not_found`, `file_not_readable`, `process_failed`, `breakout_failed`,
+`internal_error`. Le tableau détaillé (code HTTP et cause) est dans le
+[guide Webhooks](/guides/admin/webhooks#codes-derreur).
+
+## Voir aussi
+
+- [Guide Webhooks](/guides/admin/webhooks) : exemples, variables d'environnement, journaux masqués
+- [Breakout API](/reference/api/breakout) : configurer, planifier, déclencher et suivre le breakout

@@ -1,397 +1,115 @@
-# Breakout API API pour gérer le breakout sélectif des questionnaires CSPro.
+# Breakout API
 
-## Authentification Requise Toutes les requêtes nécessitent un **Bearer token OAuth2**.
+Le breakout copie les cas d'un dictionnaire CSWeb dans une base relationnelle
+(PostgreSQL, MySQL ou SQL Server), une table par niveau et par enregistrement.
+Cette page dit comment une application externe (plateforme, script, BI) le
+configure, le déclenche et le suit.
 
-```http
-Authorization: Bearer YOUR_ACCESS_TOKEN
-```
+<div className="nx-mt-4" />
 
----
+> **Pas de compte CSWeb ni d'OAuth.** Le breakout se pilote par des webhooks à
+> jeton (`Authorization: Bearer <jeton>`), un jeton par webhook depuis
+> 8.0.14 / 8.1.20. Il n'existe pas d'endpoint `/api/breakout/...` dans l'API
+> REST de CSWeb.
 
-## Endpoints
+## Vue d'ensemble
 
-### POST /api/breakout/start Démarre un breakout sélectif pour un ou plusieurs dictionnaires.
+| Besoin | Comment | Jeton |
+|---|---|---|
+| Configurer la base cible d'un dictionnaire | Interface **Data Settings** (recommandé), ou `POST /dictionary-schema-webhook.php` | `WEBHOOK_TOKEN_SCHEMA` |
+| Planifier (toutes les N minutes) | Interface **Breakout Scheduler** | — |
+| Déclencher à la demande | `POST /breakout-webhook.php` | `WEBHOOK_TOKEN_BREAKOUT` |
+| Suivre : cas collectés, traités, en attente, dernier et prochain passage | `GET /breakout-status-webhook.php` | `WEBHOOK_TOKEN_STATUS` |
+| Lire les journaux d'un passage | `GET /log-reader-webhook.php` | `WEBHOOK_TOKEN_LOGS` |
+| Lire les médias (audio, photos) | `POST /media-webhook.php` | `WEBHOOK_TOKEN_MEDIA` |
 
-**Request Body:**
-```json
-{
- "dictionaries": ["EVAL_DICT", "KAIROS_DICT"],
- "threads": 5,
- "overwrite": false
-}
-```
+Les variables, les codes d'erreur et la limite de débit sont décrits dans le
+[guide Webhooks](/guides/admin/webhooks).
 
-**Parameters:**
-- `dictionaries` (array, required): Liste des dictionnaires à traiter
-- `threads` (integer, optional): Nombre de threads parallèles (défaut: 1)
-- `overwrite` (boolean, optional): Écraser tables existantes (défaut: false)
+## 1. Configurer la base cible
 
-**Request:**
+Dans CSWeb : **Data Settings → Add**, choisir le dictionnaire, puis le type de
+base (PostgreSQL, MySQL…), l'hôte, le port, la base, l'utilisateur et le mot de
+passe. Plusieurs dictionnaires peuvent être ajoutés d'un coup vers la même base.
+Détails : [Breakout sélectif](/guides/breakout/selective).
+
+Le webhook `dictionary-schema-webhook.php` sait enregistrer une cible
+(`action: register` avec `host_name`, `schema_name`, `schema_user_name`,
+`schema_password`), mais il ne prend ni le type de base ni le port : pour une
+cible PostgreSQL ou un port non standard, utilisez **Data Settings**.
+
 ```bash
-curl -X POST http://localhost:8080/api/breakout/start \
- -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
- -H "Content-Type: application/json" \
- -d '{
- "dictionaries": ["EVAL_DICT"],
- "threads": 3,
- "overwrite": false
- }'
+# Lire la configuration de tous les dictionnaires
+curl -H "Authorization: Bearer $WEBHOOK_TOKEN_SCHEMA" \
+  "https://csweb.example.org/dictionary-schema-webhook.php?action=list"
 ```
 
-**Response (202 Accepted):**
-```json
-{
- "status": "started",
- "job_id": "breakout-20260315-120000",
- "dictionaries": ["EVAL_DICT"],
- "threads": 3,
- "estimated_time": "45 minutes",
- "message": "Breakout started in background"
-}
-```
+## 2. Planifier
 
-**Response (409 Conflict):**
-```json
-{
- "error": "Tables already exist",
- "message": "Tables for dictionary 'EVAL_DICT' already exist. Use overwrite=true to replace.",
- "existing_tables": ["eval_cases", "eval_producteurs"]
-}
-```
+Dans CSWeb : **Breakout Scheduler**, une expression cron par dictionnaire
+(par exemple `*/15 * * * *` pour toutes les 15 minutes). Le planificateur tourne
+chaque minute dans le conteneur. Détails : [Breakout planifié](/guides/breakout/scheduled).
 
----
+## 3. Déclencher à la demande
 
-### GET /api/breakout/status/\{job_id\}
-
-Récupère le statut d'un job de breakout.
-
-**Parameters:**
-- `job_id` (path, required): ID du job (ex: `breakout-20260315-120000`)
-
-**Request:**
 ```bash
-curl -X GET http://localhost:8080/api/breakout/status/breakout-20260315-120000 \
- -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+curl -X POST "https://csweb.example.org/breakout-webhook.php" \
+  -H "Authorization: Bearer $WEBHOOK_TOKEN_BREAKOUT" \
+  -H "Content-Type: application/json" \
+  -d '{"dictionary": "PRAPS2_ENTRETIEN"}'
 ```
 
-**Response (200 OK) - En cours:**
+L'appel attend la fin du passage (5 minutes au plus) et renvoie :
+
 ```json
 {
- "job_id": "breakout-20260315-120000",
- "status": "running",
- "progress": {
- "dictionary": "EVAL_DICT",
- "processed": 12500,
- "total": 50000,
- "percentage": 25,
- "elapsed_time": "00:11:32",
- "estimated_remaining": "00:34:28"
- },
- "threads": 3,
- "started_at": "2026-03-15T12:00:00Z"
+  "success": true,
+  "data": {
+    "dictionary": "PRAPS2_ENTRETIEN",
+    "exitCode": 0,
+    "durationMs": 4210,
+    "logFile": "PRAPS2_ENTRETIEN_20261125_103000-api.log",
+    "output": "…"
+  },
+  "error": null
 }
 ```
 
-**Response (200 OK) - Terminé:**
-```json
-{
- "job_id": "breakout-20260315-120000",
- "status": "completed",
- "result": {
- "dictionaries_processed": ["EVAL_DICT"],
- "total_cases": 50000,
- "tables_created": ["eval_cases", "eval_producteurs", "eval_observations"],
- "execution_time": "00:45:12"
- },
- "completed_at": "2026-03-15T12:45:12Z"
-}
-```
+Un passage en échec répond `500 breakout_failed` avec le code de sortie.
 
-**Response (200 OK) - Erreur:**
-```json
-{
- "job_id": "breakout-20260315-120000",
- "status": "failed",
- "error": {
- "code": "DB_CONNECTION_ERROR",
- "message": "Cannot connect to PostgreSQL server: Connection refused",
- "details": "Host: postgres, Port: 5432"
- },
- "failed_at": "2026-03-15T12:05:30Z"
-}
-```
+## 4. Suivre
 
----
-
-### GET /api/breakout/tables/\{dictionary\}
-
-Liste les tables créées pour un dictionnaire.
-
-**Parameters:**
-- `dictionary` (path, required): Nom du dictionnaire (ex: `EVAL_DICT`)
-
-**Request:**
 ```bash
-curl -X GET http://localhost:8080/api/breakout/tables/EVAL_DICT \
- -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+curl -H "Authorization: Bearer $WEBHOOK_TOKEN_STATUS" \
+  "https://csweb.example.org/breakout-status-webhook.php?dictionary=PRAPS2_ENTRETIEN"
 ```
 
-**Response (200 OK):**
-```json
-{
- "dictionary": "EVAL_DICT",
- "label": "eval",
- "database": "csweb_analytics",
- "tables": [
- {
- "name": "eval_cases",
- "type": "main",
- "row_count": 50000,
- "size": "12.5 MB"
- },
- {
- "name": "eval_producteurs",
- "type": "record",
- "row_count": 75000,
- "size": "18.2 MB"
- },
- {
- "name": "eval_observations",
- "type": "record",
- "row_count": 150000,
- "size": "35.8 MB"
- }
- ],
- "total_size": "66.5 MB",
- "created_at": "2026-03-15T12:45:12Z"
-}
-```
+La réponse donne, par dictionnaire : base cible configurée ou non, planning,
+cas collectés, cas traités, cas en attente, taux, `is_up_to_date`, dernier et
+prochain passage. Référence complète : [Breakout Status Webhook](/reference/api/breakout-status).
 
-**Response (404 Not Found):**
-```json
-{
- "error": "No tables found",
- "message": "No breakout tables found for dictionary 'EVAL_DICT'",
- "suggestion": "Run breakout first using POST /api/breakout/start"
-}
-```
+Pour les journaux d'un passage :
 
----
-
-### DELETE /api/breakout/tables/\{dictionary\}
-
-Supprime les tables d'un dictionnaire.
-
-**Request:**
 ```bash
-curl -X DELETE http://localhost:8080/api/breakout/tables/EVAL_DICT \
- -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+curl -H "Authorization: Bearer $WEBHOOK_TOKEN_LOGS" \
+  "https://csweb.example.org/log-reader-webhook.php?file=PRAPS2_ENTRETIEN_20261125_103000-api.log&lines=200"
 ```
 
-**Response (200 OK):**
-```json
-{
- "message": "Tables deleted successfully",
- "dictionary": "EVAL_DICT",
- "deleted_tables": ["eval_cases", "eval_producteurs", "eval_observations"],
- "freed_space": "66.5 MB"
-}
-```
+## 5. Tables produites
 
----
+Le breakout crée dans la base cible une table par niveau et par enregistrement
+du dictionnaire, préfixée par le nom du dictionnaire en minuscules, sans le
+suffixe `_DICT` (par exemple
+`praps2_entretien_level-1`, puis les tables des enregistrements), ainsi que
+`praps2_entretien_cases` et `praps2_entretien_cspro_jobs` (suivi des passages).
 
-### GET /api/breakout/jobs Liste tous les jobs de breakout (actifs et terminés).
+Les noms suivent le dictionnaire : ils ne changent que si le dictionnaire
+change (ajout, renommage ou suppression d'enregistrements ou de variables).
+Toute modification du dictionnaire doit donc être annoncée aux applications qui
+lisent ces tables.
 
-**Query Parameters:**
-- `status` (optional): Filtrer par statut (`running`, `completed`, `failed`)
-- `limit` (optional): Nombre max de résultats (défaut: 50)
+## Voir aussi
 
-**Request:**
-```bash
-curl -X GET "http://localhost:8080/api/breakout/jobs?status=completed&limit=10" \
- -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-```
-
-**Response (200 OK):**
-```json
-{
- "total": 25,
- "limit": 10,
- "data": [
- {
- "job_id": "breakout-20260315-120000",
- "status": "completed",
- "dictionaries": ["EVAL_DICT"],
- "cases_processed": 50000,
- "execution_time": "00:45:12",
- "started_at": "2026-03-15T12:00:00Z",
- "completed_at": "2026-03-15T12:45:12Z"
- },
- {
- "job_id": "breakout-20260314-100000",
- "status": "completed",
- "dictionaries": ["KAIROS_DICT"],
- "cases_processed": 12000,
- "execution_time": "00:18:30",
- "started_at": "2026-03-14T10:00:00Z",
- "completed_at": "2026-03-14T10:18:30Z"
- }
- ]
-}
-```
-
----
-
-## Exemples d'Utilisation
-
-### Java (Spring Boot)
-
-```java
-@Service
-@RequiredArgsConstructor
-public class BreakoutService {
-
- private final CSWebApiService cswebApi;
-
- public String startBreakout(List<String> dictionaries, int threads) {
- Map<String, Object> request = Map.of(
- "dictionaries", dictionaries,
- "threads", threads,
- "overwrite", false
- );
-
- ResponseEntity<BreakoutJobResponse> response = cswebApi.post(
- "/breakout/start",
- request,
- BreakoutJobResponse.class
- );
-
- return response.getBody().getJobId();
- }
-
- public BreakoutStatus getStatus(String jobId) {
- ResponseEntity<BreakoutStatus> response = cswebApi.get(
- "/breakout/status/" + jobId,
- BreakoutStatus.class
- );
-
- return response.getBody();
- }
-}
-```
-
-### PHP (Laravel)
-
-```php
-use App\Services\CSWebApiService;
-
-class BreakoutController extends Controller
-{
- public function start(Request $request, CSWebApiService $cswebApi)
- {
- $data = [
- 'dictionaries' => $request->input('dictionaries'),
- 'threads' => $request->input('threads', 3),
- 'overwrite' => $request->input('overwrite', false),
- ];
-
- $response = $cswebApi->post('/breakout/start', $data);
-
- return response()->json($response);
- }
-
- public function status(string $jobId, CSWebApiService $cswebApi)
- {
- $status = $cswebApi->get("/breakout/status/{$jobId}");
-
- return response()->json($status);
- }
-}
-```
-
-### JavaScript (Fetch API)
-
-```javascript
-// Démarrer breakout
-async function startBreakout(dictionaries, threads = 3) {
- const response = await fetch('http://localhost:8080/api/breakout/start', {
- method: 'POST',
- headers: {
- 'Authorization': `Bearer ${accessToken}`,
- 'Content-Type': 'application/json'
- },
- body: JSON.stringify({
- dictionaries,
- threads,
- overwrite: false
- })
- });
-
- const data = await response.json();
- return data.job_id;
-}
-
-// Polling status
-async function pollStatus(jobId) {
- const interval = setInterval(async () => {
- const response = await fetch(`http://localhost:8080/api/breakout/status/${jobId}`, {
- headers: {
- 'Authorization': `Bearer ${accessToken}`
- }
- });
-
- const status = await response.json();
-
- if (status.status === 'completed') {
- clearInterval(interval);
- console.log('Breakout completed!', status.result);
- } else if (status.status === 'failed') {
- clearInterval(interval);
- console.error('Breakout failed:', status.error);
- } else {
- console.log(`Progress: ${status.progress.percentage}%`);
- }
- }, 5000); // Poll toutes les 5 secondes
-}
-
-// Utilisation
-const jobId = await startBreakout(['EVAL_DICT'], 5);
-pollStatus(jobId);
-```
-
----
-
-## Statuts de Job
-
-| Status | Description |
-|--------|-------------|
-| `pending` | Job en attente de démarrage |
-| `running` | Breakout en cours d'exécution |
-| `completed` | Breakout terminé avec succès |
-| `failed` | Breakout échoué (voir `error` pour détails) |
-| `cancelled` | Job annulé par utilisateur |
-
----
-
-## Codes d'Erreur
-
-| Code | Description | Solution |
-|------|-------------|----------|
-| `DICTIONARY_NOT_FOUND` | Dictionnaire inexistant | Vérifier nom dictionnaire |
-| `TABLES_ALREADY_EXIST` | Tables déjà créées | Utiliser `overwrite=true` |
-| `DB_CONNECTION_ERROR` | Connexion DB échouée | Vérifier config DB |
-| `INVALID_THREADS` | Nombre de threads invalide | Utiliser 1-10 threads |
-| `INSUFFICIENT_PERMISSIONS` | Permissions insuffisantes | Vérifier droits user OAuth |
-
----
-
-## Ressources
-
-- **CLI Command** : [CLI - process-cases-by-dict](/reference/cli/process-cases)
-- **Breakout Guide** : [Guides - Breakout Sélectif](/guides/breakout/selective)
-- **OAuth Authentication** : [API - OAuth2](/reference/api/oauth)
-
----
-
-**CSWeb Community Platform v2.0 - Breakout API**
-Innovation : Assietou DIAGNE (ANSD, Sénégal)
+- [Guide Webhooks](/guides/admin/webhooks) : jetons, médias, codes d'erreur, HTTPS
+- [Breakout Health](/guides/breakout/monitoring) : suivi dans l'interface
+- [Breakout sélectif](/guides/breakout/selective) et [planifié](/guides/breakout/scheduled)
