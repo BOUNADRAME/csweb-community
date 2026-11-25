@@ -203,13 +203,40 @@ Table 'eval_dict_level_1' already exists
 
 **Solutions** :
 
-```bash
-# Drop tables
-php bin/console csweb:drop-breakout-tables EVAL_DICT
+Une table du même nom existe déjà dans la base cible, souvent laissée par un
+autre outil ou une ancienne configuration. Renommez ou supprimez cette table
+dans la base cible (après sauvegarde), puis relancez le breakout depuis
+**Breakout Health** ou :
 
-# Ou force overwrite
-php bin/console csweb:process-cases-by-dict EVAL_DICT --force
+```bash
+docker compose exec csweb php bin/console csweb:process-cases-by-dict EVAL_DICT
 ```
+
+### BRK-005: Dictionary changed, tables cannot be recreated
+
+**Message** (fin du journal de breakout, code de sortie 255) :
+
+```
+Breakout of PRAPS2_ENTRETIEN stopped. Dictionary PRAPS2_ENTRETIEN changed since its
+last breakout, so its tables in database "fraps2" must be recreated, but dropping
+table "praps2_entretien_adulte" failed: …
+```
+
+**Cause** : quand un dictionnaire est modifié (nouvelle version du
+questionnaire), CSWeb supprime puis recrée ses tables dans la base cible et y
+réécrit tous les cas. Ici, la suppression a échoué.
+
+- Avant 8.0.15, sur une base cible **MySQL ou SQL Server**, l'erreur était
+  `SQLSTATE[42000] … near '"praps2_entretien_…" CASCADE'` : la suppression
+  était écrite en syntaxe PostgreSQL. Corrigé en 8.0.15 / 8.1.21 : mettre à
+  jour, puis relancer le breakout.
+- Si le message indique `DROP command denied`, l'utilisateur de la base cible
+  n'a pas le droit de supprimer des tables : lui donner les droits complets
+  sur cette base (`GRANT ALL ON fraps2.* TO …`).
+
+Les applications qui lisent ces tables (BI, plateforme) doivent être
+prévenues : après une modification du dictionnaire, les colonnes peuvent
+changer.
 
 ## Erreurs OAuth2
 
@@ -503,7 +530,7 @@ curl -H "Authorization: Bearer <token>" http://csweb.example.com/breakout-status
 openssl rand -hex 32
 ```
 
-### WHK-002 : `server_misconfigured` (HTTP 500)
+### WHK-002 : `server_misconfigured` (HTTP 503, 500 avant 8.0.14)
 
 **Réponse :**
 
@@ -513,7 +540,7 @@ openssl rand -hex 32
   "data": null,
   "error": {
     "code": "server_misconfigured",
-    "message": "Server misconfiguration: BREAKOUT_WEBHOOK_TOKEN environment variable is not set."
+    "message": "Webhook disabled: set WEBHOOK_TOKEN_BREAKOUT (or the shared BREAKOUT_WEBHOOK_TOKEN)."
   }
 }
 ```
@@ -521,8 +548,8 @@ openssl rand -hex 32
 **Solutions :**
 
 ```bash
-# Définir la variable dans .env
-echo "BREAKOUT_WEBHOOK_TOKEN=$(openssl rand -hex 32)" >> .env
+# Définir le jeton du webhook concerné dans .env (ici le breakout)
+echo "WEBHOOK_TOKEN_BREAKOUT=$(openssl rand -hex 32)" >> .env
 
 # Recréer le container csweb pour qu'il pick up la variable
 docker compose up -d --no-deps csweb
